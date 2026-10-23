@@ -3,7 +3,7 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "SLOOP 2.8"  /* the beat machine firmware for the FM-1 (based on Felucca) */
+#define FELUCCA_VERSION "SLOOP 2.8.1"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
@@ -55,6 +55,7 @@ static struct {
     uint8_t note_k;              /* (2.7.2) NOTES: the note of the cursor's chord (0..n-1) */
     uint8_t zoom;                /* (2.7.2) NOTES: the steps shown, NV_ZOOM[zoom] (PRESETS) */
     uint8_t sheet;               /* (2.7.2) NOTES / DRUMS grid: the sheet (OCT+ held) open: 1 + its row; 0 closed */
+    uint8_t sheet_last;          /* (2.8.1) the sheet row last used (0..5): OCT+ reopens on it (quick MOVE) */
     uint8_t hot_col, hot_t;      /* column whose knob was just turned (drawn white) */
     uint8_t menu;                /* 0 off, 1 list, 2 about (HOME held) */
     uint8_t menu_sel;
@@ -424,21 +425,26 @@ UI_SMALL static uint32_t octp_filter(uint32_t pressed, uint32_t *ev)
     }
     return pressed;
 }
-/* the sheet over a screen (NOTES, the drum grid): six rows, the one KNOB 1 picks lit, values on the right */
-UI_SMALL static void sheet_draw(int32_t x, int32_t y, const char *const *lab, const char *const *val, uint32_t sel,
-                                uint16_t acc)
+/* (2.8.1) the sheet (NOTES, the drum grid) as a strip along the bottom, over the knob area, so the
+ * sequencer itself stays fully visible: the row KNOB 1 picks is lit in the middle with its value, the
+ * rows before and after it faint on each side, and six dots for the place in the list. OCT+ acts, OCT- closes. */
+UI_SMALL static void sheet_bar(int32_t y, const char *const *lab, const char *const *val, uint32_t sel, uint16_t acc)
 {
-    int32_t w = 124, k;
-    cv_rect(x - 1, y - 1, w + 2, 6 * 16 + 4, C_LINE);
-    cv_rect(x, y, w, 6 * 16 + 2, C_BLACK);
-    for (k = 0; k < 6; k++) {
-        int32_t ry = y + 2 + k * 16;
-        if ((uint32_t)k == sel)
-            cv_rect(x + 1, ry - 1, w - 2, 15, acc);
-        cv_text(x + 5, ry, &FONT_S, lab[k], (uint32_t)k == sel ? C_WHITE : C_HI);
-        if (val[k] && val[k][0])
-            cv_text(x + w - 5 - text_w(&FONT_S, val[k]), ry, &FONT_S, val[k], (uint32_t)k == sel ? C_WHITE : C_AMB);
-    }
+    uint32_t prev = (sel + 5u) % 6u, next = (sel + 1u) % 6u, i;
+    int32_t x = 6, lw = text_w(&FONT_S, lab[sel]);
+    int32_t vw = val[sel] && val[sel][0] ? text_w(&FONT_S, val[sel]) + 6 : 0;
+    cv_rect(0, y, 240, 16, C_BLACK);                   /* the strip */
+    cv_rect(0, y, 240, 1, C_LINE);
+    cv_text(x, y + 2, &FONT_S, lab[prev], C_DIM);      /* the row before (faint) */
+    x += text_w(&FONT_S, lab[prev]) + 10;
+    cv_rect(x - 3, y + 1, lw + vw + 6, 14, acc);       /* the row under edit, lit */
+    cv_text(x, y + 2, &FONT_S, lab[sel], C_WHITE);
+    if (vw)
+        cv_text(x + lw + 6, y + 2, &FONT_S, val[sel], C_WHITE);
+    x += lw + vw + 10;
+    cv_text(x, y + 2, &FONT_S, lab[next], C_DIM);      /* the row after (faint) */
+    for (i = 0; i < 6u; i++)                            /* the place in the six */
+        cv_rect(200 + (int32_t)i * 6, y + 6, 4, 4, i == sel ? acc : C_DIM);
 }
 
 UI_SMALL static void note_name(char *b, uint32_t n)

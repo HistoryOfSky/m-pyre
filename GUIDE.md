@@ -1,6 +1,6 @@
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
-# SLOOP 2.8 — The Complete Guide
+# SLOOP 2.8.1 — The Complete Guide
 
 Everything SLOOP does, every button, every combination, every page, in one place. This guide is written to be read from the top the first time, then used as a reference: the [cheat sheet](#26-cheat-sheet) at the end has every combination on one page.
 
@@ -488,7 +488,7 @@ There are three ways to enter steps:
 | **PRESETS** | the zoom: 8, 16 (as it opens), 32 or 64 steps on the screen (the page with the note under edit) |
 | **EDIT (tap)** | deletes the note under edit (a chord keeps its others; its last note takes the step and its TIEs) |
 | **OCT−** / **OCT+** (tap) | the keys' octave, as everywhere |
-| **OCT+ held** (0.4 s) | the note's **sheet**: KNOB 1 picks a row, KNOB 2 sets it, OCT+ does it, OCT− closes it — **SLIDE** (ON / OFF; OCT+ too), **NUDGE** (the step's micro timing, −32 … +31), **FILL** (NORMAL, FILL only, NO FILL), **MOVE** (KNOB 2: a step each detent, with its TIEs, nudge, fill and locks; not over another note: *NO ROOM*), **COPY** (OCT+: a copy just after it, picked, and MOVE next to place it), **DELETE** (OCT+) |
+| **OCT+ held** (0.4 s) | the note's **sheet** — (2.8.1) a strip along the bottom of the screen, so the piano roll stays visible; it reopens on the row you last used. KNOB 1 picks a row, KNOB 2 sets it, OCT+ does it, OCT− closes it — **SLIDE** (ON / OFF; OCT+ too), **NUDGE** (the step's micro timing, −32 … +31), **FILL** (NORMAL, FILL only, NO FILL), **MOVE** (KNOB 2: a step each detent, with its TIEs, nudge, fill and locks; not over another note: *NO ROOM*), **COPY** (OCT+: a copy just after it, picked, and MOVE next to place it), **DELETE** (OCT+) |
 
 EDIT + OCT− / OCT+ undo and redo the edits, as before. Not while recording or armed (the keys record live then). On the drum track, the NOTES page shows *DRUM TRACK*: use the DRUMS grid or the SEQ layer.
 

@@ -33,7 +33,9 @@ static void lcd_fill(uint32_t x,uint32_t y,uint32_t w,uint32_t h,uint16_t c)
 static int32_t encs[7];
 static uint32_t fm1_ticks(void) { return fm1_ms * 1000u * 24u; }
 #define FM1_TICKS_PER_US 24u
-static int32_t fm1_enc_take(uint32_t e) { int32_t s = encs[e]; encs[e] = 0; return s; }
+static int32_t enc_late[7];                         /* a detent the timer ISR counts just after a read (as on the FM-1, where the
+                                                     * scan runs while a UI pass does): it lands in the same pass */
+static int32_t fm1_enc_take(uint32_t e) { int32_t s = encs[e]; encs[e] = enc_late[e]; enc_late[e] = 0; return s; }
 static uint8_t fm1_led[16], fm1_led_dim[16], fm1_led_bg[16];
 static volatile uint16_t fm1_led_bg_ns;
 #define FM1_NCOL 16u
@@ -275,6 +277,34 @@ int main(int argc, char **argv)
     TSEL->p[P_TFLT] = 0;
     release(B_FX); check(cur_page()->scope == SC_TRK && ui.layer == LY_PLAY, "FX used then let go: no FX page");
     song.g[G_DUST] = 0; song.g[G_FILT] = 0;
+    {   /* (2.8.1) the PUNCH page, SELECT turned on and on: a detent counted between the fade's read and the rest of
+         * the pass (the scan ISR on the FM-1) used to go to the tempo: the fade AND the tempo moved */
+        int16_t bpm0;
+        uint32_t i;
+        press(B_FX); frames(3);
+        bpm0 = song.g[G_BPM]; song.g[G_FXFADE] = 0;
+        for (i = 0; i < 5u; i++) { encs[panel.enc[EN_SELECT]] += 1; enc_late[panel.enc[EN_SELECT]] = 1; frame(); }
+        frame();                                          /* (the last late detent: read by the fade next pass) */
+        check(song.g[G_BPM] == bpm0 && song.g[G_FXFADE] == 10,
+              "PUNCH page (2.8.1): SELECT, even a detent late in the pass, is the fade only, never the tempo");
+        release(B_FX); frames(20);
+        song.g[G_BPM] = bpm0; song.g[G_FXFADE] = 0;
+    }
+    {   /* (2.8.1) the fade turned on SELECT, FX let go while the knob still turns: those detents are not the tempo
+         * (users: "the PUNCH page's fade changes the tempo"); a while after, SELECT is the tempo again */
+        int16_t bpm0;
+        uint32_t i;
+        press(B_FX); frames(3);
+        bpm0 = song.g[G_BPM];
+        for (i = 0; i < 4u; i++) { encs[panel.enc[EN_SELECT]] = 1; frame(); }
+        fm1_in.buttons &= ~BT(B_FX); encs[panel.enc[EN_SELECT]] = 1; frame();
+        for (i = 0; i < 6u; i++) { encs[panel.enc[EN_SELECT]] = 1; frame(); }   /* ~100 ms of the turn going on */
+        check(song.g[G_FXFADE] == 4 && song.g[G_BPM] == bpm0, "FX let go while SELECT turns the fade (2.8.1): the tempo untouched");
+        frames(20);                                       /* (past the 250 ms quiet) */
+        encs[panel.enc[EN_SELECT]] = 1; frame();
+        check(song.g[G_BPM] == bpm0 + 1, "then SELECT is the tempo again");
+        song.g[G_BPM] = bpm0; song.g[G_FXFADE] = 0;
+    }
 
     /* ---- a layer locked open: held + HOME tapped; any other button (not PLAY, REC, OCT) lets it go */
     go_home(); frame();
@@ -1957,6 +1987,7 @@ int main(int argc, char **argv)
         tap(B_OCTUP); frame();
         check(song.octave == 1 && !ui.sheet, "NOTES: OCT+ tapped: the octave up, as before (on release)");
         song.octave = 0;
+        ui.sheet_last = 0;                                  /* (2.8.1) a fresh device opens on row 0 */
         press(B_OCTUP); frames(30);
         ok = ui.sheet == 1u && song.octave == 0;
         release(B_OCTUP); frame();
@@ -1997,6 +2028,18 @@ int main(int argc, char **argv)
         check(!step_on(&t->step[5]) && t->step[6].time == ST_REST, "NOTES: the chord's last note: the step and its TIEs go");
         press(B_EDIT); press(B_OCTDN); release(B_OCTDN); release(B_EDIT); frames(2);
         check(step_on(&t->step[5]), "NOTES: EDIT + OCT- brings it back (undo)");
+        /* (2.8.1) the sheet reopens on the row last used (quick MOVE) */
+        ui.sheet_last = 0;
+        press(B_OCTUP); frames(30); release(B_OCTUP); frame();
+        ok = ui.sheet == 1u;                                /* opens on row 0 */
+        encs[panel.enc[EN_K1]] = 3; frame();                /* KNOB 1 -> MOVE (row 3) */
+        ok &= ui.sheet == 4u;
+        tap(B_OCTDN); frame();                              /* OCT- closes */
+        ok &= !ui.sheet;
+        press(B_OCTUP); frames(30); release(B_OCTUP); frame();   /* reopen: on MOVE */
+        ok &= ui.sheet == 4u;
+        tap(B_OCTDN); frame();
+        check(ok && !ui.sheet, "NOTES sheet (2.8.1): reopens on the row last used (quick MOVE)");
         cursor_set(0); ui.force = 1; frame(); ppm("notes-main");
         go_home(); frame();
         /* the drum grid's sheet */
@@ -2008,6 +2051,7 @@ int main(int argc, char **argv)
         tap(B_OCTUP); frame();
         ok = drum_cursor == 20u && !ui.sheet;                                         /* (a tap: the next page) */
         drum_cursor = 4;
+        ui.sheet_last = 0;                                  /* (2.8.1) a fresh device opens on row 0 */
         press(B_OCTUP); frames(30); release(B_OCTUP); frame();
         ok &= ui.sheet == 1u;
         encs[panel.enc[EN_K2]] = 2; frame();

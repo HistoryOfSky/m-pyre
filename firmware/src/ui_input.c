@@ -344,6 +344,7 @@ UI_SMALL static void note_sheet_knob(uint32_t slot, int32_t steps)
     uint32_t row = ui.sheet - 1u;
     if (slot == 0u) {
         ui.sheet = (uint8_t)(1 + clamp((int32_t)row + steps, 0, 5));
+        ui.sheet_last = (uint8_t)(ui.sheet - 1u);          /* (2.8.1) reopen on this row next time */
         return;
     }
     if (slot != 1u)
@@ -835,6 +836,7 @@ UI_SMALL static void layer_unlock(void)
  * turning as the button comes up is the layer's, not the page's under it). fm1_ms | 1, 0 = none */
 #define LY_QUIET_MS 250u
 static uint32_t ly_quiet_t;
+static uint8_t ly_quiet_sel;                         /* (2.8.1) the layer that let go was FX: SELECT (its fade) quiet too */
 UI_SMALL static int ly_quiet(void)
 {
     if (ly_quiet_t && fm1_ms - (ly_quiet_t & ~1u) >= LY_QUIET_MS)
@@ -901,6 +903,7 @@ UI_SMALL static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_
         }
         if (ui.layer != LY_PLAY) {
             ly_quiet_t = fm1_ms | 1u;                     /* a layer shown lets go: KNOB 1..4 quiet a while (#39) */
+            ly_quiet_sel = (uint8_t)(ui.layer == LY_FX);   /* (2.8.1) FX: SELECT was the fade, its last detents are not the tempo */
             ui.layer = LY_PLAY;
             ui.step_held = 0;
             ui.force = 1;                                 /* the page comes back */
@@ -1138,7 +1141,10 @@ UI_SMALL static void ui_input(void)
     holds_input(pressed, fm1_ms);
     pressed &= ~((on_song_page() ? 0u : 1u << panel.btn[B_REC]) | (1u << panel.btn[B_SAVE]));
     if (layered || ui.hold_kind) {                      /* a layer / a hold: the rest waits */
-        if ((s = panel_enc(EN_SELECT)) != 0) {           /* (the tempo always) */
+        if (!punch.hold && (s = panel_enc(EN_SELECT)) != 0) {   /* (the tempo always; not on the PUNCH page, FX held
+                                                         * or locked: SELECT is its fade only, 2.8.1. Not read again
+                                                         * here: a detent the scan ISR counts after the fade's read
+                                                         * waits for the fade's next read, it is never the tempo) */
             song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_SELECT, s, 200), GP[G_BPM].min, GP[G_BPM].max);
             ui.bpm_t = 40;
         }
@@ -1157,6 +1163,11 @@ UI_SMALL static void ui_input(void)
         for (k = 0; k < 4u; k++)
             panel_enc(EN_K1 + k);
         enc_hold |= 15u << EN_K1;
+        if (ly_quiet_sel) {                             /* (2.8.1) FX let go while SELECT still turned the fade: those
+                                                         * detents are dropped, not the tempo */
+            panel_enc(EN_SELECT);
+            enc_hold |= 1u << EN_SELECT;
+        }
     }
     if (rec_wait && !ft_on && !ci_on) {                 /* the REC screen, armed: how it records */
         rec_knobs();                                    /* (tempo and sound still work; the track too: */
@@ -1187,7 +1198,7 @@ UI_SMALL static void ui_input(void)
         uint32_t ev, ob = 1u << panel.btn[B_OCTDN];
         pressed = octp_filter(pressed, &ev);
         if (ev == 2u && !ui.sheet)
-            ui.sheet = 1;
+            ui.sheet = (uint8_t)(1u + ui.sheet_last);      /* (2.8.1) reopen on the row last used */
         else if (ev == 1u && ui.sheet)
             note_sheet_do();
         else if (ev == 1u)

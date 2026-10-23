@@ -254,7 +254,7 @@ UI_SMALL static void graph_steps(const track_t *t, uint16_t c)
 UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
 {
     uint32_t len = trk_len(t), nv = NV_ZOOM[clamp(1 + (int8_t)ui.zoom, 0, 3)], v0, i, j;
-    int32_t lo = 127, hi = 0, x0 = 22, w = 240 - 22 - 2, top = 14, bot = H_GRAPH - 4, rh, sel_note = last_note, cx;
+    int32_t lo = 127, hi = 0, x0 = 22, w = 240 - 22 - 2, top = 14, bot = H_GRAPH - 4 - (ui.sheet ? 18 : 0), rh, sel_note = last_note, cx;
     const step_t *cs = &t->step[ui.cursor];
     char b[12];
     if (nv > len)
@@ -348,7 +348,7 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
         const char *val[6] = {cs->flags & SF_SLIDE ? "ON" : "OFF", nu, FILL_N[step_fill(t, ui.cursor) % 3u], "", "", ""};
         fmt_int(nu, t->micro[ui.cursor]);
         if (t->micro[ui.cursor] > 0) { nu[0] = '+'; fmt_int(nu + 1, t->micro[ui.cursor]); }
-        sheet_draw(112, 6, SHEET_N, val, ui.sheet - 1u, TE_DIM[song.sel & 3u]);
+        sheet_bar(H_GRAPH - 16, SHEET_N, val, ui.sheet - 1u, TE_DIM[song.sel & 3u]);
     }
 }
 UI_SMALL static void graph_scale(const track_t *t, uint16_t c)

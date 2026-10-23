@@ -412,9 +412,10 @@ UI_SMALL static void drum_screen_draw(void)
         body_sig = sig;
         cv_begin(240, 100, C_BLACK);
         if (!drum_page) {                              /* GRID: the 16 lanes x 16 steps of this bank */
+            int32_t lp = ui.sheet ? 5 : 6, ch = lp - 1;   /* (2.8.1) the lanes squeeze up to free the bottom for the sheet bar */
             for (i = 0; i < DRUM_LANES; i++) {
-                int32_t y = (int32_t)i * 6 + 2;
-                cv_rect(2, y, 6, 5, pad_lit[i] ? C_WHITE : i == drum_lane ? TE_DRUM : TE_G2);
+                int32_t y = (int32_t)i * lp + 2;
+                cv_rect(2, y, 6, ch, pad_lit[i] ? C_WHITE : i == drum_lane ? TE_DRUM : TE_G2);
                 for (j = 0; j < 16u; j++) {
                     uint32_t p = bank * 16u + j;
                     const dstep_t *s = &TDRUM->dstep[p < NSTEP ? p : 0];
@@ -422,19 +423,19 @@ UI_SMALL static void drum_screen_draw(void)
                     if (p >= len) continue;
                     c = dstep_has(s, i) ? lvl_col(dstep_lvl(s, i)) : i == drum_lane ? TE_G2 : TE_G1;
                     if (song.playing && p == TDRUM->seq_idx && c == TE_G1) c = TE_G2;
-                    cv_rect(12 + (int32_t)j * 14, y, 12, 5, c);
+                    cv_rect(12 + (int32_t)j * 14, y, 12, ch, c);
                     if (dstep_has(s, i) && dstep_rat(s, i)) {   /* a ratchet: a notch per extra hit */
                         uint32_t r;
                         for (r = 0; r < dstep_rat(s, i); r++)
-                            cv_rect(13 + (int32_t)j * 14 + (int32_t)r * 3, y + 2, 2, 1, C_BLACK);
+                            cv_rect(13 + (int32_t)j * 14 + (int32_t)r * 3, y + 1, 2, 1, C_BLACK);
                     }
                     if (p == drum_cursor && i == drum_lane) {
                         cv_rect(11 + (int32_t)j * 14, y - 1, 14, 1, C_WHITE);
-                        cv_rect(11 + (int32_t)j * 14, y + 5, 14, 1, C_WHITE);
+                        cv_rect(11 + (int32_t)j * 14, y + ch, 14, 1, C_WHITE);
                     }
                 }
             }
-            if (ui.sheet) {                            /* (2.7.2) OCT+ held: the hit's sheet */
+            if (ui.sheet) {                            /* (2.7.2) OCT+ held: the hit's sheet (2.8.1: a strip at the bottom) */
                 const dstep_t *s = &TDRUM->dstep[drum_cursor];
                 char r[4], nu[8];
                 const char *val[6] = {r, nu, FILL_N[step_fill(TDRUM, drum_cursor) % 3u], "", "", ""};
@@ -444,7 +445,7 @@ UI_SMALL static void drum_screen_draw(void)
                     r[1] = (char)('1' + dstep_rat(s, drum_lane));
                 fmt_int(nu, m);
                 if (m > 0) { nu[0] = '+'; fmt_int(nu + 1, m); }
-                sheet_draw(112, 1, DSHEET_N, val, ui.sheet - 1u, TE_DIM[3]);
+                sheet_bar(84, DSHEET_N, val, ui.sheet - 1u, TE_DIM[3]);
             }
         } else {                                       /* KIT: 16 pads, lit on each hit; SOUND (2.7): the one KNOB 1 picks
                                                         * framed, a tuned or shortened / lengthened one marked */
@@ -575,6 +576,7 @@ UI_SMALL static void drum_sheet_knob(uint32_t k, int32_t s)
     uint32_t row = ui.sheet - 1u;
     if (k == 0u) {
         ui.sheet = (uint8_t)(1 + clamp((int32_t)row + s, 0, 5));
+        ui.sheet_last = (uint8_t)(ui.sheet - 1u);          /* (2.8.1) reopen on this row next time */
         return;
     }
     if (k != 1u)
@@ -628,7 +630,7 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
         uint32_t ev, ob = 1u << panel.btn[B_OCTDN];
         pressed = octp_filter(pressed, &ev);
         if (ev == 2u && !ui.sheet)
-            ui.sheet = 1;
+            ui.sheet = (uint8_t)(1u + ui.sheet_last);      /* (2.8.1) reopen on the row last used */
         else if (ev == 1u && ui.sheet)
             drum_sheet_do();
         else if (ev == 1u)
