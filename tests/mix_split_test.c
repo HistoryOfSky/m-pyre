@@ -89,8 +89,12 @@ static void scene_setup(uint32_t s)
         break;
     case 2:
         for (k = 0; k < NPART; k++) {
+#if MPYRE_LEAN
+            host_preset(&trk[k], 0u, 3 * k);             /* (M-PYRE: no PHYS; ANALOG parts under the same LFOs) */
+#else
             host_preset(&trk[k], ENGI_PHYS, 3 * k);
             trk[k].p[P_E0] = (int16_t)(k == 1u ? 3 : k);   /* MODAL, SYMP, MEMB */
+#endif
             trk[k].p[P_LWAVE] = 4;                       /* S&H */
             trk[k].p[P_LRATE] = (int16_t)(110 + 5 * k);
             trk[k].p[P_LD_PIT] = 40;
