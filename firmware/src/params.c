@@ -164,6 +164,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_WHAM] = PD("WHAMMY", F_INT, 0, 127, 64),
     [P_TONE] = PD("TONE", F_INT, 0, 127, 64),
     [P_PVOL] = PD("VOL", F_PCT, 0, 127, 127),
+    [P_WAH] = PD("WAH", F_PCT, 0, 127, 0),
 };
 /* a preset's extra parameters (preset_t.x) into p, each clamped to its range */
 static void preset_extras(int16_t *p, const preset_t *pr)

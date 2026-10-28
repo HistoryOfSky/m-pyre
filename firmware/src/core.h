@@ -75,6 +75,7 @@ enum {                          /* per-track parameters */
     P_AMP, P_AGAIN, P_ABASS, P_AMID, P_ATREB, P_APRES, P_CAB,   /* the amp and its cabinet (amp.c) */
     P_PEDAL, P_PDRV, P_COMP, P_OCT, P_OMIX,    /* in front of the amp: a drive pedal, the compressor, the octaver */
     P_PALM, P_BEND, P_VIB, P_LEG, P_WHAM, P_TONE, P_PVOL,   /* the guitar's live controls (the LIVE view) */
+    P_WAH,                                     /* the wah pedal: 0 off, 1 heel (dark) .. 127 toe (bright) */
     P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
     P_COUNT
 };

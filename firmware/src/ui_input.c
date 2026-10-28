@@ -1108,9 +1108,14 @@ UI_SMALL static void ui_input(void)
     ml_poll();                                          /* MIDI LEARN: a CC came for the picked parameter (2.6) */
     page_fix();                                         /* (a page the track does not have: its neighbour, 2.6) */
     midi_entry();                                       /* (the STEP page's MIDI notes: read every frame, 2.6) */
-    if (home == BT_HOLD) {                              /* HOME held: open the menu, or leave it */
+    if (home == BT_HOLD) {                              /* M-PYRE: HOME held - from LIVE (or a page) to the TRACKS screen;
+                                                         * held on TRACKS: the menu (held there again: leave it) */
         if (ui.menu) {
             menu_close();
+        } else if (ui.home || cur_page()->scope != SC_TRK) {
+            layer_unlock();
+            vis_on = 0;
+            go_home();
         } else {
             layer_unlock();
             ui.menu = 1;
@@ -1185,12 +1190,13 @@ UI_SMALL static void ui_input(void)
         return;
     }
 #endif
-    if (home == BT_TAP) {                               /* HOME acts on release: a hold opens the menu */
-        if (!ui.home && cur_page()->scope == SC_TRK && !vis_on)
-            vis_open();                                 /* HOME on HOME: the visualiser (ui_vis.c) */
-        else {
-            vis_on = 0;                                 /* (HOME again: back to the TRACKS screen) */
-            go_home();
+    if (home == BT_TAP) {                               /* M-PYRE: HOME tapped - the LIVE view, and there its next group */
+        if (ui.home) {
+            live_grp = (uint8_t)((live_grp + 1u) % NLIVE);
+            ui.force = 1;
+        } else {
+            vis_on = 0;
+            go_live();
         }
     }
     cursor_fix();                                       /* LEN may have changed (knob, editor, load) */
@@ -1291,10 +1297,10 @@ UI_SMALL static void ui_input(void)
             int16_t *vp;
             const param_desc_t *d = home_param(k, &vp);
             *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, s, d->names ? 0 : d->max - d->min), d->min, d->max);   /* (a list: no jumps) */
-            if (!is_drum(TSEL) && p_lockable(ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u]))
-                ui.lock_par = ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u];
+            if (!is_drum(TSEL) && p_lockable(home_id(k)))
+                ui.lock_par = (uint8_t)home_id(k);
             if (!is_drum(TSEL))
-                ml_knob(TSEL, ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u]);   /* MIDI LEARN (2.6) */
+                ml_knob(TSEL, home_id(k));                  /* MIDI LEARN (2.6) */
         } else {
             edit_param(k, s);
         }

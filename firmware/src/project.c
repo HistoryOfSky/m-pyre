@@ -45,7 +45,7 @@ _Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u,
 _Static_assert(G_FXFADE == G_CLKOUT + 1u && G_COUNT == G_FXFADE + 1u, "G_FXFADE (2.7.2) is the last global, a setting of the FM-1");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
-_Static_assert(PROJ_NC6 == PROJ_NP_V5 - 8u && PROJ_NX6 == 29u, "format 6 (M-PYRE): format 5's parameters, then 10 + 19 bytes");
+_Static_assert(PROJ_NC6 == PROJ_NP_V5 - 8u && PROJ_NX6 == 30u, "format 6 (M-PYRE): format 5's parameters, then 10 + 20 bytes");
 typedef struct {                               /* one track; the drum track ignores engine / preset */
     int16_t p[PROJ_NC6];                       /* P_LEVEL .. P_VLEAD (pt_get, pt_set) */
     int16_t e[8];                              /* P_E0 .. P_E7 */

@@ -46,7 +46,7 @@ static amp_st_t amp_st[NPART];
 
 /* ---- in front of the amp (track_pre), on every synth part: VOL, TONE, COMP, the PEDAL */
 typedef struct {
-    bq_st_t tn[2], pd[3];
+    bq_st_t tn[2], pd[3], wah;
     int32_t vol, env, cg;                           /* VOL as it glides (Q15); COMP's envelope and gain (Q15) */
     uint8_t ped;
 } pre_st_t;
@@ -55,11 +55,12 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
 {
     pre_st_t *s = &pre_st[(uint32_t)(t - trk) % NPART];
     int32_t vt = t->p[P_PVOL] >= 127 ? 32767 : t->p[P_PVOL] * t->p[P_PVOL] * 2, tone = t->p[P_TONE] - 64;
-    int32_t comp = t->p[P_COMP], ped = t->p[P_PEDAL], i;
+    int32_t comp = t->p[P_COMP], ped = t->p[P_PEDAL], wah = t->p[P_WAH], i;
+    const bq_coef_t *wc = wah ? &WAH_BQ[(wah - 1) * 63 / 126] : 0;
     int32_t pg = (int32_t)(pow2_q16((t->p[P_PDRV] - 64) * 6) >> 4);   /* DRIVE: Q12, 4096 = as voiced */
     if (vt == 32767 && s->vol == 0)
         s->vol = 32767;
-    if (s->vol == 32767 && vt == 32767 && !tone && !comp && !ped)
+    if (s->vol == 32767 && vt == 32767 && !tone && !comp && !ped && !wah)
         return;                                     /* nothing turned: as before */
     if (ped != s->ped) {                            /* another pedal: no stale state */
         memset(s->pd, 0, sizeof s->pd);
@@ -116,6 +117,8 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
         default:
             break;
         }
+        if (wc)                                     /* WAH: the band (resonant), with a little of the dry under it */
+            x = (int32_t)(((int64_t)bq(wc, &s->wah, x) * 3 + (x >> 2)) >> 1);
         b[i] = x;
     }
 }

@@ -851,8 +851,14 @@ UI_SMALL static void draw_foot(void)
         up_name(user_of(t), pn);                       /* a user preset */
     else if (e->npresets)
         str_cpy(pn, e->presets[TSEL->preset % e->npresets].name, sizeof pn);
-    if (ui.home) {
-        str_cpy(ti, "HOME", sizeof ti);
+    if (ui.home) {                                     /* M-PYRE: the LIVE view's group, "AMP 3/7" */
+        str_cpy(ti, is_drum(TSEL) ? "LIVE" : LIVE[live_grp % NLIVE].title, 10);
+        if (!is_drum(TSEL)) {
+            str_cpy(ti + str_len(ti), " ", 4);
+            fmt_int(ti + str_len(ti), (int32_t)(live_grp % NLIVE) + 1);
+            str_cpy(ti + str_len(ti), "/", 4);
+            fmt_int(ti + str_len(ti), (int32_t)NLIVE);
+        }
     } else {                                           /* page title + number in its family: "ENV DEST 2/2" */
         uint32_t n, k = page_pos(&n);
         const char *pt = pg->scope == SC_ENGINE ? e->page_title[pg->id[0] != P_E0] : 0;   /* EDIT: the engine's */

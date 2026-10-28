@@ -166,6 +166,9 @@ def main(out):
     L.append("};")
     L.append("static const bq_coef_t AMP_BANDS[4] = {" + ", ".join(bq(c) for c in BANDS) + "};")
     L.append(f"static const bq_coef_t CAB_AA = {bq(CAB_AA)};")
+    # the wah: a resonant band-pass (Q 4) from 350 Hz (heel) to 2.2 kHz (toe), 64 positions, exponential
+    L.append("static const bq_coef_t WAH_BQ[64] = {" + ", ".join(
+        bq(biquad("bp", 350 * (2200 / 350) ** (i / 63), FS, 4.0)) for i in range(64)) + "};")
     for k, c in list(BASS_BQ.items()) + list(PRE_BQ.items()):
         L.append(f"static const bq_coef_t {k} = {bq(c)};")
     L.append(f"static const int16_t CAB_IR[CAB_N][CAB_TAPS] = {{   /* {'History Of Sky IRs' if have else 'generic'} */")

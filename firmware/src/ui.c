@@ -938,6 +938,28 @@ UI_SMALL static void preset_go(uint32_t n)                    /* load list index
 
 /* HOME: what KNOB k edits: the engine's four main parameters; on the drum track
  * LEVEL and REV (GLO > DRUMS), PAN and LEN */
+/* M-PYRE: the LIVE view (HOME): the scope and four knobs of the selected track; HOME tapped turns to the next group,
+ * HOME held goes to the TRACKS screen (and held there: the menu) */
+static const struct { const char *title; uint8_t id[4]; } LIVE[] = {
+    {"PLAY", {P_CHORD, P_BEND, P_VIB, P_PALM}},     /* the guitar: chords, bend, vibrato, palm mutes */
+    {"PLAY 2", {P_TONE, P_LEG, P_WHAM, P_PVOL}},    /* tone, legato (hammer-on .. slide), whammy, the volume (fades) */
+    {"AMP", {P_AMP, P_AGAIN, P_ABASS, P_AMID}},
+    {"AMP 2", {P_ATREB, P_APRES, P_CAB, P_COMP}},
+    {"PEDAL", {P_PEDAL, P_PDRV, P_WAH, P_DIST}},
+    {"OCT/MOD", {P_OCT, P_OMIX, P_ITYPE, P_IMIX}},  /* the octaver; the INSERT after the amp (chorus, flanger, phaser) */
+    {"SPACE", {P_CHOR, P_DLY, P_REV, P_PAN}},
+};
+#define NLIVE (sizeof LIVE / sizeof LIVE[0])
+static uint8_t live_grp;
+static uint32_t home_id(uint32_t k) { return LIVE[live_grp % NLIVE].id[k & 3u]; }
+UI_SMALL static void go_live(void)
+{
+    ui.home = 1;
+    ui.entry_open = 0;
+    ui.hot_t = 0;
+    song.seq_mode = 0;
+    ui.force = 1;
+}
 UI_SMALL static const param_desc_t *home_param(uint32_t k, int16_t **vp)
 {
     static const uint8_t DRUM_HOME[4][2] = {{1, G_DRLVL}, {1, G_DRREV}, {0, P_PAN}, {0, P_SLEN}};
@@ -951,7 +973,7 @@ UI_SMALL static const param_desc_t *home_param(uint32_t k, int16_t **vp)
         *vp = &TSEL->p[id];
         return &TP[id];
     }
-    id = ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u];
+    id = home_id(k);
     *vp = &TSEL->p[id];
     return track_desc(TSEL, id);
 }
