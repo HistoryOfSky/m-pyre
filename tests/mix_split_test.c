@@ -25,6 +25,9 @@
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
+#if MPYRE_LEAN
+#define PM_COUNT 4                                /* (M-PYRE: PHYS gone; its MODEL turns nothing) */
+#endif
 
 #define BLOCKS 1500u                                     /* ~2.2 s at 44.1 kHz */
 static const int32_t MASKS[] = {0, -1, 1, 2, 4, 8, 3, 5, 12, 7, 15};

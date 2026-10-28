@@ -140,7 +140,7 @@ int main(void)
         r.p[i] = (int16_t)(2000 + i);
     up_params(&r, v, def);
     ok = P_SLCR == 45 && P_SLDEPTH + 1 == P_CHORD && P_CHORD == 49 && P_TFLT == 50 && P_VLEAD == 52 && P_ITYPE == 53 &&
-         P_E0 == 63;
+         P_E0 == 83;   /* (M-PYRE: 20 riffbox parameters before E0) */
     for (i = 0; i < 45u; i++)
         ok &= v[i] == (int16_t)(2000 + i);
     for (i = P_SLCR; i < P_E0; i++)

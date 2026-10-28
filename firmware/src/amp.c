@@ -40,8 +40,16 @@ typedef struct {
     int32_t fir[2 * CAB_TAPS];                      /* the cabinet's history, twice (a straight read) */
     uint32_t fw;                                    /* its write position */
     int32_t c0, c1;                                 /* the cabinet's last two outputs (22.05 kHz) */
+    int32_t dcx, dcy;                               /* the DC blocker after the amp (asymmetric stages leave an offset) */
     uint8_t ph, model, on;                         /* ph: the cabinet's half-rate phase */
 } amp_st_t;
+/* one pole at ~20 Hz: y = x - x[-1] + 0.99715 y[-1] (y kept 6 bits finer) */
+static inline int32_t amp_dc(amp_st_t *a, int32_t x)
+{
+    a->dcy = (int32_t)(((int64_t)(x - a->dcx) << 6) + (((int64_t)a->dcy * 32674 + 16384) >> 15));
+    a->dcx = x;
+    return a->dcy >> 6;
+}
 static amp_st_t amp_st[NPART];
 
 /* ---- in front of the amp (track_pre), on every synth part: VOL, TONE, COMP, the PEDAL */
@@ -210,7 +218,7 @@ static void track_bass(track_t *t, amp_st_t *a, int32_t type, int32_t *b, uint32
         y = bq(&B_HP30, &a->bs[11], y);
         if (h)
             y = cab_run(a, h, y);
-        b[i] = y << AMP_IN_SHIFT;
+        b[i] = amp_dc(a, y << AMP_IN_SHIFT);
     }
 }
 
@@ -265,6 +273,6 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
         }
         if (h)
             y = cab_run(a, h, y);
-        b[i] = (int32_t)(((int64_t)y * mk) >> (13 - AMP_IN_SHIFT));
+        b[i] = amp_dc(a, (int32_t)(((int64_t)y * mk) >> (13 - AMP_IN_SHIFT)));
     }
 }

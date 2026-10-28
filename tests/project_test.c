@@ -127,12 +127,12 @@ int main(void)
     uint32_t i, t;
     int bad = 0, ok;
 
-    bad += check("layout: P_CHORD, P_TFLT, P_STRUM, P_VLEAD, then the ten of 2.6 just before P_E0 (63), P_COUNT = format 5's + 10",
+    bad += check("layout: P_CHORD, P_TFLT, P_STRUM, P_VLEAD, the ten of 2.6, then M-PYRE's twenty (P_AMP .. P_WAH) just before P_E0 (83), P_COUNT = format 5's + 30",
                  P_CHORD + 1 == P_TFLT && P_TFLT + 1 == P_STRUM && P_STRUM + 1 == P_VLEAD && P_VLEAD + 1 == P_ITYPE &&
-                 P_LPOL + 1 == P_E0 && P_E0 == 63 && P_COUNT == PROJ_NP_V5 + 10u && PROJ_NP_V5 == PROJ_NP_V4 + 3u &&
+                 P_LPOL + 1 == P_AMP && P_WAH + 1 == P_E0 && P_E0 == 83 && P_COUNT == PROJ_NP_V5 + 30u && PROJ_NP_V5 == PROJ_NP_V4 + 3u &&
                  PROJ_NP_V4 == PROJ_NP_V3 + 1u && P_SLDEPTH + 1 == P_CHORD);
-    bad += check("format 6 fits one flash object (3816 of 3840 bytes); 4 slots fit .noinit (with panel, settings, dbg, bootguard)",
-                 sizeof(project_t) <= 3840u && 4u * sizeof(project_t) <= 0x3D50u - 256u && sizeof(project_t) == 3816u);
+    bad += check("format 6 fits one flash object (3832 of 3840 bytes); 4 slots fit .noinit (with panel, settings, dbg, bootguard)",
+                 sizeof(project_t) <= 3840u && 4u * sizeof(project_t) <= 0x3D50u - 256u && sizeof(project_t) == 3832u);
     {   /* every 2.6 parameter's range fits its byte */
         uint32_t k, fits = 1;
         for (k = P_ITYPE; k < P_E0; k++) fits &= TP[k].min >= 0 && TP[k].max <= 255;

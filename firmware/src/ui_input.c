@@ -1190,14 +1190,12 @@ UI_SMALL static void ui_input(void)
         return;
     }
 #endif
-    if (home == BT_TAP) {                               /* M-PYRE: HOME tapped - the LIVE view, and there its next group */
+    if (home == BT_TAP) {                               /* M-PYRE: HOME tapped - the LIVE view, there its other page */
         if (ui.home) {
             live_grp = (uint8_t)((live_grp + 1u) % NLIVE);
             ui.force = 1;
-        } else {
-            vis_on = 0;
+        } else
             go_live();
-        }
     }
     cursor_fix();                                       /* LEN may have changed (knob, editor, load) */
     if (on_notes_page()) {                              /* (2.7.2) OCT+ held: the note's sheet; tapped: as before */

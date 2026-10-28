@@ -18,7 +18,7 @@
   @font-face { font-family: "Fukiai"; src: url("fukiai.ttf") format("truetype"); font-display: block; unicode-range: U+EA00-EB09; }
   :root {
     --bg: #000; --s1: #0b0b0e; --s2: #1a1a1e; --s3: #36363c; --line: #232329; --dim: #76767e; --fg2: #c4c4cc; --fg: #f2f2f2;
-    --red: #ff2c34; --t1: #287cff; --t2: #1ecc70; --t3: #ffc618; --t4: #ff621a; --trk: var(--t1);
+    --red: #ff2c34; --t1: #eb2819; --t2: #ff7814; --t3: #ffcd28; --t4: #f0ece2; --trk: var(--t1);
     --font: "SLOOP Terminus", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
     color-scheme: dark;
   }
@@ -1091,6 +1091,16 @@
     </section>
 
     <section class="panel" id="p-samples" data-tab="samples" data-dev hidden>
+      <!-- M-PYRE: the sound pack (guitar, guitar 2, palm mutes, bass: tools/mpyre_slots.py soundpack.bin) into USR1..USR4 -->
+      <div class="card" id="packcard">
+        <h2 data-t="packTitle" data-ic="symbol_download"></h2>
+        <p class="dim" data-t="packHelp"></p>
+        <p class="bar">
+          <input type="file" id="packfile" accept=".bin,application/octet-stream" hidden>
+          <button id="packload" data-t="packLoad" data-ic="symbol_download"></button>
+          <progress id="packprog" max="1" value="0" hidden></progress>
+        </p>
+      </div>
       <!-- built by renderSamples: what the slots are, then 1 the slot, 2 the sound (files or CHOP), 3 send and play it -->
       <div id="smpslots"></div>
       <div class="smp chop" id="chop" hidden></div>
@@ -1242,7 +1252,7 @@ const LIVE = { STATE: 0, PLAY: 1, KEY: 2, FX: 3, REC: 4, UNDO: 5, LY_KEY: 5, LY_
   MUTE: 0, SOLO: 4, FILL: 8, FILL_BAR: 9, TAP: 15, SEC: 0, STORE: 4, SONG: 12, SONG_REC: 13 };
 /* ---- LIVE pro (editor only: the 2.7 firmware as it is, every value through TRACK_MIX / TRACK_PARAM / SET).
    Scenes: what a track and the master sound like, kept in the browser, recalled at once or morphed over bars, or mixed
-   with the A / B crossfader. Ids: core.h P_* and G_* (2.7: P_E0 = 63). cont: values that glide in a morph; the others
+   with the A / B crossfader. Ids: core.h P_* and G_* (2.7: P_E0 = 63; M-PYRE: 83). cont: values that glide in a morph; the others
    (switches, lists) change at its start. A track's engine values (E0..E7) come back only onto the same engine */
 const LVX = {
   /* per track: pan, filter, sends, drive, the sound's FLT PIT SHP, the envelope, glide, LFO, the INSERT, the arp */
@@ -1251,7 +1261,7 @@ const LVX = {
   /* the master: FILT DUST DUCK, the drums' REV DLY, the delay (TIME is a list), the reverb, the chorus, TEXTURE, SWING */
   GP: [29, 27, 28, 26, 32, 4, 5, 6, 7, 8, 9, 10, 11, 37, 38, 39, 40, 41, 42, 43, 1],
   GP_STEP: [4, 37, 41, 42, 43],
-  BPM: 0, E0: 63, NE: 8, NSCENE: 8, MORPH_BARS: [0, 1, 2, 4, 8, 16],
+  BPM: 0, E0: 83, NE: 8, NSCENE: 8, MORPH_BARS: [0, 1, 2, 4, 8, 16],
   /* a scene from the page's values: tracks [{level, mute, engine, preset, p: {id: v}, e: [8]}], g: {id: v}, bpm */
   capture(tracks, g, opt = {}) {
     return {
@@ -1323,9 +1333,10 @@ const LVX = {
 };
 /* v7: the parameters a step can lock (firmware seq.c p_lockable: the sound, not the sequencer / arp / key / voice
    mode); ids as core.h: LEVEL .. LFO dests, GATE, the sends, GLIDE, PAN, DETUNE, the SLICER, FILTER, the engine's 8;
-   from 2.6 (pe0 63) also the INSERT's A B C and MIX (54..57). pe0: the device's (the newest when none) */
-const lockable = (id, pe0 = typeof dev !== "undefined" && dev && dev.info ? dev.info.pe0 : 63) => id <= 16 || id === 32 || (id >= 33 && id <= 36) || id === 38 || id === 39
-  || id === 44 || (id >= 45 && id <= 48) || id === 50 || (pe0 >= 63 && id >= 54 && id <= 57) || (id >= pe0 && id <= pe0 + 7);
+   from 2.6 (pe0 63) also the INSERT's A B C and MIX (54..57); M-PYRE (pe0 83) the amp's knobs and the live controls. pe0: the device's (the newest when none) */
+const lockable = (id, pe0 = typeof dev !== "undefined" && dev && dev.info ? dev.info.pe0 : 83) => id <= 16 || id === 32 || (id >= 33 && id <= 36) || id === 38 || id === 39
+  || id === 44 || (id >= 45 && id <= 48) || id === 50 || (pe0 >= 63 && id >= 54 && id <= 57) || (id >= pe0 && id <= pe0 + 7)
+  || (pe0 >= 83 && ((id >= 64 && id <= 68) || (id >= 70 && id <= 82)));   /* M-PYRE (pe0 83): GAIN..PRES, PEDAL..WAH */
 const MICRO = { MIN: -32, MAX: 31 };                 /* a step's nudge in 1/64 of a step (- early, + late), sent + 64 */
 /* v8: a step's fill condition (firmware core.h FC_*): 0 normal, 1 plays only during a fill, 2 silent during one; 2 bits a
    step, 4 steps a byte (step i: byte i >> 2, bits 2 (i & 3)..), the 16 bytes sent pack7 */
@@ -1337,11 +1348,11 @@ const PUSH = new Set([CMD.CHANGED, CMD.RELOAD, CMD.STEP_CHANGED, CMD.TRACK_CHANG
 /* user preset bank: name 1..12 printable ASCII, a 16-step pattern of (note, flags 1 acc 2 slide 4 tie) */
 const UP = { NAME_MAX: 12, PAT: 16, LIST_MAX: 16 };
 const F = { INT: 0, PCT: 1, BIPCT: 2, TIME: 3, LFOHZ: 4, CUTOFF: 5, DB: 6, SEMI: 7, ENUM: 8, BPM: 9, NOTE: 10, ONOFF: 11, OCT: 12, STEPS: 13,
-  SWING: 14, FILT: 15 };
+  SWING: 14, FILT: 15, CTR: 16, OCTST: 17, WHAM: 18, BEND: 19, OFFPCT: 20 };   /* (16..20: M-PYRE, params.c) */
 /* v5 (SLOOP 2.0): the drum track's 16 sounds (firmware drums.c LANE_NOTE / LANE_NAME), one per white key
    F3..G5; a hit has a level (NORM, GHOST, SOFT, HARD: OCT- / OCT+ held on the device) and a ratchet x1..x4 */
-const DRUM_LANES = [[36, "KICK"], [35, "KICK 2"], [38, "SNARE"], [39, "CLAP"], [42, "HAT"], [46, "OPEN HAT"], [44, "PEDAL"], [37, "RIM"],
-  [40, "SNARE 2"], [43, "LOW TOM"], [48, "HI TOM"], [49, "CRASH"], [51, "RIDE"], [70, "SHAKER"], [63, "CONGA"], [56, "COWBELL"]];
+const DRUM_LANES = [[36, "KICK"], [35, "KICK 2"], [38, "SNARE"], [40, "GHOST"], [42, "HAT"], [46, "OPEN HAT"], [44, "PEDAL"], [53, "BELL"],
+  [48, "HI TOM"], [47, "MID TOM"], [43, "FLOOR"], [49, "CRASH"], [51, "RIDE"], [57, "CRASH 2"], [52, "CHINA"], [55, "REV CRASH"]];   /* (M-PYRE) */
 const LV_NAMES = ["NORM", "GHOST", "SOFT", "HARD"];
 const LV_ORDER = [1, 2, 0, 3];                       /* by loudness: GHOST SOFT NORM HARD (as the device's LEVEL knob) */
 /* an empty drum step: no lane on */
@@ -1805,6 +1816,11 @@ function fmtValue(d, v) {
     case F.NOTE: return [NOTE_NAMES[((v % 12) + 12) % 12], ""];
     case F.ONOFF: return [v ? "ON" : "OFF", ""];
     case F.STEPS: return [String(v), "STEP"];
+    case F.CTR: return [sign(v - 64), ""];                                   /* M-PYRE: 64 = as voiced */
+    case F.OCTST: return v === 24 ? ["OFF", ""] : [sign(v - 24), "st"];      /* the octaver */
+    case F.WHAM: return [sign(Math.trunc((v - 64) * 12 / 63)), "st"];        /* the whammy */
+    case F.BEND: return [!v ? "OFF" : v < 40 ? "1/4" : v < 110 ? "1/2" : "FULL", ""];
+    case F.OFFPCT: return !v ? ["OFF", ""] : [String(Math.trunc((v * 100 + Math.trunc(d.max / 2)) / d.max)), "%"];
     default: return [d.names && d.names[v - d.min] != null ? d.names[v - d.min] : String(v), d.unit || ""];
   }
 }
@@ -2934,7 +2950,7 @@ function makeMockDevice(opt = {}) {
     E("VCE", ["POLY", "MONO", "LEG", "UNI"], 0), D("GLD", F.TIME, 0, 127, 0), D("PAN", F.BIPCT, -64, 63, 0), E("MUTE", NONOFF, 0),
     E("GLMOD", ["RATE", "TIME"], 0), E("PRIO", ["LAST", "LOW", "HIGH"], 0), E("ALLOC", ["ROT", "REUSE"], 0), D("DTUNE", F.INT, 0, 127, 40),
     E("SLCR", ["OFF", "GATE", "STUT"], 0), D("PAT", F.INT, 1, 16, 1), E("RATE", ["1/8", "1/16", "1/32", "8T", "16T", "32T"], 1), D("DEPTH", F.PCT, 0, 127, 127),
-    E("CHORD", ["OFF", "TRIAD", "7TH", "9TH", "SUS4", "POWER"], 0),
+    E("CHORD", ["OFF", "PW", "PW+", "OCT", "TERZ", "TRIAD", "7TH", "9TH", "SUS4"], 0),
     D("FILT", F.FILT, -64, 63, 0), D("STRUM", F.INT, -60, 60, 0), E("VLEAD", NONOFF, 0),
     /* SLOOP 2.6 (after Felucca 1.4 / 1.5): INSERT, ANALOG's filter TYPE, ENV SYNC, LFO 2 */
     E("INSRT", ["OFF", "SOFT", "HARD", "FOLD", "FUZZ", "CRUSH", "PHASR", "FLANG", "CHOR"], 0),
@@ -2942,6 +2958,13 @@ function makeMockDevice(opt = {}) {
     E("TYPE", ["LP", "BP", "HP"], 0), E("ESYNC", NONOFF, 0),
     E("SYNC", ["OFF", "4BAR", "2BAR", "1BAR", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0),
     E("TRIG", ["NOTE", "FREE"], 0), E("POL", ["BI", "UNI"], 0),
+    /* M-PYRE (amp.c, voice.c): the amp, its cabinet, the pedals, the octaver, the live controls (P_AMP 63 .. P_WAH 82) */
+    E("AMP", ["OFF", "CLEAN", "CRNCH", "HIGH", "LEAD", "B-CLN", "B-DRV", "DJENT"], 0), D("GAIN", F.PCT, 0, 127, 64),
+    D("BASS", F.CTR, 0, 127, 64), D("MID", F.CTR, 0, 127, 64), D("TREB", F.CTR, 0, 127, 64), D("PRES", F.CTR, 0, 127, 64),
+    E("CAB", ["AUTO", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS", "OFF"], 0), E("PEDAL", ["OFF", "BOOST", "OD", "DIST", "FUZZ"], 0),
+    D("DRIVE", F.PCT, 0, 127, 64), D("COMP", F.OFFPCT, 0, 127, 0), D("OCT", F.OCTST, 0, 48, 24), D("O MIX", F.PCT, 0, 127, 64),
+    D("PALM", F.OFFPCT, 0, 127, 0), D("BEND", F.BEND, 0, 127, 0), D("VIB", F.OFFPCT, 0, 127, 0), D("LEGATO", F.OFFPCT, 0, 127, 0),
+    D("WHAMMY", F.WHAM, 0, 127, 64), D("TONE", F.CTR, 0, 127, 64), D("VOL", F.PCT, 0, 127, 127), D("WAH", F.OFFPCT, 0, 127, 0),
   ];
   const GP = [
     D("BPM", F.BPM, 40, 240, 90), D("SWING", F.SWING, 0, 100, 0), E("CLICK", ["OFF", "REC", "ON"], 0), D("TUNE", F.INT, -50, 50, 0),
@@ -2969,10 +2992,10 @@ function makeMockDevice(opt = {}) {
     D("FADE", F.INT, 0, 15, 0),                      /* GLO > MASTER 2 (2.7.2): the punch-in FX fade (punch.c) */
   ];
   /* the drum track's P_E0: its kit (drums.c DRUM_KIT_NAMES; 5 = 808, the power-on kit) */
-  const KIT = E("KIT", ["ACOUSTIC", "DEEP", "TIGHT", "BRIGHT", "DUST", "808", "909", "606", "80S", "VINTAGE", "TRAP", "DRILL", "BOOMBAP", "LO-FI", "PHONK", "HOUSE", "D.HOUSE", "TECHNO", "MINIMAL", "ELECTRO", "DISCO", "GARAGE", "JUNGLE", "DUBSTEP", "DEMBOW", "AMAPIANO", "AFRO", "LATIN", "TRIBAL", "SYNTHWV", "CHIP", "ARCADE", "GLITCH", "INDUSTR", "HYPER", "AMBIENT", "JAZZ", "USR1", "USR2", "USR3", "USR4", "USR3+4", "SYN1", "SYN2", "SYN3", "SYN4"], 0);
+  const KIT = E("KIT", ["HOS KIT", "DEEP", "TIGHT", "BRIGHT", "DUST", "808", "909", "606", "80S", "VINTAGE", "TRAP", "DRILL", "BOOMBAP", "LO-FI", "PHONK", "HOUSE", "D.HOUSE", "TECHNO", "MINIMAL", "ELECTRO", "DISCO", "GARAGE", "JUNGLE", "DUBSTEP", "DEMBOW", "AMAPIANO", "AFRO", "LATIN", "TRIBAL", "SYNTHWV", "CHIP", "ARCADE", "GLITCH", "INDUSTR", "HYPER", "AMBIENT", "JAZZ", "USR1", "USR2", "USR3", "USR4", "USR3+4", "SYN1", "SYN2", "SYN3", "SYN4"], 0);
   /* a GM note -> its drum lane (drums.c LANE_OF_GM: 35..81) */
-  const LANE_OF_GM = [1, 0, 7, 2, 3, 8, 9, 4, 9, 6, 9, 5, 10, 10, 11, 10, 12, 11, 12, 13, 11, 15, 11, 13, 12, 14, 14, 14, 14, 14,
-    14, 14, 15, 15, 13, 13, 15, 15, 13, 13, 7, 7, 7, 14, 14, 15, 15];
+  const LANE_OF_GM = [1, 0, 3, 2, 2, 3, 10, 4, 10, 6, 9, 5, 9, 8, 11, 8, 12, 14, 7, 4, 15, 7, 13, 14, 12, 8, 8, 9, 9, 10,
+    8, 9, 7, 7, 4, 4, 7, 7, 4, 4, 3, 3, 3, 9, 9, 7, 7];
   const laneOf = (n) => (n < 35 ? 0 : n > 81 ? 13 : LANE_OF_GM[n - 35]);
   const v5 = !opt.legacy && !opt.v3;              /* SLOOP 2.0: steps with level / ratchet, DRUM_STEP, TRACK solo */
   const mockProto = opt.noBackup ? 5 : opt.v7 ? 7 : opt.v8 ? 8 : opt.v9 ? 9 : opt.v10 ? 10 : opt.v11 ? 11 : 12;   /* INFO's protocol */
@@ -4216,8 +4239,8 @@ const SMF = {
     return out;
   },
   /* the GM drum note -> its lane (firmware drums.c LANE_OF_GM) */
-  LANE_OF_GM: [1, 0, 7, 2, 3, 8, 9, 4, 9, 6, 9, 5, 10, 10, 11, 10, 12, 11, 12, 13, 11, 15, 11, 13, 12, 14, 14, 14, 14, 14,
-    14, 14, 15, 15, 13, 13, 15, 15, 13, 13, 7, 7, 7, 14, 14, 15, 15],
+  LANE_OF_GM: [1, 0, 3, 2, 2, 3, 10, 4, 10, 6, 9, 5, 9, 8, 11, 8, 12, 14, 7, 4, 15, 7, 13, 14, 12, 8, 8, 9, 9, 10,
+    8, 9, 7, 7, 4, 4, 7, 7, 4, 4, 3, 3, 3, 9, 9, 7, 7],
   laneOf: (key) => (key < 35 ? 0 : key > 81 ? 13 : SMF.LANE_OF_GM[key - 35]),
   levelOf: (vel) => (vel < 56 ? 1 : vel < 88 ? 2 : vel < 116 ? 0 : 3),   /* (drums.c vel_lvl: GHOST, SOFT, NORM, HARD) */
   /* notes -> the steps of a track at DIV div, at most nstep. The report says what changed on the way:
@@ -4418,7 +4441,7 @@ const THEME = {
     ["CYAN", [[0, 30, 50], [0, 62, 96], [16, 112, 160], [56, 172, 222], [140, 222, 255]]],
     ["RED", [[52, 8, 8], [100, 18, 14], [170, 36, 26], [226, 64, 48], [255, 112, 92]]],
     ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]]],
-  TRACKS: [[40, 124, 255], [30, 204, 112], [255, 198, 24], [255, 98, 26]],
+  TRACKS: [[235, 40, 25], [255, 120, 20], [255, 205, 40], [240, 236, 226]],   /* M-PYRE: fire, the drums white */
   to565: ([r, g, b]) => ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3),
   from565: (v) => [Math.round((((v >> 11) & 31) * 255) / 31), Math.round((((v >> 5) & 63) * 255) / 63), Math.round(((v & 31) * 255) / 31)],
   /* as the FM-1 shows it: each colour through RGB565 */
@@ -4513,6 +4536,24 @@ function fm1Ports(access) {
     if (output) pairs.push({ input, output });
   }
   return pairs.sort((a, b) => rank(a.input.name || "") - rank(b.input.name || ""));
+}
+/* M-PYRE: a sound pack = the four slot images in a row (0x14000 each: the header, then the data from DATA_OFF), as
+   tools/mpyre_slots.py writes it. Each slot: SMP_BEGIN, the data up to its last written byte, SMP_END with the header
+   (the device checks it and the data's CRC). -> the slots written */
+function soundPackSlots(buf) {
+  const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  if (b.length !== 4 * SMP.SLOT_SIZE) throw new Error(`${b.length} bytes, not ${4 * SMP.SLOT_SIZE}`);
+  const out = [];
+  for (let k = 0; k < 4; k++) {
+    const img = b.subarray(k * SMP.SLOT_SIZE, (k + 1) * SMP.SLOT_SIZE), hdr = img.subarray(0, SMP.HDR_LEN);
+    if (hdr.every((x) => x === 0xFF)) { out.push(null); continue; }   /* (an empty slot in the pack: left as it is) */
+    let end = SMP.SLOT_SIZE;
+    while (end > SMP.DATA_OFF && img[end - 1] === 0xFF) end--;
+    end = SMP.DATA_OFF + Math.ceil((end - SMP.DATA_OFF) / 256) * 256;
+    out.push({ hdr, data: img.subarray(SMP.DATA_OFF, Math.min(end, SMP.SLOT_SIZE)) });
+  }
+  if (!out.some(Boolean)) throw new Error("empty");
+  return out;
 }
 /*PROTO-END*/
 
@@ -4717,6 +4758,8 @@ const TEXT = {
     chopOverHint: "— チョップを外すか、短くするか、「スロットに合わせる」を押してください",
     chopKeepHint: "チェックを外したチョップはスロットにも WAV にも入りません。長い録音でも必要な部分だけ選べます。",
     chopHint: "スペース: 再生中に TAP（停止中は再生/停止）· 1–9 0: 試聴 · ダブルクリック: 追加 · ドラッグ: 移動 · ← →: 微調整 · K: 使う/外す · 下のつまみ: 長さ · Del: 削除 · ホイール: ズーム",
+    packTitle: "M-PYRE サウンドパック", packHelp: "soundpack.bin（ギター、ギター2、パームミュート、ベース）を USR1..USR4 に書き込みます。",
+    packLoad: "サウンドパックを書き込む", packBad: "サウンドパックではありません: ", packDone: "サウンドパックを書き込みました ",
     smpTooBig: "大きすぎます", smpDecodeFail: "読み込めません: ", smpUploading: "書き込み中 USR", smpDone: "書き込みました USR",
     smpFail: "サンプルの書き込みに失敗しました: ", smpErased: "消去しました USR",
     confirmErase: "USR{n} を消去しますか？", confirmUpload: "USR{n} に書き込みますか？ 今の内容は消えます。",
@@ -5054,6 +5097,8 @@ const TEXT = {
     chopOverHint: "— untick chops, shorten them, or press Fit to slot",
     chopKeepHint: "Unticked chops go neither to the slot nor to the WAVs: from a long recording, keep only what you want.",
     chopHint: "space: TAP while it plays (play/stop when stopped) · 1–9 0: listen · double-click: add · drag: move · ← →: nudge · K: keep / leave out · bottom handle: length · Del: remove · wheel: zoom",
+    packTitle: "M-PYRE sound pack", packHelp: "Writes soundpack.bin (guitar, guitar 2, palm mutes, bass) into USR1..USR4. The guitar, palm and bass presets play these slots.",
+    packLoad: "Install sound pack", packBad: "Not a sound pack: ", packDone: "Sound pack installed ",
     smpTooBig: "too large", smpDecodeFail: "Cannot read: ", smpUploading: "Uploading USR", smpDone: "Uploaded USR",
     smpFail: "Sample upload failed: ", smpErased: "Erased USR",
     confirmErase: "Erase USR{n}?", confirmUpload: "Write to USR{n}? Its current contents will be replaced.",
@@ -8303,6 +8348,48 @@ async function smpUpload(k, prog, ask = true, d = smpDraft[k]) {   /* (d: the DR
   return done;
 }
 
+async function soundPackInstall(buf, prog = { value: 0, hidden: true }) {
+  let slots;
+  try { slots = soundPackSlots(buf); } catch (e) { sayK("packBad", e.message); return false; }
+  if (!dev || !confirm(t("confirmUpload").replace("{n}", "1-4"))) return false;
+  const total = slots.reduce((n, x) => n + (x ? x.data.length : 0), 0), t0 = performance.now();
+  let done = 0, ok = false;
+  busy++;
+  smpBusy = true;
+  renderSamples();
+  prog.hidden = false;
+  try {
+    for (let k = 0; k < 4; k++) {
+      const sl = slots[k];
+      if (!sl) continue;
+      let r = parse[CMD.SMP_BEGIN](await rq(req.smpBegin(k), { timeout: 1000, retries: 0 }));
+      if (r.rc) throw new Error(`USR${k + 1} begin rc ${r.rc}`);
+      for (let off = 0; off < sl.data.length; off += 256) {
+        const a = SMP.DATA_OFF + off;
+        const w = parse[CMD.SMP_WRITE](await rq(req.smpWrite(k, a, sl.data.subarray(off, off + 256)), { timeout: 1000, retries: 1 }));
+        if (w.rc) throw new Error(`USR${k + 1} write at 0x${a.toString(16)} rc ${w.rc}`);
+        done += Math.min(256, sl.data.length - off);
+        prog.value = done / total;
+        sayK("smpUploading", `${k + 1}  ${kib(done)} / ${kib(total)} KiB`);
+      }
+      r = parse[CMD.SMP_END](await rq(req.smpEnd(k, sl.hdr), { timeout: 2000, retries: 0 }));
+      if (r.rc) throw new Error(`USR${k + 1} end rc ${r.rc} (${SMP_RC[r.rc] || "?"})`);
+    }
+    sayK("packDone", `${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    ok = true;
+  } catch (e) {
+    if (e.message !== "closed") sayK("smpFail", e.message);
+  } finally {
+    try { if (dev) await smpInfo(); } catch (e) { /* shown by the next action */ }
+    smpBusy = false;
+    busy--;
+    prog.hidden = true;
+    renderSamples();
+    renderKits();
+  }
+  return ok;
+}
+
 async function smpErase(k) {
   if (!dev || !confirm(t("confirmErase").replace("{n}", k + 1))) return;
   busy++;
@@ -9881,6 +9968,12 @@ function bankGet(slot) {
   });
 }
 $("bkget").addEventListener("click", () => bankGet(bankSel));
+$("packload").addEventListener("click", () => $("packfile").click());   /* M-PYRE: the sound pack into USR1..USR4 */
+$("packfile").addEventListener("change", async (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (f) await soundPackInstall(await f.arrayBuffer(), $("packprog"));
+});
 $("bkerase").addEventListener("click", () => {
   const slot = bankSel;
   if (!dev || !dev.bank || slot == null) return;

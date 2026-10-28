@@ -26,6 +26,9 @@
  *    selected track changes, the keys while the selected track changes, with ARP and the voice modes).
  * env: GOLDEN_UPDATE=1 rewrites GOLDEN_FILE, BUDGET_UPDATE=1 rewrites CPU_FILE (on purpose: review the
  * diff), VERBOSE=1 prints every render's numbers, JOBS=n children at once (default 8). */
+#include <stdint.h>
+static uint32_t host_slots[4u * 0x14000u / 4u];   /* M-PYRE: the sound pack (guitar, palm, bass) in the user slots */
+#define SMP_USER_XIP(k) ((const uint8_t *)host_slots + (k) * SMP_USER_SIZE)
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -815,7 +818,7 @@ int main(int argc, char **argv)
     uint32_t jobs_at_once = getenv("JOBS") ? (uint32_t)atoi(getenv("JOBS")) : 8u;
     static const char *const MN[4] = {"POLY", "MONO", "LEGATO", "UNISON"};
     static const char *const SN[6] = {"dry", "chorus", "delay", "reverb", "all", "dist"};
-    static const uint8_t MODE_E[3][2] = {{0, 0}, {1, 1}, {5, 0}};   /* engine, preset */
+    static const uint8_t MODE_E[3][2] = {{0, 0}, {1, 1}, {6, 0}};   /* engine, preset (M-PYRE: TRIO, FORMANT is gone) */
     static const uint8_t SEND_E[2][2] = {{0, 7}, {1, 0}};   /* ANALOG TRAP PLUCK, DIGITAL RHODES */
     static uint8_t cpu_parts[MAXJ][NPART + 1][3];
     static kv_t gold[MAXJ], cpu[MAXJ];
@@ -828,11 +831,21 @@ int main(int argc, char **argv)
     if (jobs_at_once < 1u || jobs_at_once > 64u)
         jobs_at_once = 8;
     only_cpu = getenv("CPU_JOB") != 0;
+    {   /* M-PYRE: the sound pack, as an FM-1 with it installed (tools/mpyre_slots.py) */
+        FILE *f = fopen(getenv("SOUNDPACK") ? getenv("SOUNDPACK") : "build/mpyre/soundpack.bin", "rb");
+        if (f) {
+            if (fread(host_slots, 1, sizeof host_slots, f)) {}
+            fclose(f);
+        } else
+            printf("regress: no sound pack (build/mpyre/soundpack.bin): the guitar and bass presets are silent\n");
+        for (i = 0; i < SMP_USER_SLOTS; i++)
+            smp_user_scan(i);
+    }
 
     /* 1 + 2: the golden renders */
     g0 = nj;
     for (e = 0; e < NENGINES; e++)
-        for (pi = 0; pi < ENGINES[e]->npresets; pi++) {
+        for (pi = 0; pi < ENGINES[e]->npresets && strcmp(ENGINES[e]->name, "-"); pi++) {   /* (M-PYRE: not the removed) */
             job_t *j;
             slug(s, ENGINES[e]->presets[pi].name, sizeof s);
             snprintf(name, sizeof name, "preset/%s/%02u_%s", ENGINES[e]->name, pi, s);
@@ -881,14 +894,16 @@ int main(int argc, char **argv)
     add(J_CHECK, "voices: MONO keeps its note")->check = chk_keep_mono;
     add(J_CHECK, "voices: LEGATO keeps its note")->check = chk_keep_legato;
     add(J_CHECK, "voices: UNISON keeps its note")->check = chk_keep_unison;
+#if !MPYRE_LEAN                                   /* (M-PYRE: no VOICE engine) */
     add(J_CHECK, "voices: VOICE engine cap")->check = chk_voice_cap;
+#endif
     add(J_CHECK, "routing: no hanging notes")->check = chk_hang;
     run_jobs(J, nj, jobs_at_once);
 
     /* 3: CPU, one child at a time (the ns are for information; the instruction counts do not care) */
     c0 = nj;
     for (e = 0; e < NENGINES; e++)
-        for (pi = 0; pi < ENGINES[e]->npresets; pi++) {
+        for (pi = 0; pi < ENGINES[e]->npresets && strcmp(ENGINES[e]->name, "-"); pi++) {
             job_t *j;
             slug(s, ENGINES[e]->presets[pi].name, sizeof s);
             snprintf(name, sizeof name, "cpu/%s/%02u_%s", ENGINES[e]->name, pi, s);

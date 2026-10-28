@@ -84,7 +84,7 @@ int main(void)
           "KIT: USR1..USR4, USR3+4 after the synthesised kits (the old kit numbers kept)");
     check(SMP_USER_OFF(0u) == 0xA0000u && SMP_USER_OFF(2u) == 0xC8000u && SMP_USER_OFF(3u) == 0xE7000u &&
           FL_STORE_OK(0xE7000u, 0x14000u) && !FL_STORE_OK(0xE7000u, 0x14001u) && !FL_STORE_OK(0xFB000u, 0x1000u) &&
-          SMP_USER_OFF(3u) >= FL_FM6_HI && SMP_USER_OFF(3u) + SMP_USER_SIZE <= FL_GLOB_LO && !strcmp(SMP_ALL_NAMES[SMP_NSETS + 3u], "USR4"),
+          SMP_USER_OFF(3u) >= FL_FM6_HI && SMP_USER_OFF(3u) + SMP_USER_SIZE <= FL_GLOB_LO && !strcmp(SMP_ALL_NAMES[SMP_NSETS + 3u], "BASS"),
           "USR4: 0xE7000..0xFAFFF, after the FM6 bank, before the settings; the store may write it, not past it");
 
     TDRUM->p[P_E0] = (int16_t)DRUM_USR;                  /* USR1 */
@@ -96,7 +96,7 @@ int main(void)
         for (i = 0; i < NDRUM; i++)
             if (drums.v[i].active && drums.v[i].s[4] == DZ_USR + 0)
                 break;
-        check(i < NDRUM && drums.v[i].s[5] == (int32_t)((pow2_q16(0) >> 8) * (0x8000u >> 8)), "... at its own pitch (root = the lane's note)");
+        check(i < NDRUM && drums.v[i].s[5] == (int32_t)(((uint64_t)pow2_q16(0) * 0x8000u) >> 16), "... at its own pitch (root = the lane's note)");
     }
     pk = run_peak(40);
     check(pk > 2000, "... and it sounds");

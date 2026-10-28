@@ -64,8 +64,8 @@ static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_O
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */
 static const char *const N_CHORD[] = {"OFF", "PW", "PW+", "OCT", "TERZ", "TRIAD", "7TH", "9TH", "SUS4"};   /* seq.c CHORD_DEG
                                                  * (M-PYRE: PW .. TERZ keep the keys chromatic: riffs) */
-static const char *const N_AMP[] = {"OFF", "CLEAN", "CRUNCH", "HI-GAIN", "LEAD", "B-CLEAN", "B-DRIVE", "DJENT"};   /* amp.c */
-static const char *const N_CAB[] = {"AUTO", "CLEAN", "CRUNCH", "HI-GAIN", "LEAD", "BASS", "OFF"};
+static const char *const N_AMP[] = {"OFF", "CLEAN", "CRNCH", "HIGH", "LEAD", "B-CLN", "B-DRV", "DJENT"};   /* amp.c */
+static const char *const N_CAB[] = {"AUTO", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS", "OFF"};
 static const char *const N_PEDAL[] = {"OFF", "BOOST", "OD", "DIST", "FUZZ"};
 static const char *const N_ROLL[] = {"1/8", "1/16", "1/32", "32T", "1/64"};   /* seq.c ROLL_DEN */
 static const char *const N_ENGNAME[] = {"ANALOG", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN",
@@ -147,24 +147,24 @@ static const param_desc_t TP[P_COUNT] = {
     /* M-PYRE (amp.c): the amp, its tone stack (64 = as the amp is voiced), the cabinet (AUTO: the amp's own IR) */
     [P_AMP] = PE("AMP", N_AMP, 0),
     [P_AGAIN] = PD("GAIN", F_PCT, 0, 127, 64),
-    [P_ABASS] = PD("BASS", F_INT, 0, 127, 64),
-    [P_AMID] = PD("MID", F_INT, 0, 127, 64),
-    [P_ATREB] = PD("TREB", F_INT, 0, 127, 64),
-    [P_APRES] = PD("PRES", F_INT, 0, 127, 64),
+    [P_ABASS] = PD("BASS", F_CTR, 0, 127, 64),
+    [P_AMID] = PD("MID", F_CTR, 0, 127, 64),
+    [P_ATREB] = PD("TREB", F_CTR, 0, 127, 64),
+    [P_APRES] = PD("PRES", F_CTR, 0, 127, 64),
     [P_CAB] = PE("CAB", N_CAB, 0),
     [P_PEDAL] = PE("PEDAL", N_PEDAL, 0),
     [P_PDRV] = PD("DRIVE", F_PCT, 0, 127, 64),
-    [P_COMP] = PD("COMP", F_PCT, 0, 127, 0),
-    [P_OCT] = PD("OCT", F_INT, 0, 48, 24),       /* semitones + 24: 24 = off */
+    [P_COMP] = PD("COMP", F_OFFPCT, 0, 127, 0),
+    [P_OCT] = PD("OCT", F_OCTST, 0, 48, 24),       /* semitones + 24: 24 = off */
     [P_OMIX] = PD("O MIX", F_PCT, 0, 127, 64),
-    [P_PALM] = PD("PALM", F_PCT, 0, 127, 0),
-    [P_BEND] = PD("BEND", F_PCT, 0, 127, 0),
-    [P_VIB] = PD("VIB", F_PCT, 0, 127, 0),
-    [P_LEG] = PD("LEGATO", F_PCT, 0, 127, 0),
-    [P_WHAM] = PD("WHAMMY", F_INT, 0, 127, 64),
-    [P_TONE] = PD("TONE", F_INT, 0, 127, 64),
+    [P_PALM] = PD("PALM", F_OFFPCT, 0, 127, 0),
+    [P_BEND] = PD("BEND", F_BEND, 0, 127, 0),
+    [P_VIB] = PD("VIB", F_OFFPCT, 0, 127, 0),
+    [P_LEG] = PD("LEGATO", F_OFFPCT, 0, 127, 0),
+    [P_WHAM] = PD("WHAMMY", F_WHAM, 0, 127, 64),
+    [P_TONE] = PD("TONE", F_CTR, 0, 127, 64),
     [P_PVOL] = PD("VOL", F_PCT, 0, 127, 127),
-    [P_WAH] = PD("WAH", F_PCT, 0, 127, 0),
+    [P_WAH] = PD("WAH", F_OFFPCT, 0, 127, 0),
 };
 /* a preset's extra parameters (preset_t.x) into p, each clamped to its range */
 static void preset_extras(int16_t *p, const preset_t *pr)
@@ -361,6 +361,35 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
             *unit = "dB";
         }
         break;
+    case F_CTR:                                       /* M-PYRE: 64 = as voiced, -64 .. +63 */
+    case F_OCTST:                                     /* the octaver: semitones + 24, 24 = OFF */
+    case F_WHAM: {                                    /* the whammy: 64 = 0, -12 .. +12 semitones */
+        int32_t c = d->fmt == F_OCTST ? v - 24 : d->fmt == F_WHAM ? (v - 64) * 12 / 63 : v - 64;
+        if (d->fmt == F_OCTST && !c) {
+            str_cpy(val, "OFF", 6);
+            break;
+        }
+        fmt_int(val, c);
+        if (c > 0) {
+            char t[8];
+            fmt_int(t, c);
+            val[0] = '+';
+            str_cpy(val + 1, t, 6);
+        }
+        *unit = d->fmt == F_CTR ? "" : "st";
+        break;
+    }
+    case F_BEND:                                      /* voice.c: a quarter, a half, a whole tone */
+        str_cpy(val, !v ? "OFF" : v < 40 ? "1/4" : v < 110 ? "1/2" : "FULL", 6);
+        break;
+    case F_OFFPCT:
+        if (!v) {
+            str_cpy(val, "OFF", 6);
+            break;
+        }
+        fmt_int(val, (v * 100 + d->max / 2) / d->max);
+        *unit = "%";
+        break;
     case F_SEMI:
         fmt_int(val, v);
         if (v > 0) {
@@ -432,6 +461,12 @@ static const page_t PAGES[] = {
     {"INSERT 2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, 0xFF, 0xFF, 0xFF}},  /* .. its dry / wet; the drum track too */
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
     {"REV/CHO", FAM_FX, SC_GLOBAL, GR_NONE, {G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH}},
+    /* M-PYRE: the guitar chain in the FX section, after the sends and the master FX (the FX button
+     * comes back to the page last used; the LIVE view keeps the playing controls) */
+    {"AMP", FAM_FX, SC_TRACK, GR_NONE, {P_AMP, P_AGAIN, P_ABASS, P_AMID}},
+    {"AMP 2", FAM_FX, SC_TRACK, GR_NONE, {P_ATREB, P_APRES, P_CAB, 0xFF}},
+    {"PEDAL", FAM_FX, SC_TRACK, GR_NONE, {P_PEDAL, P_PDRV, P_WAH, P_COMP}},
+    {"OCTAVER", FAM_FX, SC_TRACK, GR_NONE, {P_OCT, P_OMIX, 0xFF, 0xFF}},
     {"SEL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_CHORD}},
     {"SEL 2", FAM_SCL, SC_TRACK, GR_SCALE, {P_TRANS, P_STRUM, P_VLEAD, 0xFF}},   /* (2.4: the chords played) */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
@@ -483,6 +518,9 @@ static int page_for_drum(const page_t *pg)
 /* a page the buttons and SELECT reach on the selected track: EDIT > FILTER (TYPE) on ANALOG only */
 static int page_shown(const page_t *pg)
 {
+    if (is_drum(TSEL) && pg->fam == FAM_FX && pg->scope == SC_TRACK &&
+        (pg->id[0] == P_AMP || pg->id[0] == P_ATREB || pg->id[0] == P_PEDAL || pg->id[0] == P_OCT))
+        return 0;                                   /* (M-PYRE: no amp, pedal or octaver on the drums) */
     return pg->id[0] != P_FTYPE || (!is_drum(TSEL) && TSEL->eng_req % NENGINES == 0u);
 }
 

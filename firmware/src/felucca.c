@@ -65,7 +65,15 @@
 #include "ui_studio.c"
 #include "icons.c"           /* parameter icons (FELUCCA_ICONS), used by ui_draw.c */
 #include "ui_draw.c"
+#ifndef FELUCCA_VIS
+#define FELUCCA_VIS 0         /* M-PYRE: no full-screen visualiser (the LIVE view has its scope; the flash goes to the riffs) */
+#endif
+#if FELUCCA_VIS
 #include "ui_vis.c"           /* the full-screen visualiser (HOME on HOME, 2.4) */
+#else
+static int vis_shown(void) { return 0; }
+static void vis_draw(void) {}
+#endif
 #include "ui_layers.c"       /* hold a function button: what the keys and knobs do (TE style) */
 #include "ui_menu.c"
 #include "ui_input.c"

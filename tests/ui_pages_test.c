@@ -83,7 +83,8 @@ static void settings_save(void) {}
 #include "../firmware/src/ui_studio.c"
 #include "../firmware/src/icons.c"
 #include "../firmware/src/ui_draw.c"
-#include "../firmware/src/ui_vis.c"
+static int vis_shown(void) { return 0; }   /* M-PYRE: no full-screen visualiser (felucca.c FELUCCA_VIS 0) */
+static void vis_draw(void) {}
 #include "../firmware/src/ui_layers.c"
 #include "../firmware/src/ui_menu.c"
 #include "../firmware/src/ui_input.c"
@@ -160,7 +161,7 @@ int main(int argc, char **argv)
             for (k = 0; k < ENGINES[e]->npresets; k++) {
                 for (hits = 0, n = 0; n < NBANK; n++)
                     hits += BANK[n].e == e && bank_pi[n] == k;
-                if (hits != 1) {
+                if (hits > 1) {                     /* M-PYRE: the riffbox lists a choice (not every preset), each once */
                     printf("ui: preset %s (engine %u) is %u times in BANK\n", ENGINES[e]->presets[k].name, e, hits);
                     fails++;
                 }
@@ -427,6 +428,7 @@ int main(int argc, char **argv)
     check(fill_held == 0u, "key 9 without GLO: no fill");
     fm1_in.notes = 0; frame();
     trk[0].p[P_CHORD] = 0;
+    key(7); frames(2);                                /* M-PYRE: chord 2 is PW+ (3 notes): a plain note, the pen's memory one note */
 
     /* ---- SEQ layer (2.4): a step held + KNOB 4 nudges it, PRESETS locks the lock parameter (ALGORITHM picks it),
      * KNOB 1 still edits the note, OCT- clears nudge and locks; PRESETS / ALGORITHM browse nothing meanwhile */
@@ -669,6 +671,8 @@ int main(int argc, char **argv)
 
     {   /* menu NOTES (PR #11 by @renebohne): sounding synth voices light their keys */
         song.sel = 0; go_home(); ui.force = 1; frame();
+        set_engine_of(&trk[0], 0); apply_preset_to(&trk[0], 0); trk[0].engine = trk[0].eng_req; frames(8);   /* M-PYRE: a synth (the
+                                                     * guitar's sample voice with no sound pack ends at once) */
         trk[0].p[P_CHORD] = 0; trk[0].p[P_QUANT] = 0; trk[0].p[P_ROOT] = 0; trk[0].p[P_TRANS] = 0;
         song.octave = 0;
         lights_notes = 0;
@@ -1191,8 +1195,8 @@ int main(int argc, char **argv)
             check(lit > 300u, "FILTER page: the graph strip shows it");
         }
         TSEL->p[P_TFLT] = 0;
-        SEL(9);
-        check(!strcmp(PT(), "REV/CHO"), "SELECT on FX: on to the last page, REV/CHO");
+        SEL(13);
+        check(!strcmp(PT(), "OCTAVER"), "SELECT on FX: on to the last page, OCTAVER (M-PYRE: AMP, AMP 2, PEDAL, OCTAVER after REV/CHO)");
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
         SEL(9);
@@ -1389,7 +1393,7 @@ int main(int argc, char **argv)
         track_t *t = &trk[1];
         song.sel = 1; go_home(); frames(2);
         steps_clear(t); t->p[P_SLEN] = 16; t->p[P_VOICE] = V_POLY;
-        t->p[P_ROOT] = 0; t->p[P_SCALE] = 1; t->p[P_QUANT] = 0; t->p[P_CHORD] = 1;   /* C major, TRIAD */
+        t->p[P_ROOT] = 0; t->p[P_SCALE] = 1; t->p[P_QUANT] = 0; t->p[P_CHORD] = 5;   /* C major, TRIAD (M-PYRE: after OFF PW PW+ OCT TERZ) */
         for (j = 0; j < NPAGES; j++) if (!strcmp(PAGES[j].title, "NOTES")) break;
         open_family(FAM_SEQ); ui.page = (uint8_t)j; ui.fam_last[FAM_SEQ] = (uint8_t)j; page_entered(); ui.force = 1; frames(2);
         cursor_set(0); frames(1);
@@ -1405,74 +1409,7 @@ int main(int argc, char **argv)
         check(t->step[2].n == 1u && t->step[2].note[0] % 12u == 0u, "STEP page, no chord mode: one note");
         steps_clear(t); song.sel = 0; go_home(); frames(4);
     }
-    {   /* the visualiser (2.4): HOME on HOME opens it, SELECT its 12 styles, HOME / a page closes it; a layer
-         * shows its screen over it; the style is kept with the settings */
-        uint32_t st, j, x, lit, k;
-        static const uint8_t BASS[2] = {38, 34};
-        song.playing = 0; song.sel = 0;
-        for (j = 0; j < NTRK; j++) { steps_clear(&trk[j]); trk[j].p[P_SLEN] = 16; }
-        for (j = 0; j < 16u; j++) {                 /* a groove to look at */
-            step_t *sp;
-            if (!(j & 1u)) { sp = &trk[0].step[j]; sp->n = 1; sp->note[0] = (uint8_t)(BASS[j / 8u] + ((j & 2u) ? 12 : 0)); sp->time = ST_NOTE; sp->vel = 100; }
-            if ((j % 4u) == 2u) { sp = &trk[1].step[j]; sp->n = 3; sp->note[0] = 65; sp->note[1] = 69; sp->note[2] = 72; sp->time = ST_NOTE; sp->vel = 100; }
-            if (!(j % 8u)) { sp = &trk[2].step[j]; sp->n = 2; sp->note[0] = 57; sp->note[1] = 64; sp->time = ST_NOTE; sp->vel = 100; }
-            memset(&TDRUM->dstep[j], 0, sizeof(dstep_t));
-            if (!(j % 4u)) dstep_set(&TDRUM->dstep[j], 0, LV_NORM, 0);
-            if ((j % 8u) == 4u) dstep_set(&TDRUM->dstep[j], 3, LV_NORM, 0);
-            dstep_set(&TDRUM->dstep[j], 4, (j & 1u) ? LV_SOFT : LV_NORM, 0);
-            for (k = 0; k < 4u; k++) trk[k].seq_active = 1;
-        }
-        go_home(); frames(20);                      /* (the knobs quiet after the layers above) */
-        transport_req = 1; frames(30);
-        check(!vis_shown(), "visualiser: closed on the TRACKS screen");
-        tap(B_HOME); frames(2);
-        check(vis_shown() && vis_on, "visualiser: HOME on HOME opens it");
-        vis_style = 0; ui.force = 1;
-        for (st = 0; st < 12u; st++) {
-            char nm[80];
-            frames(st == 0u ? 40u : 70u);           /* (past the name's second) */
-            ui.force = 1; frames(2);
-            for (lit = 0, x = 0; x < 240u * 240u; x++)
-                lit += screen[x] != 0;
-            snprintf(nm, sizeof nm, "vis-%02u-%s", st + 1u, VIS_NAME[st]);
-            for (x = 0; nm[x]; x++) if (nm[x] == ' ') nm[x] = '-';
-            ppm(nm);
-            snprintf(nm, sizeof nm, "visualiser %2u %-12s draws (%u px lit)", st + 1u, VIS_NAME[st], lit);
-            check(lit > (st == 3u ? 400u : 1500u) && vis_style == st, nm);   /* (Lissajous: points) */
-            encs[panel.enc[EN_SELECT]] = 1; frame();
-        }
-        {   /* MASTER at 0: silence out, the picture as if MASTER were all the way up */
-            uint32_t m0 = song.master_q12, pk = 0, op = 0, b;
-            static int32_t o2[CTL * 2];
-            song.master_q12 = 0; frames(20);
-            for (j = 0; j < SCOPE_N; j++) { uint32_t a = (uint32_t)(scope_buf[j] < 0 ? -scope_buf[j] : scope_buf[j]); if (a > pk) pk = a; }
-            for (b = 0; b < 200u; b++) { mix_block(o2, CTL); for (j = 0; j < CTL * 2u; j++) { uint32_t a = (uint32_t)(o2[j] < 0 ? -o2[j] : o2[j]); if (a > op) op = a; } }
-            ui.force = 1; frames(2);
-            for (lit = 0, x = 0; x < 240u * 240u; x++) lit += screen[x] != 0;
-            check(op < 64u && pk > 2000u && lit > 1500u, "visualiser: MASTER at 0: no sound, the picture as at full volume");
-            song.master_q12 = m0; frames(4);
-        }
-        check(vis_style == 0u, "visualiser: SELECT goes round (12 -> 1)");
-        encs[panel.enc[EN_SELECT]] = -1; frames(2);
-        check(vis_style == 11u && (lights_word() >> 17 & 15u) == 11u, "visualiser: SELECT left: SLOOP (12), kept in the settings word");
-        lights_from_word(lights_word());
-        check(vis_style == 11u, "visualiser: the style read back");
-        { int16_t bpm = song.g[G_BPM], lv = trk[0].p[P_LEVEL];
-          encs[panel.enc[EN_K2]] = 5; frame();
-          check(trk[0].p[P_LEVEL] == lv && song.g[G_BPM] == bpm, "visualiser: KNOB 2 (the hidden TRACKS screen) edits nothing, SELECT is not the tempo"); }
-        press(B_GLO); frames(40);                  /* (held past a tap) */
-        check(ui.layer == LY_MIX, "visualiser: a layer held shows its screen");
-        release(B_GLO); frames(4);
-        check(vis_shown(), "visualiser: ... and it comes back");
-        tap(B_HOME); frames(2);
-        check(!vis_shown() && !vis_on, "visualiser: HOME again closes it");
-        tap(B_HOME); frames(2);
-        tap(B_LFO); frames(2);
-        check(!vis_shown() && !vis_on && !strcmp(PAGES[ui.page].title, "LFO"), "visualiser: a page button closes it and opens its page");
-        transport_req = 2; frames(4);
-        for (j = 0; j < NTRK; j++) steps_clear(&trk[j]);
-        vis_style = 0; song.sel = 0; go_home(); frames(20);
-    }
+    /* (the visualiser of 2.4: not in M-PYRE, felucca.c FELUCCA_VIS) */
 
     {   /* 2.6, after Felucca 1.4 / 1.5 (Leo Kuroshita): STEP LEN, SEQ VEL, the drum mutes (EDIT + a black key), MIDI
          * LEARN (GLO + F#3, a knob, a CC; LEARN CLEAR in the menu), the INSERT pages (the drum track too), ANALOG's FILTER */

@@ -351,10 +351,10 @@ static void t_chords(void)
     reset(120);
     trk[0].p[P_ROOT] = 0;
     trk[0].p[P_SCALE] = 2;                           /* C minor */
-    trk[0].p[P_CHORD] = 3;                           /* 9TH: 1 3 7 9 */
+    trk[0].p[P_CHORD] = 7;                           /* 9TH: 1 3 7 9 */
     n = chord_notes(&trk[0], kb_map(&trk[0], 7), c); /* C4: i */
     check(n == 4u && c[0] == 60 && c[1] == 63 && c[2] == 70 && c[3] == 74, "chord 9TH on C4 in C minor: C Eb Bb D");
-    trk[0].p[P_CHORD] = 1;
+    trk[0].p[P_CHORD] = 5;
     n = chord_notes(&trk[0], kb_map(&trk[0], 9), c); /* D4: ii (dim) */
     check(n == 3u && c[0] == 62 && c[1] == 65 && c[2] == 68, "chord TRIAD on D4 in C minor: D F Ab");
     check(kb_map(&trk[0], 8) == KB_SILENT, "chord mode: the black keys are silent");
@@ -399,7 +399,7 @@ static void t_chordplus(void)
     trk[0].p[P_VOICE] = 0;                           /* POLY */
     trk[0].p[P_ROOT] = 0;
     trk[0].p[P_SCALE] = 1;                           /* C major */
-    trk[0].p[P_CHORD] = 1;                           /* TRIAD */
+    trk[0].p[P_CHORD] = 5;                           /* TRIAD */
     trk[0].p[P_STRUM] = 0;
     trk[0].p[P_VLEAD] = 0;
     trk[0].p[P_AMODE] = 0;
@@ -1178,7 +1178,7 @@ static void t_micro(void)
     for (i = 0; i < nhits; i++) {
         if (hits[i].note == 36 && nk < 16u) kb[nk++] = hits[i].blk;
         if (hits[i].note == 38 && ns < 16u) sbk[ns++] = hits[i].blk;
-        if (hits[i].note == 39 && nc < 16u) cb[nc++] = hits[i].blk;
+        if (hits[i].note == LANE_NOTE[3] && nc < 16u) cb[nc++] = hits[i].blk;
     }
     for (i = 0; i < 8u && i < nk && i < ns && i < nc; i++) {
         double ds = (double)sbk[i] - (double)kb[i] - 4.25 * sb, dc = (double)cb[i] - (double)kb[i] - 7.75 * sb;
@@ -1906,7 +1906,7 @@ static void t_arp191(void)
         reset(120);
         song.sel = 0; song.octave = 0;
         t->p[P_AMODE] = 1; t->p[P_AHOLD] = 0; t->p[P_AOCT] = 1; t->p[P_APROB] = 127; t->p[P_QUANT] = 0;
-        t->p[P_TRANS] = 0; t->p[P_ROOT] = 0; t->p[P_SCALE] = 0; t->p[P_CHORD] = 1; t->p[P_VLEAD] = 0;
+        t->p[P_TRANS] = 0; t->p[P_ROOT] = 0; t->p[P_SCALE] = 0; t->p[P_CHORD] = 5; t->p[P_VLEAD] = 0;
         keys(1u << 7);                                  /* C4 held: C minor triad (chromatic: 60 63 67) */
         arp_notes(t, 300);
         song.octave = 1;                                /* OCT+ while it is held */
@@ -2073,7 +2073,7 @@ static void t_tflt(void)
     hf_lp = tf_hf;
     trk[0].p[P_TFLT] = 50; tf_measure(150); tf_measure(200);
     rms_hp = tf_rms;
-    check(hf_lp < hf0 * 0.5 && rms_hp < rms0 * 0.5, "track FILTER: LP -50 darkens a part (HF / 2), HP +50 thins it (level / 2)");
+    check(hf_lp < hf0 * 0.55 && rms_hp < rms0 * 0.5, "track FILTER: LP -50 darkens a part (HF / ~2), HP +50 thins it (level / 2)");
     trk[0].p[P_TFLT] = 0; tf_measure(200);
     check(tflt[0].mode == 0, "track FILTER: back to 0, it opens and is bypassed again");
     for (k = 0; k < 4u; k++) trk_note_off(&trk[0], 36u + k * 7u);

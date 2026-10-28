@@ -942,12 +942,8 @@ UI_SMALL static void preset_go(uint32_t n)                    /* load list index
  * HOME held goes to the TRACKS screen (and held there: the menu) */
 static const struct { const char *title; uint8_t id[4]; } LIVE[] = {
     {"PLAY", {P_CHORD, P_BEND, P_VIB, P_PALM}},     /* the guitar: chords, bend, vibrato, palm mutes */
-    {"PLAY 2", {P_TONE, P_LEG, P_WHAM, P_PVOL}},    /* tone, legato (hammer-on .. slide), whammy, the volume (fades) */
-    {"AMP", {P_AMP, P_AGAIN, P_ABASS, P_AMID}},
-    {"AMP 2", {P_ATREB, P_APRES, P_CAB, P_COMP}},
-    {"PEDAL", {P_PEDAL, P_PDRV, P_WAH, P_DIST}},
-    {"OCT/MOD", {P_OCT, P_OMIX, P_ITYPE, P_IMIX}},  /* the octaver; the INSERT after the amp (chorus, flanger, phaser) */
-    {"SPACE", {P_CHOR, P_DLY, P_REV, P_PAN}},
+    {"PLAY 2", {P_LEG, P_WHAM, P_TONE, P_PVOL}},    /* legato (hammer-on .. slide), whammy, tone, the volume (fades);
+                                                     * the amp, pedals, octaver and the rest: the FX section */
 };
 #define NLIVE (sizeof LIVE / sizeof LIVE[0])
 static uint8_t live_grp;

@@ -228,12 +228,12 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
             song.rec = 0;
         /* (a) a clap into the drums, late in step 3: lands on step 4, sounds now, step 4 does not repeat it */
         if (song.rec && !clap_done && at_step(td, &q) == 3u && q > 75u) {
-            input_on(td, 39, 110);
+            input_on(td, 40, 110);
             clap_done = 1;
             clap_age = drums.age;
             clap_pass = 1;
         } else if (clap_pass == 1u && td->seq_idx == 4u) {
-            clap_hits = drums.age - clap_age;      /* what step 4 triggered right after (36, 38, 42; not 39) */
+            clap_hits = drums.age - clap_age;      /* what step 4 triggered right after (36, 38, 42; not 40 (M-PYRE: the GHOST lane, no clap)) */
             clap_pass = 2;
         }
         /* (b) MIDI ch 3 into the lead, early in its step 1 */
@@ -274,11 +274,11 @@ static int tracks_demo(const char *dir, const char *name, uint32_t solo)
         int ok_clap;
         for (m = lanes; m; m >>= 1)
             nl += m & 1u;
-        ok_clap = nl == 4u && dstep_has(s4, lane_of_note(39)) && clap_hits == 3u;
+        ok_clap = nl == 4u && dstep_has(s4, lane_of_note(40)) && clap_hits == 3u;
         int ok_lead = l1->n == 1u && l1->note[0] == 84u && l1->time == ST_NOTE;
         int ok_keys = p14->n == 2u && p14->time == ST_NOTE && p14->note[0] == 60u && p14->note[1] == 64u;
         printf("tracks: recording: drums step 4 = %u lanes (kick snare hat + clap: %s), hits when step 4 played right "
-               "after: %u (want 3: the clap is not triggered twice) %s\n", nl, dstep_has(s4, lane_of_note(39)) ? "yes" : "no",
+               "after: %u (want 3: the clap is not triggered twice) %s\n", nl, dstep_has(s4, lane_of_note(40)) ? "yes" : "no",
                clap_hits, ok_clap ? "ok" : "FAIL");
         printf("tracks: recording: MIDI ch 3 -> lead step 1 = %u (want 84) %s; keys -> pad step 14 = %u notes %u %u %s\n",
                l1->note[0], ok_lead ? "ok" : "FAIL", p14->n, p14->note[0], p14->note[1], ok_keys ? "ok" : "FAIL");
@@ -359,7 +359,7 @@ static int steal_test(const char *dir)
     const uint32_t frames = 4u * FS;
     char path[512];
     FILE *w;
-    int32_t prev = 0, *L = calloc(frames, sizeof *L);
+    int32_t prev = 0, *L = calloc(frames + CTL, sizeof *L);   /* (the last block runs past 4 s) */
     uint32_t f, i, p, k, events[6], nev = 0, bad = 0, kills0;
     double worst = 0;
     snprintf(path, sizeof path, "%s/steal.wav", dir);
@@ -455,7 +455,7 @@ static int xfade_test(const char *dir)
     const uint8_t to[4] = {1, 2, 3, 4};
     char path[512];
     FILE *w;
-    int32_t *L = calloc(frames, sizeof *L);
+    int32_t *L = calloc(frames + CTL, sizeof *L);   /* (the last block may run past) */
     uint32_t f, i, k, bad = 0, late_ok = 0;
     double worst = 0;
     track_t *t = &trk[0];
