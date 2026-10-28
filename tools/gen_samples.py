@@ -44,27 +44,29 @@ TR = 22050                                   # stored sample rate
 # set -> kind ("oneshot" decaying, "sus" looped sustain, "piano" its attack then a steady loop that the
 # envelope fades, "kit" one sample per key).
 # The other slots are user sets loaded from the web editor.
-CC0_SETS = [("PIANO", "piano"), ("BASS", "oneshot"), ("VIBES", "oneshot"), ("HORNS", "oneshot"),
-            ("STRGS", "oneshot"), ("FLUTE", "sus"), ("SCRCH", "oneshot"), ("KIT", "kit")]
+CC0_SETS = [("PIANO", "piano"), ("VIBES", "oneshot"), ("STRGS", "oneshot"), ("KIT", "kit")]
+# M-PYRE: the drum kit is History Of Sky's own (the guitar, palm mutes and bass: the user slots, tools/mpyre_slots.py) (tools/prep_mpyre.py -> build/mpyre/sets.json);
+# HORNS, FLUTE and SCRCH are gone (the riffbox needs the room)
+MPYRE = SRC / "build" / "mpyre" / "sets.json"
 MEASURED_TUNING = ()                         # sets recorded off A440 (measured near the named note)
 
 # the preset of each set: name, {SET (filled in), TUNE, BITS, LOOP (filled in), CUT, -, DRV, -}, env, mono,
 # sends (DIST, CHORUS, DELAY, REVERB), more (track parameter, value) pairs (preset_t.x)
 SET_PRESETS = {
     "PIANO": ("GRAND PNO", [0, 0, 0, 0, 127, 0, 0, 0], (0, 110, 0, 58), 0, (0, 6, 8, 24), ()),
-    "BASS": ("UP BASS", [0, 0, 0, 0, 118, 0, 12, 0], (0, 127, 127, 26), 1, (0, 0, 0, 4), ()),
+    "BASS": ("PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 100, 110, 22), 1, (0, 0, 0, 0), ()),
     "VIBES": ("VIBES", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 72), 0, (0, 24, 22, 30), ("P_LD_AMP", 18, "P_LRATE", 86)),
     "HORNS": ("HORN STAB", [0, 0, 0, 0, 120, 0, 20, 0], (0, 127, 127, 22), 0, (8, 0, 14, 18), ()),
     "STRGS": ("STRING STB", [0, 0, 0, 0, 122, 0, 10, 0], (0, 127, 127, 26), 0, (0, 10, 12, 24), ()),
     "FLUTE": ("LOFI FLUTE", [0, 0, 12, 0, 100, 0, 0, 0], (12, 80, 120, 60), 1, (0, 16, 26, 30), ("P_LD_PIT", 1, "P_LRATE", 89, "P_LFADE", 40)),
     "SCRCH": ("SCRATCH", [0, 0, 0, 0, 127, 0, 8, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ()),
-    "PERC": ("GM KIT", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 60), 0, (0, 0, 0, 6), ()),
+    "PERC": ("HOS KIT", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 60), 0, (0, 0, 0, 6), ()),
 }
 # more presets on a set: (set, name, E[], env, mono, sends, more)
 EXTRA_PRESETS = [
     ("PIANO", "DUSTY PNO", [0, 0, 34, 0, 96, 0, 24, 0], (0, 98, 0, 52), 0, (0, 8, 10, 22), ()),
     ("PIANO", "LOFI KEYS", [0, 0, 45, 0, 78, 0, 30, 0], (0, 108, 0, 60), 0, (0, 30, 18, 34), ("P_LD_PIT", 1, "P_LRATE", 38)),
-    ("BASS", "DEEP BASS", [0, -12, 0, 0, 90, 0, 40, 0], (0, 127, 127, 30), 1, (0, 0, 0, 0), ()),
+    ("BASS", "DEEP BASS", [0, 0, 0, 1, 80, 0, 30, 0], (0, 100, 110, 22), 1, (0, 0, 0, 0), ()),
 ]
 
 KIT_BASE = 53                     # F3, the lowest FM-1 key
@@ -314,9 +316,17 @@ class Builder:
         self.brk = dict(off=off, n=n, grid=grid, apos=hits, ast=ima_states(data, hits))
 
     def add(self, s, loop_start):
-        """ADPCM-encode s into the blob (each sample starts on an even offset) -> (offset, state at loop_start)"""
+        """ADPCM-encode s into the blob (each sample starts on an even offset) -> (offset, state at loop_start);
+        the same samples twice: one copy (M-PYRE: KICK and KICK 2)"""
         enc, st = ima_encode(s, loop_start)
+        key = (bytes(enc), loop_start)
+        seen = getattr(self, "seen", None)
+        if seen is None:
+            seen = self.seen = {}
+        if key in seen:
+            return seen[key], st
         off = len(self.blob)
+        seen[key] = off
         self.blob += enc
         if len(self.blob) & 1:
             self.blob.append(0)
@@ -350,6 +360,22 @@ class Builder:
         self.sets.append(("PERC", z0, len(self.zones) - z0))
         self.kinds["PERC"] = "kit"
 
+    def mpyre_set(self, name, kind):
+        """a set of build/mpyre/sets.json (tools/prep_mpyre.py): ready int16 samples at TR, loops, key ranges"""
+        import base64
+        import json
+        import struct as st_
+        zs = json.loads(MPYRE.read_text())[name]
+        entries = []
+        for z in zs:
+            raw = base64.b64decode(z["pcm"])
+            smp = list(st_.unpack(f"<{len(raw) // 2}h", raw))
+            ls, le = z["loop"] if z["loop"] else (len(smp), len(smp))
+            off, st = self.add(smp, ls)
+            entries.append(dict(off=off, n=len(smp), ls=ls, le=le, looped=bool(z["loop"]), sr=TR, deemph=z["deemph"],
+                                root16=z["root"] * 16, pred=st[0], idx=st[1], key=z["lo"] if kind == "kit" else None))
+        self.add_set(name, kind, entries)
+
     def cc0_set(self, name, kind):
         entries = []
         for k, (_, s, loop, root) in enumerate(cc0_entries(name, kind)):
@@ -373,8 +399,9 @@ class Builder:
         L.append("static const smp_zone_t SMP_ZONES[] = {")
         for e in zones:
             rate = int(round(e["sr"] / 44100 * 65536))
+            fl = (1 if e['looped'] else 0) | (0x80 if e.get('deemph') else 0)   # eng_sample.c SMP_DEEMPH
             L.append(f"    {{{e['off']}, {e['n']}, {e['ls']}, {e['le']}, {rate}, {e['root16']}, {e['pred']}, "
-                     f"{e['idx']}, {e['lo']}, {e['hi']}, {1 if e['looped'] else 0}}},")
+                     f"{e['idx']}, {e['lo']}, {e['hi']}, {fl}}},")
         if not zones:
             L.append("    {0, 0, 0, 0, 65536, 960, 0, 0, 0, 127, 0},")
         L.append("};")
@@ -439,6 +466,8 @@ def input_key(have_cc0):
     here = Path(__file__).resolve().parent
     for p in (here / "gen_samples.py", here / "sampleio.py"):
         h.update(p.read_bytes())
+    if MPYRE.exists():
+        h.update(MPYRE.read_bytes())
     h.update(repr((sys.version_info[:2], have_cc0, os.environ.get("FELUCCA_SLICE") == "1")).encode())   # sum() differs across versions
     files = sorted(GENDIR.glob("*.wav"))
     if have_cc0:
@@ -464,11 +493,15 @@ def main(out):
     except (OSError, ValueError):
         pass
     b = Builder()
+    if not MPYRE.exists():
+        raise SystemExit(f"samples: {MPYRE} missing: run tools/prep_mpyre.py first")
     if have_cc0:
         for name, kind in CC0_SETS:
-            if kind != "kit":                       # the CC0 KIT feeds the GM kit
+            if kind == "mpyre":
+                b.mpyre_set(name, "multi")
+            elif kind != "kit":                     # the CC0 KIT feeds the GM kit
                 b.cc0_set(name, kind)
-    b.gm_kit(have_cc0)
+    b.mpyre_set("PERC", "kit")                      # M-PYRE: History Of Sky's kit on the drum lanes' GM notes
     if os.environ.get("FELUCCA_SLICE") == "1":       # SLICE's BREAK: only when that engine is built
         b.slice_break()                             # last: the sets' offsets stay as they were
     text = b.header()

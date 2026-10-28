@@ -26,15 +26,15 @@
 #define DRUM_PAIR (DRUM_USR + SMP_USER_SLOTS)   /* USR3+4: one kit in two slots (the editor splits it), ~15 s */
 #define DRUM_SYN (DRUM_PAIR + 1u)                /* SLOOP 2.5: SYN1..SYN4, your synthesised kits (drum_synth.c dsu) */
 #define DRUM_KITS (DRUM_SYN + DSU_N)
-static const char *const DRUM_KIT_NAMES[] = {"ACOUSTIC", "DEEP", "TIGHT", "BRIGHT", "DUST", DS_KIT_NAME_LIST,
+static const char *const DRUM_KIT_NAMES[] = {"HOS KIT", "DEEP", "TIGHT", "BRIGHT", "DUST", DS_KIT_NAME_LIST,
                                              "USR1", "USR2", "USR3", "USR4", "USR3+4",
                                              "SYN1", "SYN2", "SYN3", "SYN4"};
-static const char *const DRUM_KIT_STYLES[] = {"STUDIO", "SOFT", "PUNCHY", "BRIGHT", "DUSTY", DS_KIT_STYLE_LIST,
+static const char *const DRUM_KIT_STYLES[] = {"METAL", "SOFT", "PUNCHY", "BRIGHT", "DUSTY", DS_KIT_STYLE_LIST,
                                               "YOUR KIT", "YOUR KIT", "YOUR KIT", "YOUR KIT", "BIG KIT",
                                               "YOUR SYNTH", "YOUR SYNTH", "YOUR SYNTH", "YOUR SYNTH"};
 _Static_assert(sizeof(DRUM_KIT_NAMES) / sizeof(DRUM_KIT_NAMES[0]) == DRUM_KITS, "a name per kit");
 static uint32_t drum_kit(void) { return (uint32_t)clamp(TDRUM->p[P_E0], 0, DRUM_KITS - 1); }
-#define DRUM_DEFAULT_KIT DRUM_SAMPLED   /* power-on: 808 */
+#define DRUM_DEFAULT_KIT 0u             /* M-PYRE: power-on, History Of Sky's kit */
 
 static struct {
     voice_t v[NDRUM];
@@ -80,22 +80,24 @@ static int32_t drum_set(void)
 /* ------------------------------------------------------------ lanes --- */
 /* The drum track's 16 sounds, one per white key, F3 (kick) .. G5 (cowbell): kicks, snare and clap,
  * the hi-hats, rim and a second snare, the toms, the cymbals, the percussion. Each plays a GM note
- * (the sampled kits: their samples; the synthesised kits: drum_synth.c DS_MAP). A black key plays
+ * (the sampled kits: their samples; the synthesised kits: drum_synth.c DS_MAP). M-PYRE: a metal kit's lanes -
+ * the kick twice (double bass), snare and ghost, the hats, the ride bell, three toms, crash, ride, a second crash, a
+ * china and the crash backwards (tools/prep_mpyre.py KIT). A black key plays
  * the lane of the white key left of it (two fingers on one sound). */
-static const uint8_t LANE_NOTE[DRUM_LANES] = {36, 35, 38, 39, 42, 46, 44, 37, 40, 43, 48, 49, 51, 70, 63, 56};
+static const uint8_t LANE_NOTE[DRUM_LANES] = {36, 35, 38, 40, 42, 46, 44, 53, 48, 47, 43, 49, 51, 57, 52, 55};
 static const char *const LANE_NAME[DRUM_LANES] = {
-    "KICK", "KICK 2", "SNARE", "CLAP", "HAT", "OPEN HAT", "PEDAL", "RIM",
-    "SNARE 2", "LOW TOM", "HI TOM", "CRASH", "RIDE", "SHAKER", "CONGA", "COWBELL"};
+    "KICK", "KICK 2", "SNARE", "GHOST", "HAT", "OPEN HAT", "PEDAL", "BELL",
+    "HI TOM", "MID TOM", "FLOOR", "CRASH", "RIDE", "CRASH 2", "CHINA", "REV CRASH"};
 static const char *const LANE_SHORT[DRUM_LANES] = {           /* 5 characters: tiles, dials */
-    "kick", "kick2", "snare", "clap", "hat", "open", "pedal", "rim",
-    "snr 2", "tom l", "tom h", "crash", "ride", "shake", "conga", "bell"};
+    "kick", "kick2", "snare", "ghost", "hat", "open", "pedal", "bell",
+    "tom h", "tom m", "floor", "crash", "ride", "crsh2", "china", "rev"};
 /* a GM note (MIDI in, old projects) -> its lane: the nearest sound of the 16 (35..81; below: kick, above: shaker) */
 static const uint8_t LANE_OF_GM[81 - 35 + 1] = {
-    /* 35 */ 1, 0, 7, 2, 3, 8, 9, 4, 9, 6,
-    /* 45 */ 9, 5, 10, 10, 11, 10, 12, 11, 12, 13,
-    /* 55 */ 11, 15, 11, 13, 12, 14, 14, 14, 14, 14,
-    /* 65 */ 14, 14, 15, 15, 13, 13, 15, 15, 13, 13,
-    /* 75 */ 7, 7, 7, 14, 14, 15, 15};
+    /* 35 */ 1, 0, 3, 2, 2, 3, 10, 4, 10, 6,
+    /* 45 */ 9, 5, 9, 8, 11, 8, 12, 14, 7, 4,
+    /* 55 */ 15, 7, 13, 14, 12, 8, 8, 9, 9, 10,
+    /* 65 */ 8, 9, 7, 7, 4, 4, 7, 7, 4, 4,
+    /* 75 */ 3, 3, 3, 9, 9, 7, 7};
 /* SLOOP 2.7, the DRUMS screen's SOUND page: each of the 16 sounds' TUNE (-8 .. +7 semitones) and DECAY (-4 .. +3,
  * 0 as the kit has it), on every kit; kept with the project and each section (project.c: in the drum track's free
  * engine values) */
@@ -305,6 +307,8 @@ static void drum_on(uint32_t note, uint32_t vel)
     if (zid < 0) {                                  /* the GM sample kit */
         if (si < 0)
             return;
+        if (!DRUM_CLICK(note))                      /* M-PYRE: the kit has its 16 lanes' notes only; any GM */
+            note = LANE_NOTE[lane_of_note(note)];   /* note plays the nearest lane (MIDI in) */
         set = &SMP_SETS[si];
         for (i = 0; i < set->nz; i++)
             if (note >= SMP_ZONES[set->z0 + i].lo && note <= SMP_ZONES[set->z0 + i].hi)
@@ -340,7 +344,7 @@ static void drum_on(uint32_t note, uint32_t vel)
     {
         const smp_zone_t *z = drum_zone_of(v);
         v->s[3] = sample_next(z, v, 0);
-        v->s[5] = (int32_t)((pow2_q16((int32_t)note * 16 - z->root16) >> 8) * (z->rate >> 8));
+        v->s[5] = (int32_t)(((uint64_t)pow2_q16((int32_t)note * 16 - z->root16) * z->rate) >> 16);
     }
     {
         uint32_t vi = (uint32_t)(v - drums.v);
@@ -355,7 +359,7 @@ static void drum_on(uint32_t note, uint32_t vel)
         shift = shift * 16 + (tw ? drum_tune[ln] * 16 : 0);    /* (2.7) TUNE: the sound's semitones */
         if (shift) {
             const smp_zone_t *z = drum_zone_of(v);
-            v->s[5] = (int32_t)((pow2_q16((int32_t)note * 16 + shift - z->root16) >> 8) * (z->rate >> 8));
+            v->s[5] = (int32_t)(((uint64_t)pow2_q16((int32_t)note * 16 + shift - z->root16) * z->rate) >> 16);
         }
     }
 }

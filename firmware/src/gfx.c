@@ -78,13 +78,13 @@ typedef struct {
 _Static_assert(sizeof(theme_t) == 40u, "theme layout (the editor's Theme page writes these bytes)");
 static theme_t theme;                            /* the theme there is (theme_valid: project.c theme_check passed) */
 static uint8_t theme_valid, theme_on;
-/* the tracks' colours: full, two thirds, one third (the built-in ones as they always were) */
-static const uint16_t TE_COL_DEF[4] = {RGB(40, 124, 255), RGB(30, 204, 112), RGB(255, 198, 24), RGB(255, 98, 26)};
-static const uint16_t TE_MID_DEF[4] = {RGB(26, 82, 170), RGB(20, 136, 76), RGB(170, 132, 16), RGB(170, 66, 18)};
-static const uint16_t TE_DIM_DEF[4] = {RGB(14, 40, 86), RGB(10, 66, 38), RGB(86, 66, 8), RGB(86, 32, 8)};
-static uint16_t TE_COL[4] = {RGB(40, 124, 255), RGB(30, 204, 112), RGB(255, 198, 24), RGB(255, 98, 26)};
-static uint16_t TE_MID[4] = {RGB(26, 82, 170), RGB(20, 136, 76), RGB(170, 132, 16), RGB(170, 66, 18)};
-static uint16_t TE_DIM[4] = {RGB(14, 40, 86), RGB(10, 66, 38), RGB(86, 66, 8), RGB(86, 32, 8)};
+/* the tracks' colours: full, two thirds, one third. M-PYRE: fire, top to bottom - red, orange, yellow, the drums white */
+static const uint16_t TE_COL_DEF[4] = {RGB(235, 40, 25), RGB(255, 120, 20), RGB(255, 205, 40), RGB(240, 236, 226)};
+static const uint16_t TE_MID_DEF[4] = {RGB(156, 26, 16), RGB(170, 80, 13), RGB(170, 136, 26), RGB(160, 157, 150)};
+static const uint16_t TE_DIM_DEF[4] = {RGB(78, 13, 8), RGB(85, 40, 6), RGB(85, 68, 13), RGB(80, 78, 75)};
+static uint16_t TE_COL[4] = {RGB(235, 40, 25), RGB(255, 120, 20), RGB(255, 205, 40), RGB(240, 236, 226)};
+static uint16_t TE_MID[4] = {RGB(156, 26, 16), RGB(170, 80, 13), RGB(170, 136, 26), RGB(160, 157, 150)};
+static uint16_t TE_DIM[4] = {RGB(78, 13, 8), RGB(85, 40, 6), RGB(85, 68, 13), RGB(80, 78, 75)};
 static uint16_t rgb565_scale(uint32_t c, uint32_t num, uint32_t den)
 {
     uint32_t r = ((c >> 11) & 31u) * num / den, g = ((c >> 5) & 63u) * num / den, b = (c & 31u) * num / den;

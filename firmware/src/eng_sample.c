@@ -14,6 +14,10 @@ typedef struct {
                                   * editor's LOOP and LOOP+TAIL) loops while the note is held, then plays on to the end */
 } smp_zone_t;
 #define SMP_LOOP_HELD 2u
+#define SMP_LOOP_MASK 3u
+#define SMP_DEEMPH 0x80u         /* M-PYRE: the zone is stored pre-emphasised, (x - 0.85 x[-1]) / 0.15 (tools/prep_mpyre.py):
+                                  * sample_next undoes it, a one-pole low-pass of unity gain, which takes the ADPCM
+                                  * decoder's noise (white, mostly up high) down ~10 dB with it. State: v->ph[2] */
 typedef struct {
     const char *name;
     uint16_t z0, nz;
@@ -58,7 +62,10 @@ typedef struct {
 } smp_user_hdr_t;                                   /* 32 + 16 x 28 = 480 B, data at +512 */
 static smp_zone_t usr_zone[SMP_USER_SLOTS][16];     /* RAM copy, off rebased onto SMP_DATA */
 static uint8_t usr_nz[SMP_USER_SLOTS];
-static const char *const SMP_ALL_NAMES[SMP_NALL] = {SMP_SET_NAMES_INIT, "USR1", "USR2", "USR3", "USR4"};
+/* M-PYRE: the four slots hold the sound pack (tools/mpyre_slots.py): GUITAR over USR1 + USR2 (one set: a note finds
+ * its zone in either), the palm mutes in USR3, the bass in USR4 */
+static const char *const SMP_ALL_NAMES[SMP_NALL] = {SMP_SET_NAMES_INIT, "GUITAR", "GUITAR", "PALM", "BASS"};
+#define SMP_GTR SMP_NSETS                           /* the SET of the guitar (USR1 + USR2) */
 
 #ifndef SMP_USER_XIP                                /* host tests: a RAM image of the slots */
 #define SMP_USER_XIP(k) fm1_xip_ptr(SMP_USER_OFF((uint32_t)(k)))
@@ -124,16 +131,25 @@ static inline int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
         vd += step >> 1;
     if (code & 1u)
         vd += step >> 2;
+    int32_t y;
     v->s[0] = clamp(v->s[0] + ((code & 8u) ? -vd : vd), -32768, 32767);
     v->s[1] = clamp(v->s[1] + IMA_IDX[code & 7u], 0, 88);
+    y = v->s[0];
+    if (z->looped & SMP_DEEMPH) {                   /* (the de-emphasis: 0.15 = 4915 / 32768) */
+        int32_t st = (int32_t)v->ph[2];
+        st += ((y - st) * 4915) >> 15;
+        v->ph[2] = (uint32_t)st;
+        y = st;
+    }
     pos++;
-    if (pos > z->le && z->looped && loop && (z->looped != SMP_LOOP_HELD || v->gate)) {   /* (HELD, let go: the tail) */
+    if (pos > z->le && (z->looped & SMP_LOOP_MASK) && loop &&
+        ((z->looped & SMP_LOOP_MASK) != SMP_LOOP_HELD || v->gate)) {   /* (HELD, let go: the tail) */
         pos = z->ls;
         v->s[0] = z->pred;
         v->s[1] = z->idx;
     }
     v->ph[0] = pos;
-    return v->s[0];
+    return y;
 }
 
 static void sample_note_on(track_t *t, voice_t *v)
@@ -146,14 +162,18 @@ static void sample_note_on(track_t *t, voice_t *v)
                 zi = set->z0 + i;
         v->s[4] = (int32_t)(zi == 0xFFFFu ? set->z0 : zi);
     } else {                                        /* user slot: silent if empty */
-        uint32_t k = si - SMP_NSETS;
-        for (i = 0; i < usr_nz[k]; i++)
-            if (v->note >= usr_zone[k][i].lo && v->note <= usr_zone[k][i].hi)
-                zi = 0x8000u | k << 5 | i;
+        uint32_t k = si - SMP_NSETS, k1 = k, j;
+        if (k <= 1u)                                /* GUITAR: USR1 and USR2 together */
+            k = 0, k1 = 1;
+        for (j = k; j <= k1; j++)
+            for (i = 0; i < usr_nz[j]; i++)
+                if (v->note >= usr_zone[j][i].lo && v->note <= usr_zone[j][i].hi)
+                    zi = 0x8000u | j << 5 | i;
         v->s[4] = (int32_t)(zi == 0xFFFFu ? 0 : zi);
     }
     v->ph[0] = 0;
     v->ph[1] = 0;
+    v->ph[2] = 0;                                   /* (the de-emphasis) */
     v->s[0] = 0;
     v->s[1] = 0;
     v->s[2] = v->s[3] = 0;
@@ -167,7 +187,8 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     const smp_zone_t *z = smp_zone((uint32_t)v->s[4]);
     uint32_t i, frac = v->ph[1];
     int32_t d16 = clamp(m->pitch16 + p[P_E1] * 16 - z->root16, -1536, 576);   /* <= 3 octaves up: bounded decode load */
-    uint32_t r = pow2_q16(d16), stepq = (r >> 8) * (z->rate >> 8);   /* Q16 samples per output */
+    uint32_t r = pow2_q16(d16), stepq = (uint32_t)(((uint64_t)r * z->rate) >> 16);   /* Q16 samples per output
+                                                       * (M-PYRE: in 64 bits; (r >> 8) * (rate >> 8) was up to 5 cents flat) */
     int32_t bits = p[P_E2], lp = 4000 + ((clamp((p[P_E4] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
     int32_t drv = p[P_E6], sh = bits / 10;
     if (v->s[6] || !z->n) {
