@@ -1,20 +1,19 @@
-<!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <!-- M-PYRE emulator: the firmware (firmware/host/emu.c) as WebAssembly in an AudioWorklet; tools/build_emu.py
      inlines the module and the sound pack into this page (one file). -->
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>M-PYRE Emulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <style>
-  :root {
+  /* a single dark look: the FM-1's black panel and its fire colours */
+  :root { color-scheme: dark;
     --bg: #0b0908; --panel: #1b1715; --panel2: #24201d; --line: #3a322d; --fg: #f0ece2; --dim: #9a8f86;
     --red: #eb2819; --orange: #ff7814; --yellow: #ffcd28; --led: #ff3a1a; --key: #ece6dc; --keyb: #1a1715;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, "Segoe UI", Inter, sans-serif; }
-  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 14px; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, "Segoe UI", Inter, sans-serif; }
+  .page { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-block: 16px;
+          padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .note { width: min(980px, 100%); color: var(--dim); font-size: 12px; }
   h1 { font-size: 15px; letter-spacing: .12em; margin: 0; color: var(--dim); font-weight: 600; }
   h1 b { color: var(--orange); }
   .fm1 { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 18px;
@@ -62,14 +61,13 @@
     .screen { width: min(300px, 80vw); }
   }
 </style>
-</head>
-<body>
+<main class="page">
 <h1><b>M-PYRE</b> EMULATOR · FM-1</h1>
 <div class="fm1" id="fm1">
   <div class="top">
     <div class="screen">
       <canvas id="lcd" width="240" height="240"></canvas>
-      <button class="power" id="power"><span>⏻ POWER</span>Klicken zum Einschalten (Ton an)</button>
+      <button class="power" id="power"><span>⏻ POWER</span>Tippen zum Einschalten (Ton an)</button>
     </div>
     <div class="controls">
       <div class="row" id="encs1"></div>
@@ -86,6 +84,7 @@
   <div class="vol">Lautstärke <input type="range" id="vol" min="0" max="4096" value="2048"></div>
 </div>
 <div class="foot"><div id="kb2"></div></div>
+<p class="note">iPhone: Ist kein Ton zu hören, den Stummschalter an der Seite ausschalten (Web-Audio folgt ihm). Quer gehalten sind die Tasten größer.</p>
 <script>
 const WASM_B64 = /*WASM_B64*/"";
 const PACK_B64 = /*PACK_B64*/"";
@@ -145,12 +144,22 @@ class Emu extends AudioWorkletProcessor {
   process(_in, out) {
     if (!this.ok) return true;
     const L = out[0][0], R = out[0][1] || out[0][0], E = this.E, N = this.N;
-    for (let o = 0; o < L.length; o += N) {
-      const p = E.emu_render();
-      const f = new Float32Array(E.memory.buffer, p, N * 2);
-      for (let i = 0; i < N && o + i < L.length; i++) { L[o + i] = f[2 * i]; R[o + i] = f[2 * i + 1]; }
-      this.acc += N;
-      if (this.acc >= 705.6) { this.acc -= 705.6; this.frame(); }   // 16 ms at 44.1 kHz: a UI frame
+    const step = 44100 / sampleRate;                  // (1 at 44.1 kHz: the blocks straight through)
+    if (!this.cur) { this.cur = new Float32Array(2 * N); this.pos = N; this.pl = 0; this.pr = 0; }
+    for (let i = 0; i < L.length; i++) {
+      while (this.pos >= N - 1 + (step === 1 ? 1 : 0)) {
+        this.pl = this.cur[2 * N - 2]; this.pr = this.cur[2 * N - 1];
+        this.cur.set(new Float32Array(E.memory.buffer, E.emu_render(), N * 2));
+        this.pos -= N;
+        this.acc += N;
+        if (this.acc >= 705.6) { this.acc -= 705.6; this.frame(); }   // 16 ms at 44.1 kHz: a UI frame
+      }
+      const p = this.pos, k = Math.floor(p), f = p - k, c = this.cur;
+      const l0 = k < 0 ? this.pl : c[2 * k], r0 = k < 0 ? this.pr : c[2 * k + 1];
+      const l1 = c[2 * (k + 1)], r1 = c[2 * (k + 1) + 1];
+      L[i] = step === 1 ? c[2 * k] : l0 + (l1 - l0) * f;
+      R[i] = step === 1 ? c[2 * k + 1] : r0 + (r1 - r0) * f;
+      this.pos += step;
     }
     return true;
   }
@@ -273,15 +282,21 @@ function leds([lit, dim, bg, btn]) {
 }
 
 /* ---- power */
+function showError(msg) {
+  const p = document.getElementById("power") || document.querySelector(".screen").appendChild(Object.assign(document.createElement("div"), { className: "power" }));
+  p.innerHTML = "<span>FEHLER</span>"; p.append(String(msg));
+}
 document.getElementById("vol").addEventListener("input", (e) => send({ t: "vol", v: +e.target.value }));
 document.getElementById("power").addEventListener("click", async (e) => {
   const p = e.currentTarget;
   try {
-    ctx = new AudioContext({ sampleRate: 44100, latencyHint: "playback" });
+    const AC = window.AudioContext || window.webkitAudioContext;
+    try { ctx = new AC({ sampleRate: 44100, latencyHint: "playback" }); }
+    catch (err) { ctx = new AC({ latencyHint: "playback" }); }        // (the worklet resamples from 44.1 kHz)
     await ctx.resume();
     const module = await WebAssembly.compile(b64(WASM_B64));
     let ok = false;                                   // (a blob: URL fails from file://, a data: URL works there)
-    for (const url of ["data:text/javascript;base64," + btoa(WORKLET), URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" }))]) {
+    for (const url of [URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" })), "data:text/javascript;base64," + btoa(WORKLET)]) {
       try { await ctx.audioWorklet.addModule(url); ok = true; break; } catch (err) { /* the next way */ }
     }
     if (!ok) throw new Error("AudioWorklet konnte nicht geladen werden");
@@ -290,15 +305,13 @@ document.getElementById("power").addEventListener("click", async (e) => {
     node.port.onmessage = ({ data }) => {
       if (data.screen) draw(data.screen);
       else if (data.leds) leds(data.leds);
-      else if (data.error) alert("Emulator: " + data.error);
+      else if (data.error) showError(data.error);
     };
     node.connect(ctx.destination);
     p.remove();
   } catch (err) {
-    p.querySelector("span").textContent = "FEHLER";
-    p.append(String(err));
+    showError(err && err.message ? err.message : err);
   }
 });
 </script>
-</body>
-</html>
+</main>
