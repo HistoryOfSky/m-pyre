@@ -24,7 +24,8 @@
 #ifndef UI_SMALL                 /* (2.7) compiled for size: not the audio path (gfx.c UI_SMALL); the host tests: nothing */
 #define UI_SMALL
 #endif
-#define PROJ_MAGIC 0x46554E36u                 /* "FUN6": format 5 + the 2.6 parameters, nudge and condition in a byte */
+#define PROJ_MAGIC 0x3159504Du                 /* M-PYRE "MPY1": SLOOP's "FUN6" (format 5 + the 2.6 parameters, nudge and
+                                                * condition in a byte) with the riffbox's parameters and 20 locks a track */
 #define PROJ_MAGIC_V5 0x46554E35u              /* "FUN5": format 4 + per-step nudge, parameter locks, fill conditions (SLOOP 2.4) */
 #define PROJ_MAGIC_V4 0x46554E34u              /* "FUN4": four tracks, P_COUNT parameters each, 10-byte steps; read only */
 #define PROJ_MAGIC_V3 0x46554E33u              /* "FUN3": SLOOP 1.x; read only */
@@ -44,7 +45,7 @@ _Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u,
 _Static_assert(G_FXFADE == G_CLKOUT + 1u && G_COUNT == G_FXFADE + 1u, "G_FXFADE (2.7.2) is the last global, a setting of the FM-1");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
-_Static_assert(PROJ_NC6 == PROJ_NP_V5 - 8u && PROJ_NX6 == 10u, "format 6: format 5's parameters, then ten bytes");
+_Static_assert(PROJ_NC6 == PROJ_NP_V5 - 8u && PROJ_NX6 == 29u, "format 6 (M-PYRE): format 5's parameters, then 10 + 19 bytes");
 typedef struct {                               /* one track; the drum track ignores engine / preset */
     int16_t p[PROJ_NC6];                       /* P_LEVEL .. P_VLEAD (pt_get, pt_set) */
     int16_t e[8];                              /* P_E0 .. P_E7 */
@@ -91,7 +92,7 @@ typedef struct {                               /* a track of format 5 (SLOOP 2.4
         dstep_t dstep[NSTEP];
     };
     int8_t micro[NSTEP];                       /* each step's nudge (core.h) */
-    plock_t lock[NLOCK];                       /* and its parameter locks (step LOCK_FREE = none) */
+    plock_t lock[24];                          /* and its parameter locks (step LOCK_FREE = none; NLOCK then) */
     uint8_t fill[NSTEP / 4];                   /* and its fill condition, 2 bits a step (FC_*) */
 } proj_trk_v5_t;
 typedef struct {                               /* format 5, read only */
@@ -297,7 +298,7 @@ UI_SMALL static int proj_from_v5(project_t *q, const project_v5_t *v5, int n)
         memcpy(d->step, s->step, sizeof d->step);
         for (k = 0; k < NSTEP; k++)
             pt_set_mf(d, k, clamp(s->micro[k], MICRO_MIN, MICRO_MAX), (uint32_t)s->fill[k / 4u] >> (2u * (k % 4u)));
-        for (k = 0; k < NLOCK; k++) {
+        for (k = 0; k < NLOCK; k++) {                   /* (M-PYRE: the first 20 of 24) */
             d->lock[k] = s->lock[k];
             if (s->lock[k].step != LOCK_FREE && s->lock[k].param >= PROJ_NP_V5 - 8u)   /* P_E0.. of format 5 */
                 d->lock[k].param = (uint8_t)(s->lock[k].param - (PROJ_NP_V5 - 8u) + P_E0);

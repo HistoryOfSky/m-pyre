@@ -54,6 +54,8 @@ static void track_dist(track_t *t, int32_t *b, uint32_t n)
     }
 }
 
+#include "amp.c"                 /* M-PYRE: the amp and its cabinet, after the drive (track_amp) */
+
 /* master: peak limiter in front of the soft clipper, a 35 ms hold then ~46 ms release (2.6), threshold where tanh is still nearly linear,
  * so chords get quieter instead of crushed. SLOOP 2.6: it looks one block ahead (lim_block): the output is the mix
  * CTL samples late (0.73 ms) and the gain glides over each block to what the loudest sample of it and of the next one
@@ -671,9 +673,9 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
     uint32_t i;
     int32_t g0 = 32767 - t->att, g1 = gain_next(t);
     if (track_render(t, b, n))
-        t->tail = t->p[P_ITYPE] ? 64 : 16, t->ins_xt = 0;              /* blocks of DIST / INSERT state to run out after the last
+        t->tail = t->p[P_ITYPE] | t->p[P_AMP] ? 64 : 16, t->ins_xt = 0;   /* (M-PYRE: the cabinet's 23 ms too) */              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
-    else if ((!t->tail || !(t->p[P_DIST] | t->p[P_ITYPE]) || !--t->tail) && !slicer_busy(t) &&
+    else if ((!t->tail || !(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_AMP]) || !--t->tail) && !slicer_busy(t) &&
              !(t->ins_run && t->ins_res > 16u && t->ins_xt < 255u && ++t->ins_xt)) {   /* (2.6: the INSERT's DC
                                                          * blocker run out first, up to 255 blocks more: no step) */
         slicer_track(t, 0, n);                          /* (the SLICER's step clock runs on) */
@@ -694,6 +696,7 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
         int32_t ga = mulq15(g0, duck.g0), gb = mulq15(g1, duck.g1);   /* mute x duck, ramped over the block */
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
         track_dist(t, b, n);
+        track_amp(t, b, n);                             /* M-PYRE: the amp, its cabinet (amp.c) */
         if (t->p[P_ITYPE] | t->ins_run) {
             track_insert(t, b, n);                      /* the INSERT (2.6): off, nothing */
             t->ins_res = (uint16_t)(b[n - 1u] < 0 ? (-b[n - 1u] > 65535 ? 65535 : -b[n - 1u])

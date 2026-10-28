@@ -21,7 +21,7 @@
 #define UI_SMALL
 #endif
 #define UP_PER_BANK 16u
-#define UP_PMAX 72u                              /* room for P_COUNT to grow */
+#define UP_PMAX 92u                              /* room for P_COUNT to grow (M-PYRE: 90; a bank still fits a sector) */
 #define UP_USED 0xA5u
 #define UP_VER 1u
 #define UP_BANK_MAGIC 0x31425055u                /* "UPB1" */
@@ -36,7 +36,7 @@ typedef struct {
     uint16_t rsize, nslot;
     up_rec_t r[UP_PER_BANK];
 } up_bank_t;
-_Static_assert(sizeof(up_rec_t) == 192, "user preset record layout");
+_Static_assert(sizeof(up_rec_t) == 232, "user preset record layout (M-PYRE)");
 _Static_assert(P_COUNT <= UP_PMAX && P_COUNT < 128, "user preset record: P_COUNT");
 #ifdef UP_HOST
 static up_bank_t up_bank[UP_SLOTS / UP_PER_BANK];

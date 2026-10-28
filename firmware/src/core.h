@@ -70,6 +70,11 @@ enum {                          /* per-track parameters */
     P_FTYPE,                                   /* ANALOG's filter TYPE: LP (as before) / BP / HP (eng_analog.c) */
     P_ESYNC,                                   /* ENV SYNC: ATK DEC REL as note values of the tempo (voice.c) */
     P_LSYNC, P_LTRIG, P_LPOL,                  /* LFO 2: SYNC to the tempo, TRIG (NOTE / FREE), POL (BI / UNI) (voice.c) */
+    /* M-PYRE: the riffbox. Projects keep them in a byte each (0..127, or an enum); 64 is the middle of the
+     * two-sided ones (the tone knobs, WHAMMY, TONE) */
+    P_AMP, P_AGAIN, P_ABASS, P_AMID, P_ATREB, P_APRES, P_CAB,   /* the amp and its cabinet (amp.c) */
+    P_PEDAL, P_PDRV, P_COMP, P_OCT, P_OMIX,    /* in front of the amp: a drive pedal, the compressor, the octaver */
+    P_PALM, P_BEND, P_VIB, P_LEG, P_WHAM, P_TONE, P_PVOL,   /* the guitar's live controls (the LIVE view) */
     P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
     P_COUNT
 };
@@ -219,7 +224,8 @@ _Static_assert(sizeof(step_t) == 10 && sizeof(dstep_t) == 10, "a step is 10 byte
 /* SLOOP 2.4: per-step nudge (micro timing) and parameter locks (seq.c seq_tick / lock_step) */
 #define MICRO_MIN (-32)          /* a step's nudge in 1/64 of its length: half a step early .. */
 #define MICRO_MAX 31             /* .. just under half a step late (0 = on the grid) */
-#define NLOCK 24                 /* parameter locks per track (several may share a step: other params) */
+#define NLOCK 20                 /* parameter locks per track (several may share a step: other params; M-PYRE: 20, the
+                                  * project keeps the riffbox's parameters in the room) */
 typedef struct {                 /* a lock: on step `step` the track's p[param] is `val` (4 bytes) */
     uint8_t step;                /* 0xFF = a free slot */
     uint8_t param;               /* P_* (a lockable one: p_lockable) */

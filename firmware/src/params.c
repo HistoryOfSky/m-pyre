@@ -63,6 +63,9 @@ static const char *const N_GO[] = {"--", "GO"};
 static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */
 static const char *const N_CHORD[] = {"OFF", "TRIAD", "7TH", "9TH", "SUS4", "POWER"};   /* seq.c CHORD_DEG */
+static const char *const N_AMP[] = {"OFF", "CLEAN", "CRUNCH", "HI-GAIN", "LEAD", "B-CLEAN", "B-DRIVE", "DJENT"};   /* amp.c */
+static const char *const N_CAB[] = {"AUTO", "CLEAN", "CRUNCH", "HI-GAIN", "LEAD", "BASS", "OFF"};
+static const char *const N_PEDAL[] = {"OFF", "BOOST", "OD", "DIST", "FUZZ"};
 static const char *const N_ROLL[] = {"1/8", "1/16", "1/32", "32T", "1/64"};   /* seq.c ROLL_DEN */
 static const char *const N_ENGNAME[] = {"ANALOG", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL", "GRAIN",
                                         "FM6", "PHYS", "NOISE",
@@ -140,6 +143,26 @@ static const param_desc_t TP[P_COUNT] = {
     [P_LSYNC] = PE("SYNC", N_LSYNC, 0),           /* LFO 2: OFF = RATE, as before */
     [P_LTRIG] = PE("TRIG", N_LTRIG, 0),
     [P_LPOL] = PE("POL", N_LPOL, 0),
+    /* M-PYRE (amp.c): the amp, its tone stack (64 = as the amp is voiced), the cabinet (AUTO: the amp's own IR) */
+    [P_AMP] = PE("AMP", N_AMP, 0),
+    [P_AGAIN] = PD("GAIN", F_PCT, 0, 127, 64),
+    [P_ABASS] = PD("BASS", F_INT, 0, 127, 64),
+    [P_AMID] = PD("MID", F_INT, 0, 127, 64),
+    [P_ATREB] = PD("TREB", F_INT, 0, 127, 64),
+    [P_APRES] = PD("PRES", F_INT, 0, 127, 64),
+    [P_CAB] = PE("CAB", N_CAB, 0),
+    [P_PEDAL] = PE("PEDAL", N_PEDAL, 0),
+    [P_PDRV] = PD("DRIVE", F_PCT, 0, 127, 64),
+    [P_COMP] = PD("COMP", F_PCT, 0, 127, 0),
+    [P_OCT] = PD("OCT", F_INT, 0, 48, 24),       /* semitones + 24: 24 = off */
+    [P_OMIX] = PD("O MIX", F_PCT, 0, 127, 64),
+    [P_PALM] = PD("PALM", F_PCT, 0, 127, 0),
+    [P_BEND] = PD("BEND", F_PCT, 0, 127, 0),
+    [P_VIB] = PD("VIB", F_PCT, 0, 127, 0),
+    [P_LEG] = PD("LEGATO", F_PCT, 0, 127, 0),
+    [P_WHAM] = PD("WHAMMY", F_INT, 0, 127, 64),
+    [P_TONE] = PD("TONE", F_INT, 0, 127, 64),
+    [P_PVOL] = PD("VOL", F_PCT, 0, 127, 127),
 };
 /* a preset's extra parameters (preset_t.x) into p, each clamped to its range */
 static void preset_extras(int16_t *p, const preset_t *pr)
