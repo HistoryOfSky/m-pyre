@@ -73,6 +73,7 @@
 #else
 static int vis_shown(void) { return 0; }
 static void vis_draw(void) {}
+static void vis_select(int32_t s) { (void)s; }
 #endif
 #include "ui_layers.c"       /* hold a function button: what the keys and knobs do (TE style) */
 #include "ui_menu.c"

@@ -85,6 +85,7 @@ static void settings_save(void) {}
 #include "../firmware/src/ui_draw.c"
 static int vis_shown(void) { return 0; }   /* M-PYRE: no full-screen visualiser (felucca.c FELUCCA_VIS 0) */
 static void vis_draw(void) {}
+static void vis_select(int32_t s) { (void)s; }
 #define FELUCCA_VIS_TEST 0
 #define VIS_N 1u                                  /* (tests/stress_test.c: its visualiser bench draws the TRACKS screen) */
 static const char *const VIS_NAME[VIS_N] = {"NONE"};

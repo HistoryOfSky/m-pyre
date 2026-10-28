@@ -1,0 +1,304 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- M-PYRE emulator: the firmware (firmware/host/emu.c) as WebAssembly in an AudioWorklet; tools/build_emu.py
+     inlines the module and the sound pack into this page (one file). -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M-PYRE Emulator</title>
+<style>
+  :root {
+    --bg: #0b0908; --panel: #1b1715; --panel2: #24201d; --line: #3a322d; --fg: #f0ece2; --dim: #9a8f86;
+    --red: #eb2819; --orange: #ff7814; --yellow: #ffcd28; --led: #ff3a1a; --key: #ece6dc; --keyb: #1a1715;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, "Segoe UI", Inter, sans-serif; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px; gap: 14px; }
+  h1 { font-size: 15px; letter-spacing: .12em; margin: 0; color: var(--dim); font-weight: 600; }
+  h1 b { color: var(--orange); }
+  .fm1 { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 18px;
+         padding: 18px; width: min(980px, 100%); box-shadow: 0 20px 60px #000a; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .top { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start; }
+  .screen { position: relative; width: 300px; aspect-ratio: 1; background: #000; border: 6px solid #0d0b0a; border-radius: 8px;
+            box-shadow: inset 0 0 0 1px #333; }
+  canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+  .power { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+           background: #000d; border: 0; color: var(--fg); cursor: pointer; font: inherit; }
+  .power span { font-size: 22px; letter-spacing: .2em; color: var(--orange); }
+  .controls { display: flex; flex-direction: column; gap: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .knob { width: 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: ns-resize; }
+  .knob .dial { width: 46px; height: 46px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #4a423c, #191513 70%);
+                border: 2px solid #0e0c0b; position: relative; box-shadow: 0 3px 6px #0008; }
+  .knob .dial::after { content: ""; position: absolute; left: 50%; top: 4px; width: 3px; height: 14px; margin-left: -1.5px;
+                       background: var(--fg); border-radius: 2px; transform-origin: 50% 19px; transform: rotate(var(--a, 0deg)); }
+  .knob.big .dial { width: 54px; height: 54px; }
+  .knob.big .dial::after { transform-origin: 50% 23px; height: 16px; }
+  .knob label { font-size: 10px; color: var(--dim); letter-spacing: .06em; text-align: center; }
+  .btn { min-width: 58px; height: 34px; padding: 0 8px; border-radius: 7px; border: 1px solid #0e0c0b; background: #2f2925; color: var(--fg);
+         font: 600 11px/1 inherit; letter-spacing: .06em; cursor: pointer; position: relative; box-shadow: 0 2px 0 #0b0908; }
+  .btn:active, .btn.down { transform: translateY(1px); box-shadow: none; background: #3a332e; }
+  .btn.lit { background: #4a1c10; color: #fff; box-shadow: 0 0 10px var(--led), inset 0 0 0 1px var(--led); }
+  .btn.play.lit { background: #183d18; box-shadow: 0 0 10px #3c3, inset 0 0 0 1px #3c3; }
+  .keys { position: relative; height: 150px; margin-top: 16px; }
+  .key { position: absolute; top: 0; border-radius: 0 0 6px 6px; cursor: pointer; }
+  .key.w { height: 150px; background: var(--key); border: 1px solid #5d544c; z-index: 1; }
+  .key.b { height: 92px; background: var(--keyb); border: 1px solid #000; z-index: 2; }
+  .key.down.w { background: #d6cbbd; }
+  .key.down.b { background: #3a332e; }
+  .key .led { position: absolute; left: 50%; bottom: 10px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #0000; }
+  .key.b .led { bottom: 8px; }
+  .key.bg .led { background: #ff3a1a33; }
+  .key.dim .led { background: #ff3a1a88; }
+  .key.lit .led { background: var(--led); box-shadow: 0 0 8px var(--led); }
+  .key .lab { position: absolute; bottom: 26px; width: 100%; text-align: center; font-size: 10px; color: #7a6f66; }
+  .key.b .lab { color: #6c625a; bottom: 22px; }
+  .foot { width: min(980px, 100%); display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; color: var(--dim); font-size: 12px; }
+  .foot kbd { background: #2a2420; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; color: var(--fg); font: 11px ui-monospace, monospace; }
+  .vol { display: flex; gap: 8px; align-items: center; }
+  @media (max-width: 760px) {
+    .top { grid-template-columns: 1fr; justify-items: center; }
+    .screen { width: min(300px, 80vw); }
+  }
+</style>
+</head>
+<body>
+<h1><b>M-PYRE</b> EMULATOR · FM-1</h1>
+<div class="fm1" id="fm1">
+  <div class="top">
+    <div class="screen">
+      <canvas id="lcd" width="240" height="240"></canvas>
+      <button class="power" id="power"><span>⏻ POWER</span>Klicken zum Einschalten (Ton an)</button>
+    </div>
+    <div class="controls">
+      <div class="row" id="encs1"></div>
+      <div class="row" id="encs2"></div>
+      <div class="row" id="btns1"></div>
+      <div class="row" id="btns2"></div>
+    </div>
+  </div>
+  <div class="keys" id="keys"></div>
+</div>
+<div class="foot">
+  <div>Regler: ziehen (hoch/runter) oder Mausrad · Tasten halten = Maus gedrückt halten · Shift + Klick = Taste bleibt gedrückt</div>
+  <div>Tastatur: <kbd>A</kbd>…<kbd>'</kbd> weiße / <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd>… schwarze Tasten ab F3</div>
+  <div class="vol">Lautstärke <input type="range" id="vol" min="0" max="4096" value="2048"></div>
+</div>
+<div class="foot"><div id="kb2"></div></div>
+<script>
+const WASM_B64 = /*WASM_B64*/"";
+const PACK_B64 = /*PACK_B64*/"";
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+/* panel.c: B_FX .. B_OCTUP and EN_SELECT .. EN_K4 */
+const B = { FX: 0, SEL: 1, ENV: 2, LFO: 3, EDIT: 4, GLO: 5, HOME: 6, SAVE: 7, ARP: 8, SEQ: 9, PLAY: 10, REC: 11, "OCT-": 12, "OCT+": 13 };
+const EN = { SELECT: 0, ALGORITHM: 1, PRESETS: 2, "KNOB 1": 3, "KNOB 2": 4, "KNOB 3": 5, "KNOB 4": 6 };
+
+/* ---- the worklet: the firmware, its audio and its UI frames */
+const WORKLET = `
+class Emu extends AudioWorkletProcessor {
+  constructor(opt) {
+    super();
+    this.ok = false; this.acc = 0; this.q = []; this.pend = []; this.ledsLast = "";
+    WebAssembly.instantiate(opt.processorOptions.module, {}).then((inst) => {
+      const E = this.E = inst.exports;
+      E.emu_init();
+      const pack = opt.processorOptions.pack;
+      if (pack && pack.length === 4 * 0x14000) {
+        for (let k = 0; k < 4; k++) {
+          new Uint8Array(E.memory.buffer, E.emu_buffer(), 0x14000).set(pack.subarray(k * 0x14000, (k + 1) * 0x14000));
+          E.emu_slot(k);
+        }
+        E.emu_reset_tracks();
+      }
+      this.N = E.emu_block_frames();
+      this.ok = true;
+      this.port.postMessage({ ready: true, pack: !!(pack && pack.length) });
+    }).catch((e) => this.port.postMessage({ error: String(e) }));
+    this.port.onmessage = ({ data }) => this.q.push(data);
+  }
+  input(m) {
+    const E = this.E;
+    if (m.t === "keys") E.emu_keys(m.v >>> 0);
+    else if (m.t === "btn") E.emu_button(m.b, m.d ? 1 : 0);
+    else if (m.t === "knob") E.emu_knob(m.r, m.s);
+    else if (m.t === "vol") E.emu_volume(m.v);
+  }
+  frame() {
+    const E = this.E;
+    while (this.q.length) {                          // (a press and its release apart: one UI frame between)
+      const m = this.q[0];
+      if (m.t === "btn" && !m.d && this.q.wait) { this.q.wait = false; break; }
+      this.q.shift();
+      this.input(m);
+      if (m.t === "btn" && m.d) { this.q.wait = true; break; }
+    }
+    if (E.emu_ui()) {
+      const s = new Uint16Array(E.memory.buffer, E.emu_screen(), 240 * 240).slice();
+      this.port.postMessage({ screen: s }, [s.buffer]);
+    }
+    const l = [E.emu_led_keys(0), E.emu_led_keys(1), E.emu_led_keys(2), E.emu_led_buttons()];
+    const k = l.join();
+    if (k !== this.ledsLast) { this.ledsLast = k; this.port.postMessage({ leds: l }); }
+  }
+  process(_in, out) {
+    if (!this.ok) return true;
+    const L = out[0][0], R = out[0][1] || out[0][0], E = this.E, N = this.N;
+    for (let o = 0; o < L.length; o += N) {
+      const p = E.emu_render();
+      const f = new Float32Array(E.memory.buffer, p, N * 2);
+      for (let i = 0; i < N && o + i < L.length; i++) { L[o + i] = f[2 * i]; R[o + i] = f[2 * i + 1]; }
+      this.acc += N;
+      if (this.acc >= 705.6) { this.acc -= 705.6; this.frame(); }   // 16 ms at 44.1 kHz: a UI frame
+    }
+    return true;
+  }
+}
+registerProcessor("mpyre-emu", Emu);
+`;
+
+let ctx = null, node = null;
+const send = (m) => node && node.port.postMessage(m);
+
+/* ---- the screen */
+const lcd = document.getElementById("lcd"), g = lcd.getContext("2d"), img = g.createImageData(240, 240);
+function draw(s) {
+  const d = img.data;
+  for (let i = 0; i < s.length; i++) {
+    const v = ((s[i] & 0xFF) << 8) | (s[i] >> 8);    // (the panel's byte order)
+    d[4 * i] = (v >> 11) * 255 / 31; d[4 * i + 1] = ((v >> 5) & 63) * 255 / 63; d[4 * i + 2] = (v & 31) * 255 / 31; d[4 * i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+/* ---- knobs */
+const knobEls = {};
+function knob(name, row, big) {
+  const el = document.createElement("div");
+  el.className = "knob" + (big ? " big" : "");
+  el.innerHTML = `<div class="dial"></div><label>${name}</label>`;
+  let a = 0, y0 = null, acc = 0;
+  const turn = (s) => { if (!s) return; a += s * 12; el.querySelector(".dial").style.setProperty("--a", a + "deg"); send({ t: "knob", r: EN[name], s }); };
+  el.addEventListener("pointerdown", (e) => { y0 = e.clientY; acc = 0; el.setPointerCapture(e.pointerId); e.preventDefault(); });
+  el.addEventListener("pointermove", (e) => {
+    if (y0 == null) return;
+    acc += (y0 - e.clientY); y0 = e.clientY;
+    const s = Math.trunc(acc / 6); if (s) { acc -= s * 6; turn(s); }
+  });
+  el.addEventListener("pointerup", () => { y0 = null; });
+  el.addEventListener("wheel", (e) => { e.preventDefault(); turn(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  document.getElementById(row).appendChild(el);
+  knobEls[name] = { el, turn };
+}
+["SELECT", "ALGORITHM", "PRESETS"].forEach((n) => knob(n, "encs1", true));
+["KNOB 1", "KNOB 2", "KNOB 3", "KNOB 4"].forEach((n) => knob(n, "encs2"));
+
+/* ---- buttons */
+const btnEls = {};
+function button(name, row) {
+  const el = document.createElement("button");
+  el.className = "btn" + (name === "PLAY" ? " play" : "");
+  el.textContent = name;
+  let latched = false;
+  const down = () => { el.classList.add("down"); send({ t: "btn", b: B[name], d: 1 }); };
+  const up = () => { el.classList.remove("down"); send({ t: "btn", b: B[name], d: 0 }); };
+  el.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    if (e.shiftKey) { latched = !latched; latched ? down() : up(); return; }
+    if (latched) { latched = false; up(); return; }
+    down();
+  });
+  el.addEventListener("pointerup", (e) => { if (!latched && !e.shiftKey) up(); });
+  el.addEventListener("pointercancel", () => { if (!latched) up(); });
+  document.getElementById(row).appendChild(el);
+  btnEls[name] = { el, down, up };
+}
+["FX", "SEL", "ENV", "LFO", "EDIT", "GLO", "HOME"].forEach((n) => button(n, "btns1"));
+["SAVE", "ARP", "SEQ", "OCT-", "OCT+", "REC", "PLAY"].forEach((n) => button(n, "btns2"));
+
+/* ---- the keyboard: 27 keys, F3 (key 0) .. G5 */
+const NAMES = ["F", "F#", "G", "G#", "A", "A#", "B", "C", "C#", "D", "D#", "E"];
+const keysEl = document.getElementById("keys"), keyEls = [];
+let held = 0;
+const WHITE = [];
+for (let k = 0; k < 27; k++) if (!NAMES[k % 12].includes("#")) WHITE.push(k);
+function layoutKeys() {
+  const w = keysEl.clientWidth / WHITE.length;
+  keyEls.forEach((el, k) => {
+    const black = NAMES[k % 12].includes("#");
+    if (!black) { const i = WHITE.indexOf(k); el.style.left = i * w + "px"; el.style.width = w - 2 + "px"; }
+    else { const i = WHITE.indexOf(k - 1); el.style.left = (i + 1) * w - w * 0.32 + "px"; el.style.width = w * 0.64 + "px"; }
+  });
+}
+const setKeys = () => send({ t: "keys", v: held });
+for (let k = 0; k < 27; k++) {
+  const el = document.createElement("div"), black = NAMES[k % 12].includes("#");
+  el.className = "key " + (black ? "b" : "w");
+  const oct = 3 + Math.floor((k + 5) / 12);
+  el.innerHTML = `<div class="lab">${NAMES[k % 12] === "C" ? "C" + oct : ""}</div><div class="led"></div>`;
+  el.addEventListener("pointerdown", (e) => { e.preventDefault(); el.releasePointerCapture?.(e.pointerId); held |= 1 << k; el.classList.add("down"); setKeys(); });
+  const off = () => { if (held & (1 << k)) { held &= ~(1 << k); el.classList.remove("down"); setKeys(); } };
+  el.addEventListener("pointerup", off); el.addEventListener("pointerleave", off); el.addEventListener("pointercancel", off);
+  el.addEventListener("pointerenter", (e) => { if (e.buttons & 1) { held |= 1 << k; el.classList.add("down"); setKeys(); } });
+  keysEl.appendChild(el); keyEls.push(el);
+}
+addEventListener("resize", layoutKeys); layoutKeys();
+
+/* ---- the computer keyboard */
+const KEYMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, r: 5, f: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, ";": 16, "[": 17, "'": 18 };
+const BTNKEYS = { " ": "PLAY", "1": "HOME", "2": "FX", "3": "SEQ", "4": "EDIT", "5": "GLO", "6": "SAVE", "z": "OCT-", "x": "OCT+", "c": "REC" };
+const KNOBKEYS = { ArrowUp: ["SELECT", 1], ArrowDown: ["SELECT", -1], ArrowRight: ["PRESETS", 1], ArrowLeft: ["PRESETS", -1] };
+document.getElementById("kb2").innerHTML = "Tasten am Rechner: " + Object.entries(BTNKEYS).map(([k, v]) => `<kbd>${k === " " ? "Space" : k.toUpperCase()}</kbd> ${v}`).join(" · ")
+  + " · <kbd>↑</kbd><kbd>↓</kbd> SELECT · <kbd>←</kbd><kbd>→</kbd> PRESETS";
+addEventListener("keydown", (e) => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if (k in KEYMAP) { held |= 1 << KEYMAP[k]; keyEls[KEYMAP[k]].classList.add("down"); setKeys(); e.preventDefault(); }
+  else if (k in BTNKEYS) { btnEls[BTNKEYS[k]].down(); e.preventDefault(); }
+  else if (e.key in KNOBKEYS) { knobEls[KNOBKEYS[e.key][0]].turn(KNOBKEYS[e.key][1]); e.preventDefault(); }
+});
+addEventListener("keyup", (e) => {
+  const k = e.key.toLowerCase();
+  if (k in KEYMAP) { held &= ~(1 << KEYMAP[k]); keyEls[KEYMAP[k]].classList.remove("down"); setKeys(); }
+  else if (k in BTNKEYS) btnEls[BTNKEYS[k]].up();
+});
+
+/* ---- LEDs */
+function leds([lit, dim, bg, btn]) {
+  keyEls.forEach((el, k) => {
+    el.classList.toggle("lit", !!(lit >>> k & 1)); el.classList.toggle("dim", !!(dim >>> k & 1)); el.classList.toggle("bg", !!(bg >>> k & 1));
+  });
+  for (const [n, b] of Object.entries(B)) btnEls[n].el.classList.toggle("lit", !!(btn >>> b & 1));
+}
+
+/* ---- power */
+document.getElementById("vol").addEventListener("input", (e) => send({ t: "vol", v: +e.target.value }));
+document.getElementById("power").addEventListener("click", async (e) => {
+  const p = e.currentTarget;
+  try {
+    ctx = new AudioContext({ sampleRate: 44100, latencyHint: "playback" });
+    await ctx.resume();
+    const module = await WebAssembly.compile(b64(WASM_B64));
+    let ok = false;                                   // (a blob: URL fails from file://, a data: URL works there)
+    for (const url of ["data:text/javascript;base64," + btoa(WORKLET), URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" }))]) {
+      try { await ctx.audioWorklet.addModule(url); ok = true; break; } catch (err) { /* the next way */ }
+    }
+    if (!ok) throw new Error("AudioWorklet konnte nicht geladen werden");
+    node = new AudioWorkletNode(ctx, "mpyre-emu", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
+      processorOptions: { module, pack: PACK_B64 ? b64(PACK_B64) : null } });
+    node.port.onmessage = ({ data }) => {
+      if (data.screen) draw(data.screen);
+      else if (data.leds) leds(data.leds);
+      else if (data.error) alert("Emulator: " + data.error);
+    };
+    node.connect(ctx.destination);
+    p.remove();
+  } catch (err) {
+    p.querySelector("span").textContent = "FEHLER";
+    p.append(String(err));
+  }
+});
+</script>
+</body>
+</html>

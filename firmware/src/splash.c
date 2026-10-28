@@ -41,7 +41,10 @@ UI_SMALL static void sloop_logo_draw(uint32_t y0)
         cv_begin(SLOOP_SPLASH_W, rows, C_BLACK);
         for (i = 0; i < sizeof SLOOP_SPLASH_RLE && pos < hi; i++) {
             uint32_t run = (SLOOP_SPLASH_RLE[i] >> 4) + 1u, c = SLOOP_SPLASH_RLE[i] & 15u, p;
-            if (c && pos + run > lo)
+#ifndef SLOOP_SPLASH_FULL
+#define SLOOP_SPLASH_FULL 0
+#endif
+            if ((c || SLOOP_SPLASH_FULL) && pos + run > lo)   /* (M-PYRE: the whole screen, its darkest colour too) */
                 for (p = pos < lo ? lo : pos; p < pos + run && p < hi; p++)
                     cv_px[p - lo] = swap16(SLOOP_SPLASH_PAL[c]);
             pos += run;
@@ -55,6 +58,10 @@ UI_SMALL static void sloop_logo_draw(uint32_t y0)
 UI_SMALL static void sloop_splash(void)
 {
     lcd_fill(0, 0, 240, 240, C_BLACK);
+#if !FELUCCA_LOGO_TEXT && SLOOP_SPLASH_FULL
+    sloop_logo_draw(0);                                 /* M-PYRE: the artwork is the whole screen, the version in it */
+    return;
+#endif
     sloop_logo_draw(10);
     const char *v = FELUCCA_VERSION;
     if (v[0] == 'M' && v[1] == '-' && v[6] == ' ')
