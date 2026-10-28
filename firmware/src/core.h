@@ -128,6 +128,7 @@ typedef struct {
     uint32_t ph[3];
     int32_t s[8];                /* engine state (filters, envs) */
     uint32_t age;
+    uint16_t vt;                 /* M-PYRE: blocks since the note began (the vibrato comes in late) */
 } voice_t;
 
 typedef struct {                 /* per-voice control-rate modulation, computed in voice.c */
@@ -276,6 +277,8 @@ typedef struct track {
     int16_t lk_set[NLOCK];
     uint32_t seq_abs;            /* the step of the transport grid last played (seq.c trk_grid), SEQ_NONE */
     int16_t bend, bend_s;        /* 2.6: MIDI pitch bend -8192..8191 (seq.c), and as it glides (voice.c, a block at a time) */
+    int32_t rf_bend, rf_wham;    /* M-PYRE: BEND and WHAMMY as they glide (1/4096 semitone, voice.c track_render) */
+    uint32_t rf_vph;             /* M-PYRE: the vibrato's phase */
     uint16_t seq_idx;            /* its index in the pattern */
     uint8_t seq_den;             /* the DIV it was played on (a DIV change waits for the next step) */
     uint8_t arp_den;             /* the same for the arp's RATE */

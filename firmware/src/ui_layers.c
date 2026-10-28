@@ -545,7 +545,7 @@ UI_SMALL static void layer_knobs(uint32_t layer)
         case LY_SCALE:
             if (k == 0u) {
                 if (!is_drum(t))
-                    t->p[P_CHORD] = (int16_t)clamp(t->p[P_CHORD] + s, 0, 5);
+                    t->p[P_CHORD] = (int16_t)clamp(t->p[P_CHORD] + s, 0, 8);
             } else if (k == 1u) {
                 uint32_t i;
                 int16_t v = (int16_t)clamp(trk[0].p[P_SCALE] + s, 0, NSCALES - 1);
@@ -927,8 +927,10 @@ UI_SMALL static void layer_screen_draw(void)
                 if (n != KB_SILENT && (m = chord_notes(t, n, c)) != 0u) {
                     uint32_t third = m > 1u ? (uint32_t)(c[1] - c[0]) : 4u;
                     str_cpy(tl[i].lab, N_NOTE[c[0] % 12u], 8);
-                    if (t->p[P_CHORD] == 5)
+                    if (t->p[P_CHORD] == 1 || t->p[P_CHORD] == 2)
                         str_cpy(tl[i].lab + str_len(tl[i].lab), "5", 2);
+                    else if (t->p[P_CHORD] == 3)
+                        str_cpy(tl[i].lab + str_len(tl[i].lab), "8", 2);
                     else if (third == 3u)
                         str_cpy(tl[i].lab + str_len(tl[i].lab), "m", 2);
                     pc = c[0] % 12u;
@@ -941,13 +943,13 @@ UI_SMALL static void layer_screen_draw(void)
             tl[i].fg = pc == root ? C_BLACK : in ? C_WHITE : TE_G2;
         }
         lab[0] = "chord", lab[1] = "scale", lab[2] = "keys", lab[3] = "transp";
-        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, 5)], 8);
+        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, 8)], 8);
         te_lower(v[1], N_SCALE[clamp(trk[0].p[P_SCALE], 0, NSCALES - 1)], 8);
         te_lower(v[2], N_QUANT[clamp(t->p[P_QUANT], 0, 2)], 8);
         fmt_int(v[3], t->p[P_TRANS]);
         if (is_drum(t))
             v[0][0] = v[2][0] = v[3][0] = 0;
-        ratio[0] = t->p[P_CHORD] * 200;
+        ratio[0] = t->p[P_CHORD] * 125;
         ratio[1] = trk[0].p[P_SCALE] * 1000 / (NSCALES - 1);
         ratio[2] = t->p[P_QUANT] * 500;
         ratio[3] = (t->p[P_TRANS] + 24) * 1000 / 48;

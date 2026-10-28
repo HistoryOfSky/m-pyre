@@ -197,19 +197,23 @@ static int kb_scaled(const track_t *t)
  * now. WHITE (and chord mode): the white keys walk the scale from C4 = the root, the black keys are silent; SNAP: every
  * key, rounded down into the scale. The keys (kb_map), and the notes the arp holds (arp_list, 2.6 after Felucca 1.5
  * #191: a latched chord follows TRN, ROOT, SCALE and QNT, in the octave its keys were pressed in) */
+/* M-PYRE: the chords that make the white keys walk the scale (TRIAD .. SUS4); PW, PW+, OCT and TERZ leave every key
+ * its own note (a riff is chromatic) */
+#define CHORD_WHITE 5
+static int chord_white(const track_t *t) { return t->p[P_CHORD] >= CHORD_WHITE; }
 static uint32_t kb_pitch(const track_t *t, uint32_t k, int32_t oct)
 {
     static const int8_t DEGREE[12] = {0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6};
     int32_t n = 53 + (int32_t)k;
-    if (t->p[P_QUANT] == 1 && !t->p[P_CHORD]) {  /* SNAP: every key, rounded down to the scale (the old ON) */
+    if (t->p[P_QUANT] == 1 && !chord_white(t)) {  /* SNAP: every key, rounded down to the scale (the old ON) */
         uint32_t mask = scale_mask(t), guard = 12;
         n += 12 * oct + t->p[P_TRANS];
         while (guard-- && !((mask >> (uint32_t)((n - t->p[P_ROOT] + 120) % 12)) & 1u))
             n--;
         return (uint32_t)clamp(n, 0, 127);
     }
-    if (t->p[P_QUANT] == 2 || t->p[P_CHORD]) {   /* WHITE: white keys walk the scale, black keys are silent */
-        uint32_t mask = t->p[P_CHORD] && !t->p[P_SCALE] ? SCALE_MASK[2] : scale_mask(t), i;
+    if (t->p[P_QUANT] == 2 || chord_white(t)) {   /* WHITE: white keys walk the scale, black keys are silent */
+        uint32_t mask = chord_white(t) && !t->p[P_SCALE] ? SCALE_MASK[2] : scale_mask(t), i;
         int32_t count = 0, degree = DEGREE[n % 12], wo;
         if (degree < 0)
             return KB_SILENT;
@@ -251,23 +255,26 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
 
 /* chord mode (P_CHORD): the chord of the scale built on note n (in the scale; CHR: minor), into c[];
  * the notes it holds (<= 4, the most a step keeps) */
-static const int8_t CHORD_DEG[6][4] = {
+static const int8_t CHORD_DEG[9][4] = {
     {0, -1, -1, -1},                     /* OFF */
+    {0, -1, -1, -1},                     /* PW: 1 5 (semitones, below) */
+    {0, -1, -1, -1},                     /* PW+: 1 5 8 (semitones) */
+    {0, -1, -1, -1},                     /* OCT: 1 8 (semitones) */
+    {0, 2, -1, -1},                      /* TERZ: 1 3 of the scale (twin-guitar harmony; CHR: minor) */
     {0, 2, 4, -1},                       /* TRIAD: 1 3 5 */
     {0, 2, 4, 6},                        /* 7TH: 1 3 5 7 */
     {0, 2, 6, 8},                        /* 9TH: 1 3 7 9 (the lo-fi / R&B voicing) */
     {0, 3, 4, -1},                       /* SUS4: 1 4 5 */
-    {0, -1, -1, -1},                     /* POWER: 1 5 8 (semitones, below) */
 };
 static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
 {
-    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, 5), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
+    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, 8), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
     uint32_t k = 0, j;
-    if (type == 5u) {
-        static const uint8_t PW[3] = {0, 7, 12};
-        for (j = 0; j < 3u; j++)
-            if (n + PW[j] < 128u)
-                c[k++] = (uint8_t)(n + PW[j]);
+    if (type >= 1u && type <= 3u) {                      /* PW, PW+, OCT: in semitones */
+        static const uint8_t SEMI[3][3] = {{0, 7, 0}, {0, 7, 12}, {0, 12, 0}}, NS[3] = {2, 3, 2};
+        for (j = 0; j < NS[type - 1u]; j++)
+            if (n + SEMI[type - 1u][j] < 128u)
+                c[k++] = (uint8_t)(n + SEMI[type - 1u][j]);
         return k;
     }
     for (j = 0; j < 4u && CHORD_DEG[type][j] >= 0; j++) {
@@ -322,8 +329,8 @@ static void sort_notes(uint8_t *c, uint32_t n)
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
 static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t *c)
 {
-    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, 5), part = trk_index(t);
-    if (type != 5u && k >= 2u && mods) {                /* (POWER: the inversion only) */
+    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, 8), part = trk_index(t);
+    if (type >= CHORD_WHITE && k >= 2u && mods) {       /* (PW .. TERZ: the inversion only) */
         uint32_t third = scale_up(t, n, 2u);
         for (j = 0; j < k; j++) {
             if (c[j] == third && (mods & CM_SUS4))

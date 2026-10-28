@@ -97,12 +97,14 @@ static uint32_t lowest_held(const track_t *t)           /* index of the lowest h
 
 /* the voice to give up for a new one (see the top); soft: only released voices and
  * extra UNISON voices of other parts. Returns its index, *pp its part; NVOICE = none */
+/* M-PYRE: LEGATO turned up makes the part play legato (one voice, the next note slides in, no new attack) */
+static uint32_t voice_mode(const track_t *t) { return t->p[P_LEG] ? V_LEGATO : (uint32_t)t->p[P_VOICE]; }
 static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
 {
     uint32_t p, i, best = NVOICE, cat = 4;
     for (p = 0; p < NPART; p++) {
         track_t *t = &trk[p];
-        uint32_t mode = (uint32_t)t->p[P_VOICE], nu = mode == V_UNISON ? trk_nvoice(t) : 1u;
+        uint32_t mode = voice_mode(t), nu = mode == V_UNISON ? trk_nvoice(t) : 1u;
         uint32_t low = mode == V_POLY ? lowest_held(t) : NVOICE;
         if (soft && t == self)
             continue;
@@ -164,7 +166,7 @@ static void shed_voice(void)
     }
     for (p = 0; p < NPART; p++) {
         const track_t *t = &trk[p];
-        uint32_t mode = (uint32_t)t->p[P_VOICE], low = mode == V_POLY ? lowest_held(t) : 0u;
+        uint32_t mode = voice_mode(t), low = mode == V_POLY ? lowest_held(t) : 0u;
         for (i = 0; i < NVOICE; i++) {
             voice_t *v = &trk[p].v[i];
             if (v->active && v->gate && v->stage != 4u &&
@@ -270,6 +272,14 @@ static void glide_set(track_t *t, voice_t *v, int glide)
         v->gstep = 0;
         return;
     }
+    if (t->p[P_LEG]) {                                  /* M-PYRE LEGATO: the slide's time from the knob, a little = a
+                                                         * hammer-on (~10 ms), up to a slow slide (~300 ms), any interval */
+        d = (v->pitch16 << 8) - ((v->pitch_cur << 8) + v->pitch_frac);
+        d = d < 0 ? -d : d;
+        ticks = glide_ticks(4 + t->p[P_LEG] * 56 / 127);
+        v->gstep = d / ticks > 0 ? d / ticks : 1;
+        return;
+    }
     if (t->p[P_GLMODE] || !t->p[P_GLIDE]) {
         d = (v->pitch16 << 8) - ((v->pitch_cur << 8) + v->pitch_frac);
         d = d < 0 ? -d : d;
@@ -283,6 +293,7 @@ static void glide_set(track_t *t, voice_t *v, int glide)
 static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int glide)
 {
     const engine_t *e = ENGINES[t->engine];
+    v->vt = 0;                                          /* (M-PYRE: the vibrato's delay) */
     int sounding = v->active && v->stage != 0;
     uint32_t ph0 = v->ph[0], ph1 = v->ph[1], ph2 = v->ph[2];
     int32_t s0 = v->s[0], s1 = v->s[1], s4 = v->s[4], s5 = v->s[5], s6 = v->s[6], s7 = v->s[7];
@@ -336,7 +347,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
-    uint32_t mode = (uint32_t)t->p[P_VOICE], nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
@@ -357,6 +368,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
         } else {                                            /* legato: new pitch, same envelope */
             v->note = (uint8_t)note;
             v->pitch16 = (int32_t)note * 16;
+            v->vt = 0;                                      /* (M-PYRE: the vibrato comes in again) */
             if (vel > v->vel && nv == 1u)
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
@@ -399,7 +411,7 @@ static volatile uint8_t vis_hit, vis_kick_hit, vis_note[NTRK];
 
 static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
 {
-    uint32_t any = 0, i, mode = (uint32_t)t->p[P_VOICE];
+    uint32_t any = 0, i, mode = voice_mode(t);
     if (trk_silent(t))
         return;                                         /* MUTE, or another track soloed */
     vis_hit |= (uint8_t)(1u << ((uint32_t)(t - trk) & 3u));
@@ -435,6 +447,14 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
         t->mono_note = 0;
         v->fine = 0;
         voice_start(t, v, note, vel, t->p[P_GLIDE] != 0);
+        {   /* M-PYRE OCTAVER: a second voice OCT semitones away (an octave down, up, or any interval), at O MIX */
+            int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o;
+            if (o && t->p[P_OMIX] && n2 >= 0 && n2 < 128) {
+                voice_t *v2 = voice_alloc(t, (uint32_t)n2);
+                v2->fine = 0;
+                voice_start(t, v2, (uint32_t)n2, vel * (uint32_t)t->p[P_OMIX] / 127u + 1u, t->p[P_GLIDE] != 0);
+            }
+        }
         return;
     }
     {
@@ -449,7 +469,7 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
         if (mode == V_MONO)                             /* MONO: always retrigger, glide when GLIDE is set */
             mono_play(t, want, vel, 1, t->p[P_GLIDE] != 0 || t->slide_glide);
         else                                            /* LEGATO / UNISON: glide only between held notes */
-            mono_play(t, want, vel, !sounding, sounding && (t->p[P_GLIDE] != 0 || t->slide_glide));
+            mono_play(t, want, vel, !sounding, sounding && (t->p[P_GLIDE] != 0 || t->slide_glide || t->p[P_LEG] != 0));
     }
 }
 
@@ -465,9 +485,17 @@ static void strum_cancel(const track_t *t, uint32_t note, int all)
         if (stq[i].on && stq[i].trk == (uint8_t)(t - trk) && (all || stq[i].note == note))
             stq[i].on = 0;
 }
-static void trk_note_off(track_t *t, uint32_t note)
+static void trk_note_off1(track_t *t, uint32_t note);
+static void trk_note_off(track_t *t, uint32_t note)   /* M-PYRE: and the OCTAVER's voice */
 {
-    uint32_t i, k = 0, mode = (uint32_t)t->p[P_VOICE];
+    int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o;
+    trk_note_off1(t, note);
+    if (o && n2 >= 0 && n2 < 128 && voice_mode(t) == V_POLY && !is_drum(t))
+        trk_note_off1(t, (uint32_t)n2);
+}
+static void trk_note_off1(track_t *t, uint32_t note)
+{
+    uint32_t i, k = 0, mode = voice_mode(t);
     if (is_drum(t))
         return;                                         /* one-shots */
     strum_cancel(t, note, 0);
@@ -736,6 +764,17 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     t->bend_s = (int16_t)(t->bend_s + ((t->bend - t->bend_s) >> 2) + (t->bend > t->bend_s) - (t->bend < t->bend_s));
     bendq = ((int32_t)t->bend_s * clamp(song.g[G_BEND], 1, 12)) >> 1;   /* MIDI pitch bend (2.6): 1/4096 semitone,
                                                                          * gliding (a quarter of the way a block) */
+    {   /* M-PYRE: BEND - a little = a quarter tone, then a semitone, near the end a whole tone; WHAMMY: 64 none, an
+         * octave down to the left, up to the right. Both glide (a semitone in ~50 ms, the whammy 4x as fast) */
+        int32_t bt = !p[P_BEND] ? 0 : p[P_BEND] < 40 ? 2048 : p[P_BEND] < 110 ? 4096 : 8192;
+        int32_t wt = (p[P_WHAM] - 64) * 4096 * 12 / 63, d;
+        d = bt - t->rf_bend;
+        t->rf_bend += d > 60 ? 60 : d < -60 ? -60 : d;
+        d = wt - t->rf_wham;
+        t->rf_wham += d > 240 ? 240 : d < -240 ? -240 : d;
+        bendq += t->rf_bend + t->rf_wham;
+        t->rf_vph += 16520000u;                         /* the vibrato: 5.3 Hz at a block of 32 samples */
+    }
     if (e->block)                                       /* the engine's per-part work (DRAWBAR: bars, rotor) */
         e->block(t);
     for (i = 0; i < NVOICE; i++) {
@@ -787,6 +826,13 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         {   /* the pitch in 1/4096 semitone: glide, LFO, the pitch envelope; the fraction goes into the increment */
             int32_t q = (v->pitch_cur << 8) + v->pitch_frac + ((lfo * p[P_LD_PIT] * 3) >> 7) +
                         ((v->penv * p[P_ED_PIT] * 3) >> 7) + bendq;
+            if (v->vt < 65535u)
+                v->vt++;
+            if (p[P_VIB] && v->vt > 342u) {             /* M-PYRE VIB: a finger's vibrato, from 0.25 s, in over 0.3 s, up
+                                                         * from the note only (a string pushed), up to 35 cents */
+                int32_t fade = v->vt > 753u ? 32767 : (int32_t)(v->vt - 342u) * 79, up = (32768 - sine_i(t->rf_vph + 0x40000000u)) >> 1;
+                q += (((p[P_VIB] * 1434 / 127) * mulq15(fade, up)) >> 15);
+            }
             pitch = (q >> 8) + tune;
             m.pitch16 = clamp(pitch, 0, 2047);
             m.inc = pitch_inc(m.pitch16);

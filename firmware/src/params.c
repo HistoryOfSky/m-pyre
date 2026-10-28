@@ -62,7 +62,8 @@ static const char *const N_SYNC[] = {"INT", "USB", "TRS"};   /* G_SYNC: the temp
 static const char *const N_GO[] = {"--", "GO"};
 static const char *const N_SLCR[] = {"OFF", "GATE", "STUT"};             /* SL_OFF .. SL_STUT (slicer.c) */
 static const char *const N_SLDIV[] = {"1/8", "1/16", "1/32", "8T", "16T", "32T"};   /* SL_DEN */
-static const char *const N_CHORD[] = {"OFF", "TRIAD", "7TH", "9TH", "SUS4", "POWER"};   /* seq.c CHORD_DEG */
+static const char *const N_CHORD[] = {"OFF", "PW", "PW+", "OCT", "TERZ", "TRIAD", "7TH", "9TH", "SUS4"};   /* seq.c CHORD_DEG
+                                                 * (M-PYRE: PW .. TERZ keep the keys chromatic: riffs) */
 static const char *const N_AMP[] = {"OFF", "CLEAN", "CRUNCH", "HI-GAIN", "LEAD", "B-CLEAN", "B-DRIVE", "DJENT"};   /* amp.c */
 static const char *const N_CAB[] = {"AUTO", "CLEAN", "CRUNCH", "HI-GAIN", "LEAD", "BASS", "OFF"};
 static const char *const N_PEDAL[] = {"OFF", "BOOST", "OD", "DIST", "FUZZ"};

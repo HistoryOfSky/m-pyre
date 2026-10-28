@@ -44,6 +44,82 @@ typedef struct {
 } amp_st_t;
 static amp_st_t amp_st[NPART];
 
+/* ---- in front of the amp (track_pre), on every synth part: VOL, TONE, COMP, the PEDAL */
+typedef struct {
+    bq_st_t tn[2], pd[3];
+    int32_t vol, env, cg;                           /* VOL as it glides (Q15); COMP's envelope and gain (Q15) */
+    uint8_t ped;
+} pre_st_t;
+static pre_st_t pre_st[NPART];
+static void track_pre(track_t *t, int32_t *b, uint32_t n)
+{
+    pre_st_t *s = &pre_st[(uint32_t)(t - trk) % NPART];
+    int32_t vt = t->p[P_PVOL] >= 127 ? 32767 : t->p[P_PVOL] * t->p[P_PVOL] * 2, tone = t->p[P_TONE] - 64;
+    int32_t comp = t->p[P_COMP], ped = t->p[P_PEDAL], i;
+    int32_t pg = (int32_t)(pow2_q16((t->p[P_PDRV] - 64) * 6) >> 4);   /* DRIVE: Q12, 4096 = as voiced */
+    if (vt == 32767 && s->vol == 0)
+        s->vol = 32767;
+    if (s->vol == 32767 && vt == 32767 && !tone && !comp && !ped)
+        return;                                     /* nothing turned: as before */
+    if (ped != s->ped) {                            /* another pedal: no stale state */
+        memset(s->pd, 0, sizeof s->pd);
+        s->ped = (uint8_t)ped;
+    }
+    if (comp) {                                     /* COMP: the block's peak sets a gain that glides (fast down, slow up) */
+        int32_t pk = 1, thr = 60000 - comp * 400, tg;   /* threshold falls as COMP turns up */
+        for (i = 0; i < (int32_t)n; i++) {
+            int32_t a = b[i] < 0 ? -b[i] : b[i];
+            if (a > pk)
+                pk = a;
+        }
+        s->env = pk > s->env ? pk : s->env - ((s->env - pk) >> 6);   /* release ~50 ms */
+        tg = s->env > thr ? (int32_t)(((int64_t)(thr + (s->env - thr) / 4) << 15) / s->env) : 32767;   /* 4:1 */
+        s->cg = tg < s->cg ? tg : s->cg + ((tg - s->cg) >> 4);
+        if (!s->cg)
+            s->cg = 32767;
+    } else
+        s->cg = 32767;
+    for (i = 0; i < (int32_t)n; i++) {
+        int32_t x = b[i], y;
+        s->vol += (vt - s->vol) >> 8;               /* VOL glides (~6 ms): fades without steps */
+        x = (int32_t)(((int64_t)x * s->vol) >> 15);
+        if (tone < 0)                               /* left: bite, up to +8 dB at 1.8 kHz */
+            x += (int32_t)(((int64_t)bq(&TN_BITE, &s->tn[0], x) * -tone * 300) >> 14);
+        else if (tone > 0)                          /* right: treble, up to +9 dB from 3 kHz */
+            x += (int32_t)(((int64_t)bq(&TN_TREB, &s->tn[1], x) * tone * 300) >> 14);
+        if (comp) {
+            x = (int32_t)(((int64_t)x * s->cg) >> 15);
+            x += (int32_t)(((int64_t)x * comp) >> 7);   /* make-up, up to 2x */
+        }
+        switch (ped) {
+        case 1:                                     /* BOOST: louder, the highs up */
+            y = x + ((bq(&PD_BOOST, &s->pd[0], x) * 3) >> 1);
+            x = (int32_t)(((int64_t)y * pg) >> 11);
+            break;
+        case 2:                                     /* OD: the mids above 720 Hz, softly clipped, onto the clean signal */
+            y = bq(&PD_ODHP, &s->pd[0], x >> 2);
+            y = amp_tanh((int32_t)(((int64_t)y * pg * 12) >> 12));
+            x = bq(&PD_ODLP, &s->pd[1], (x >> 2) + y) << 2;
+            break;
+        case 3:                                     /* DIST: hard */
+            y = bq(&PD_DSHP, &s->pd[0], x >> 2);
+            y = amp_tanh((int32_t)(((int64_t)y * pg * 40) >> 12));
+            y = clamp(y + (y >> 1), -30000, 30000);
+            x = bq(&PD_DSLP, &s->pd[1], y) << 2;
+            break;
+        case 4:                                     /* FUZZ: two stages, a bias, the mids scooped */
+            y = amp_tanh((int32_t)(((int64_t)(x >> 2) * pg * 30) >> 12) + 4000);
+            y = amp_tanh(y * 3);
+            y = bq(&PD_FZAA, &s->pd[2], y);
+            x = (bq(&PD_FZLP, &s->pd[0], y) + bq(&PD_FZHP, &s->pd[1], y)) << 1;
+            break;
+        default:
+            break;
+        }
+        b[i] = x;
+    }
+}
+
 #define AMP_IN_SHIFT 2                              /* the part's buffer -> the amp's Q15: a loud note near 0.5 */
 
 static void amp_reset(amp_st_t *a)

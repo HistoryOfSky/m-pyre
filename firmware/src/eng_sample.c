@@ -165,6 +165,8 @@ static void sample_note_on(track_t *t, voice_t *v)
         uint32_t k = si - SMP_NSETS, k1 = k, j;
         if (k <= 1u)                                /* GUITAR: USR1 and USR2 together */
             k = 0, k1 = 1;
+        if (k1 == 1u && t->p[P_PALM] && usr_nz[2])   /* M-PYRE PALM: the guitar's palm mutes (USR3) instead */
+            k = k1 = 2;
         for (j = k; j <= k1; j++)
             for (i = 0; i < usr_nz[j]; i++)
                 if (v->note >= usr_zone[j][i].lo && v->note <= usr_zone[j][i].hi)
@@ -174,6 +176,7 @@ static void sample_note_on(track_t *t, voice_t *v)
     v->ph[0] = 0;
     v->ph[1] = 0;
     v->ph[2] = 0;                                   /* (the de-emphasis) */
+    v->s[5] = t->p[P_PALM];                         /* (M-PYRE: PALM as the note began) */
     v->s[0] = 0;
     v->s[1] = 0;
     v->s[2] = v->s[3] = 0;
@@ -189,7 +192,12 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     int32_t d16 = clamp(m->pitch16 + p[P_E1] * 16 - z->root16, -1536, 576);   /* <= 3 octaves up: bounded decode load */
     uint32_t r = pow2_q16(d16), stepq = (uint32_t)(((uint64_t)r * z->rate) >> 16);   /* Q16 samples per output
                                                        * (M-PYRE: in 64 bits; (r >> 8) * (rate >> 8) was up to 5 cents flat) */
+    if (m->fine)                                      /* M-PYRE: the fraction below 1/16 semitone too (a smooth bend,
+                                                       * the vibrato, fine tune), as the other engines take it in inc */
+        stepq += (uint32_t)((int32_t)(stepq >> 12) * m->fine);
     int32_t bits = p[P_E2], lp = 4000 + ((clamp((p[P_E4] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
+    if (v->s[5])                                      /* M-PYRE PALM: darker the more it is turned up */
+        lp = mulq15(lp, 32767 - v->s[5] * 180);
     int32_t drv = p[P_E6], sh = bits / 10;
     if (v->s[6] || !z->n) {
         v->active = 0;

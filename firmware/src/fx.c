@@ -695,6 +695,7 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
         int32_t xmax = c > d ? c : d;
         int32_t ga = mulq15(g0, duck.g0), gb = mulq15(g1, duck.g1);   /* mute x duck, ramped over the block */
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
+        track_pre(t, b, n);                             /* M-PYRE: VOL, TONE, COMP, the PEDAL (amp.c) */
         track_dist(t, b, n);
         track_amp(t, b, n);                             /* M-PYRE: the amp, its cabinet (amp.c) */
         if (t->p[P_ITYPE] | t->ins_run) {

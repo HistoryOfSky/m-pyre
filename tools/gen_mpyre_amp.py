@@ -98,6 +98,15 @@ BASS_BQ = {
     "DJ_PK3": biquad("peak", 450, FS, 1.0, -5), "DJ_PK4": biquad("peak", 2500, FS, 1.0, 5),
     "DJ_LP1": biquad("lp", 6000, FS, 0.7), "DJ_LP2": biquad("lp", 7000, FS, 0.6), "B_HP30": biquad("hp", 30, FS, 0.7),
 }
+# in front of the amp (amp.c track_pre): TONE (left: bite at 1.8 kHz, right: treble from 3 kHz) and the pedals
+#   BOOST  clean, + the highs from 700 Hz       OD    a tube screamer: the band over 720 Hz clipped softly, added
+#   DIST   high-pass 60 Hz, hard clip, 3.5 kHz  FUZZ  two stages with a bias, the mids scooped (1 kHz)
+PRE_BQ = {
+    "TN_BITE": biquad("bp", 1800, FS, 1.0), "TN_TREB": biquad("hp", 3000, FS, 0.6),
+    "PD_BOOST": biquad("hp", 700, FS, 0.6), "PD_ODHP": biquad("hp", 720, FS, 0.6), "PD_ODLP": biquad("lp", 4000, FS, 0.7),
+    "PD_DSHP": biquad("hp", 60, FS, 0.7), "PD_DSLP": biquad("lp", 3500, FS, 0.7),
+    "PD_FZLP": biquad("lp", 1000, FS, 0.5), "PD_FZHP": biquad("hp", 1000, FS, 0.5), "PD_FZAA": biquad("lp", 6000, FS, 0.7),
+}
 CAB_FILES = ["Clean_Amp_IR.wav", "Crunch_Amp_IR.wav", "High_Gain_Amp_IR.wav", "Lead_Amp_IR.wav"]
 
 
@@ -157,7 +166,7 @@ def main(out):
     L.append("};")
     L.append("static const bq_coef_t AMP_BANDS[4] = {" + ", ".join(bq(c) for c in BANDS) + "};")
     L.append(f"static const bq_coef_t CAB_AA = {bq(CAB_AA)};")
-    for k, c in BASS_BQ.items():
+    for k, c in list(BASS_BQ.items()) + list(PRE_BQ.items()):
         L.append(f"static const bq_coef_t {k} = {bq(c)};")
     L.append(f"static const int16_t CAB_IR[CAB_N][CAB_TAPS] = {{   /* {'History Of Sky IRs' if have else 'generic'} */")
     for c in cabs:
