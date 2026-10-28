@@ -44,7 +44,7 @@ TR = 22050                                   # stored sample rate
 # set -> kind ("oneshot" decaying, "sus" looped sustain, "piano" its attack then a steady loop that the
 # envelope fades, "kit" one sample per key).
 # The other slots are user sets loaded from the web editor.
-CC0_SETS = [("PIANO", "piano"), ("VIBES", "oneshot"), ("STRGS", "oneshot"), ("KIT", "kit")]
+CC0_SETS = [("PIANO", "piano"), ("VIBES", "oneshot"), ("STRGS", "sus"), ("KIT", "kit")]
 # M-PYRE: the drum kit is History Of Sky's own (the guitar, palm mutes and bass: the user slots, tools/mpyre_slots.py) (tools/prep_mpyre.py -> build/mpyre/sets.json);
 # HORNS, FLUTE and SCRCH are gone (the riffbox needs the room)
 MPYRE = SRC / "build" / "mpyre" / "sets.json"
@@ -66,7 +66,23 @@ SET_PRESETS = {
 EXTRA_PRESETS = [
     ("PIANO", "DUSTY PNO", [0, 0, 34, 0, 96, 0, 24, 0], (0, 98, 0, 52), 0, (0, 8, 10, 22), ()),
     ("PIANO", "LOFI KEYS", [0, 0, 45, 0, 78, 0, 30, 0], (0, 108, 0, 60), 0, (0, 30, 18, 34), ("P_LD_PIT", 1, "P_LRATE", 38)),
-    ("BASS", "DEEP BASS", [0, 0, 0, 1, 80, 0, 30, 0], (0, 100, 110, 22), 1, (0, 0, 0, 0), ()),
+    # M-PYRE: the strings as a pad, and a tape-replay keyboard (slow wobble, a little grit)
+    ("STRGS", "STRINGS", [0, 0, 0, 0, 120, 0, 0, 0], (40, 127, 127, 50), 0, (0, 20, 0, 40), ()),
+    ("STRGS", "MELLOTRON", [0, 0, 30, 0, 96, 0, 18, 0], (12, 127, 120, 34), 0, (0, 16, 0, 36),
+     ("P_LD_PIT", 2, "P_LRATE", 52, "P_LFADE", 30)),
+    # M-PYRE: the sound pack (the user slots, SLOT_SETS): the guitar through its amps, the palm mutes, the bass
+    ("GUITAR", "CLEAN GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 0, (0, 22, 0, 30), ("P_AMP", 1, "P_AGAIN", 64)),
+    ("GUITAR", "CRUNCH GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 22), 0, (0, 0, 0, 14), ("P_AMP", 2, "P_AGAIN", 64)),
+    ("GUITAR", "HI-GAIN", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 18), 0, (0, 0, 0, 10), ("P_AMP", 3, "P_AGAIN", 64)),
+    ("GUITAR", "DJENT GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 12), 0, (0, 0, 0, 6),
+     ("P_AMP", 3, "P_AGAIN", 92, "P_AMID", 50, "P_APRES", 80)),
+    ("GUITAR", "LEAD GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 1, (0, 0, 30, 28),
+     ("P_AMP", 4, "P_AGAIN", 64, "P_LEG", 30, "P_VIB", 40)),
+    ("GUITAR", "DI GUITAR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 26), 0, (0, 0, 0, 0), ()),
+    ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 6), ("P_AMP", 3, "P_AGAIN", 64)),
+    ("BASSL", "PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 16), 1, (0, 0, 0, 0), ("P_AMP", 5)),
+    ("BASSL", "DRIVE BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 16), 1, (0, 0, 0, 0), ("P_AMP", 6)),
+    ("BASSL", "DJENT BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 14), 1, (0, 0, 0, 0), ("P_AMP", 7)),
 ]
 
 KIT_BASE = 53                     # F3, the lowest FM-1 key
@@ -428,8 +444,9 @@ class Builder:
             else:
                 a, d, s_, r = ENV[k]
                 L.append(f'    {{"{name}", {{{i}, 0, 0, {0 if k == "kit" else 1}, 127, 0, 0, 0}}, {{{a}, {d}, {s_}, {r}}}, 0, 0}},')
+        slot_sets = {"GUITAR": len(named), "PALM": len(named) + 2, "BASSL": len(named) + 3}   # eng_sample.c SMP_ALL_NAMES
         for setname, *rest in EXTRA_PRESETS:
-            i = next((j for j, (n, _, _) in enumerate(named) if n == setname), None)
+            i = next((j for j, (n, _, _) in enumerate(named) if n == setname), slot_sets.get(setname))
             if i is not None:
                 L.append(preset(i, self.kinds.get(setname, "wave"), *rest))
         L.append("};")

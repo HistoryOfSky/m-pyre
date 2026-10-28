@@ -21,19 +21,50 @@ static inline int32_t soft_knee(int32_t y, int32_t k)   /* linear up to k, then 
 #include "eng_phase.c"
 #include "eng_lofi.c"
 #include "eng_sample.c"
+#ifndef MPYRE_LEAN
+#define MPYRE_LEAN 1            /* M-PYRE: without FORMANT, GRAIN, PHYS and NOISE (the riffbox needs the flash); their
+                                 * numbers stay (projects, the editor), each a silent stand-in (ENG_NONE) */
+#endif
+#if !MPYRE_LEAN
 #include "eng_formant.c"
+#endif
 #include "eng_trio.c"
 #include "eng_drawbar.c"
+#if !MPYRE_LEAN
 #include "eng_grain.c"
+#endif
 #include "eng_fm6.c"            /* FM6: 6-operator FM, msfa ported (fm6_core.c, Apache-2.0); SLOOP 2.4 */
+#if !MPYRE_LEAN
 #include "eng_phys.c"           /* PHYS: physical models, from Felucca 1.0 (DaisySP, Rings: MIT); SLOOP 2.5 */
 #include "eng_noise.c"          /* NOISE: from Felucca 1.0; SLOOP 2.5 */
+#else
+/* the stand-in of a removed engine: no sound, one preset; a project or a preset naming one plays nothing */
+static void none_note_on(track_t *t, voice_t *v) { (void)t; v->active = 0; }
+static void none_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
+{
+    (void)t, (void)out, (void)n, (void)m;
+    v->active = 0;
+}
+static const preset_t NONE_PRESETS[] = {{"-", {0}, {0, 0, 0, 0}, 0, 0}};
+static const engine_t ENG_NONE = {
+    "-", {"-", "-"},
+    {{"-", F_INT, 0, 0, 0, 0, 0}, {"-", F_INT, 0, 0, 0, 0, 0}, {"-", F_INT, 0, 0, 0, 0, 0}, {"-", F_INT, 0, 0, 0, 0, 0},
+     {"-", F_INT, 0, 0, 0, 0, 0}, {"-", F_INT, 0, 0, 0, 0, 0}, {"-", F_INT, 0, 0, 0, 0, 0}, {"-", F_INT, 0, 0, 0, 0, 0}},
+    NONE_PRESETS, 1, -1, none_note_on, none_render, 0x8410, {P_LEVEL, P_ATK, P_DEC, P_REL},
+};
+#define ENG_FORMANT ENG_NONE
+#define ENG_GRAIN ENG_NONE
+#define ENG_PHYS ENG_NONE
+#define ENG_NOISE ENG_NONE
+#endif
 
 typedef union {
+#if !MPYRE_LEAN
     gr_part_t grain;
+    uint32_t phys[PHYS_ARENA / 4u];      /* eng_phys.c: two SYMP slots or three small ones */
+#endif
     drw_part_t drawbar;                  /* eng_drawbar.c: the part's wheels, percussion and rotary (sloop-lab) */
     fm6_part_t fm6;                      /* eng_fm6.c: six notes and the operator buses */
-    uint32_t phys[PHYS_ARENA / 4u];      /* eng_phys.c: two SYMP slots or three small ones */
 } eng_arena_t;
 static eng_arena_t eng_arena[NPART] __attribute__((section(".pool")));
 static uint8_t eng_arena_own[NPART];            /* the engine + 1 whose state is in it, 0 = none */
@@ -62,6 +93,9 @@ static void *eng_arena_of(const track_t *t, uint32_t eng)
 /* fx.c units_split: rendering t this block would draw rng() (libc.c), so t stays on core 0, where the draws
  * keep their order: a sounding voice's slot is not on the part's MODEL (phys_render resets it with a draw).
  * When the arena or the layout is not PHYS's yet, every slot starts over (phys_slot_of): taken as a draw */
+#if MPYRE_LEAN
+static int phys_render_draws(const track_t *t, int32_t model) { (void)t, (void)model; return 0; }
+#else
 static int phys_render_draws(const track_t *t, int32_t model)   /* model: the MODEL this block renders with (fx.c) */
 {
     uint32_t p = (uint32_t)(t - trk), md = (uint32_t)model % PM_COUNT, big = md == PM_SYMP, i;
@@ -76,6 +110,7 @@ static int phys_render_draws(const track_t *t, int32_t model)   /* model: the MO
             return 1;
     return 0;
 }
+#endif
 #if FELUCCA_SLICE
 #include "eng_slice.c"
 #endif
