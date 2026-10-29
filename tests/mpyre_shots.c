@@ -36,7 +36,7 @@ int main(int argc, char **argv)
         for (i = 0; i < NPAGES; i++) {
             if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "AMP")) pa = i;
             if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "AMP 2")) pb = i;
-            if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "PEDAL")) pp = i;
+            if (PAGES[i].fam == FAM_FX && !strcmp(PAGES[i].title, "PEDAL")) pp = i;
         }
         for (g = 0; g <= 7u; g++) {
             TSEL->p[P_AMP] = (int16_t)g;

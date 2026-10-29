@@ -341,6 +341,11 @@ static void av_head(const track_t *t, int32_t y0, int on_amp2)
         av_disc(AV_X1 - 9, AV_GY0 + 9, 3, RGB(255, 64, 24));
         cv_pset(AV_X1 - 10, AV_GY0 + 8, RGB(255, 230, 200));
         av_panel(f);
+        if (on_amp2) {                                  /* the four knobs turn the amp's: a frame round its panel */
+            uint16_t fr = RGB(200, 200, 200);
+            cv_rect(AV_X0 - 3, AV_PY0 - 3, AV_X1 - AV_X0 + 7, 1, fr), cv_rect(AV_X0 - 3, AV_PY1 + 3, AV_X1 - AV_X0 + 7, 1, fr);
+            cv_rect(AV_X0 - 3, AV_PY0 - 2, 1, AV_PY1 - AV_PY0 + 5, fr), cv_rect(AV_X1 + 3, AV_PY0 - 2, 1, AV_PY1 - AV_PY0 + 5, fr);
+        }
         for (k = 0; k < 4; k++) {                       /* GAIN BASS MID TREB on 1/8, 3/8, 5/8, 7/8 of the panel */
             uint32_t id;
             const param_desc_t *d;
@@ -375,10 +380,14 @@ static void av_top(const track_t *t, int on_amp2)
         param_format(d, t->p[ID[k]], val, &unit);
         if (unit && unit[0] && str_len(val) + str_len(unit) < 11u)
             str_cpy(val + str_len(val), unit, 12 - str_len(val));
-        av_text_c(cx, 0, d->label, C_GRAY);
+        av_text_c(cx, 1, d->label, C_GRAY);
         av_text_c(cx, 16, val, on_amp2 ? C_DIM : VAL(k));
         if (k)
-            cv_rect((int32_t)k * 60, 2, 1, 30, C_LINE);
+            cv_rect((int32_t)k * 60, 4, 1, 26, C_LINE);
+    }
+    if (!on_amp2) {                                     /* the four knobs turn these: a frame round them */
+        cv_rect(1, 0, 238, 1, C_GRAY), cv_rect(1, 33, 238, 1, C_GRAY);
+        cv_rect(0, 1, 1, 32, C_GRAY), cv_rect(239, 1, 1, 32, C_GRAY);
     }
     cv_blit(0, 22);
 }

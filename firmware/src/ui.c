@@ -102,11 +102,15 @@ static uint8_t layer_shown;
 
 UI_SMALL static uint32_t page_first(uint32_t fam)
 {
-    uint32_t i;
+    uint32_t i, any = NPAGES;
     for (i = 0; i < NPAGES; i++)
-        if (PAGES[i].fam == fam)
-            return i;
-    return 0;
+        if (PAGES[i].fam == fam) {
+            if (page_shown(&PAGES[i]))
+                return i;                               /* (M-PYRE: the first one the track has: a guitar's EDIT, AMP) */
+            if (any == NPAGES)
+                any = i;
+        }
+    return any < NPAGES ? any : 0u;
 }
 
 /* transient message in the top bar: a + b */

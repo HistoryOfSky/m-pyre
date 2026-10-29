@@ -1191,7 +1191,7 @@ int main(int argc, char **argv)
         check(!strcmp(PT(), "LFO 2"), "SELECT left: the page before");
         SEL(-1);
         check(!strcmp(PT(), "LFO"), "SELECT left: LFO");
-        tap(B_FX); SEL(1);                                /* (M-PYRE: the amps went to EDIT: FX, then FILTER) */
+        tap(B_FX); SEL(-9); SEL(is_drum(TSEL) ? 1 : 2);   /* (M-PYRE: from the first page: PEDAL, FX, then FILTER) */
         check(!strcmp(PT(), "FILTER"), "SELECT on FX: next page, the track FILTER");
         TSEL->p[P_TFLT] = -32; ui.force = 1; frames(2); ppm("page-filter");
         check(!strcmp(ui.big_l[0], "FILT") && !strcmp(ui.big_v[0], "LP50") && !ui.big_l[1][0],
@@ -1207,9 +1207,10 @@ int main(int argc, char **argv)
         SEL(9);
         check(!strcmp(PT(), "CHORUS"), "SELECT on FX: on to the last page, CHORUS (M-PYRE: REVERB, CHORUS)");
         tap(B_EDIT); SEL(-9);
-        check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
+        check(!strcmp(PT(), TSEL->p[P_AMP] ? "AMP" : "EDIT 1"), "SELECT on EDIT: back to the first page (M-PYRE: an amp on: AMP)");
         SEL(9);
-        check(!strcmp(PT(), is_drum(TSEL) ? "VOICE 2" : "PEDAL"), "SELECT on EDIT: up to its last page (M-PYRE: PEDAL)");
+        check(!strcmp(PT(), is_drum(TSEL) ? "VOICE 2" : TSEL->p[P_AMP] ? "AMP 2" : "AMP 2"),
+              "SELECT on EDIT: up to its last page (M-PYRE: AMP 2; a guitar's EDIT is the amp view)");
         tap(B_SEQ); SEL(9);
         check(!strcmp(PT(), "PATTERN"), "SELECT on SEQ: STEP <-> PATTERN, not into the SONG screen");
         tap(B_ENV);

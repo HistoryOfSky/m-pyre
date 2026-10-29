@@ -451,6 +451,7 @@ static const page_t PAGES[] = {
     {"LFO", FAM_LFO, SC_TRACK, GR_LFO, {P_LRATE, P_LWAVE, P_LPHASE, P_LFADE}},
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_LSYNC, P_LTRIG, P_LPOL, 0xFF}},   /* 2.6 (Felucca 1.4): SYNC TRIG POL */
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_NONE, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
+    {"PEDAL", FAM_FX, SC_TRACK, GR_NONE, {P_PEDAL, P_PDRV, P_OCT, P_OMIX}},   /* M-PYRE: the pedal, the octaver */
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"FILTER", FAM_FX, SC_TRACK, GR_NONE, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},   /* drum track too */
@@ -468,10 +469,10 @@ static const page_t PAGES[] = {
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
     /* M-PYRE: the rig, at the end of EDIT (a guitar's or bass's sound; a synth leaves AMP OFF): the amp view - AMP CAB
-     * PRES COMP on top, the amp's own knobs GAIN BASS MID TREB on its front (ui_draw.c) - then the pedal and the octaver */
+     * PRES COMP on top, the amp's own knobs GAIN BASS MID TREB on its front (ui_amp.c). With an amp on, EDIT is these two
+     * pages only (page_shown); the pedal and the octaver open the FX pages */
     {"AMP", FAM_EDIT, SC_TRACK, GR_NONE, {P_AMP, P_CAB, P_APRES, P_COMP}},
     {"AMP 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_AGAIN, P_ABASS, P_AMID, P_ATREB}},
-    {"PEDAL", FAM_EDIT, SC_TRACK, GR_NONE, {P_PEDAL, P_PDRV, P_OCT, P_OMIX}},
     {"GLOBAL", FAM_GLO, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, G_TUNE}},
     {"MASTER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DUST, G_DUCK, G_FILT, G_ROLL}},
     {"SYSTEM", FAM_GLO, SC_GLOBAL, GR_NONE, {G_MIDI, G_SYNC, G_ROUTE, G_INFO}},
@@ -517,6 +518,8 @@ static int page_shown(const page_t *pg)
 {
     if (is_drum(TSEL) && pg->scope == SC_TRACK && (pg->id[0] == P_AMP || pg->id[0] == P_AGAIN || pg->id[0] == P_PEDAL))
         return 0;                                   /* (M-PYRE: no amp, pedal or octaver on the drums) */
+    if (pg->fam == FAM_EDIT && !is_drum(TSEL) && TSEL->p[P_AMP] && pg->id[0] != P_AMP && pg->id[0] != P_AGAIN)
+        return 0;                                   /* (M-PYRE: a guitar / bass - an amp on: EDIT is the amp view) */
     return pg->id[0] != P_FTYPE || (!is_drum(TSEL) && TSEL->eng_req % NENGINES == 0u);
 }
 
