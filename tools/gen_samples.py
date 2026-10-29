@@ -60,7 +60,7 @@ SET_PRESETS = {
     "STRGS": ("STRING STB", [0, 0, 0, 0, 122, 0, 10, 0], (0, 127, 127, 26), 0, (0, 10, 12, 24), ()),
     "FLUTE": ("LOFI FLUTE", [0, 0, 12, 0, 100, 0, 0, 0], (12, 80, 120, 60), 1, (0, 16, 26, 30), ("P_LD_PIT", 1, "P_LRATE", 89, "P_LFADE", 40)),
     "SCRCH": ("SCRATCH", [0, 0, 0, 0, 127, 0, 8, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ()),
-    "PERC": ("HOS KIT", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 60), 0, (0, 0, 0, 6), ()),
+    "PERC": ("HEAVY KIT", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 60), 0, (0, 0, 0, 6), ()),
 }
 # more presets on a set: (set, name, E[], env, mono, sends, more)
 EXTRA_PRESETS = [
@@ -73,14 +73,14 @@ EXTRA_PRESETS = [
     # M-PYRE: the sound pack (the user slots, SLOT_SETS): the guitar through its amps, the palm mutes, the bass (dry:
     # no reverb, no delay - the player adds them)
     ("GUITAR", "CLEAN GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 0, (0, 22, 0, 0), ("P_AMP", 1, "P_AGAIN", 64)),
-    ("GUITAR", "CRUNCH GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 22), 0, (0, 0, 0, 0), ("P_AMP", 2, "P_AGAIN", 64)),
-    ("GUITAR", "HI-GAIN", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 64)),
+    ("GUITAR", "CRUNCH GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 22), 0, (0, 0, 0, 0), ("P_AMP", 2, "P_AGAIN", 80)),
+    ("GUITAR", "HI-GAIN", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80)),
     ("GUITAR", "DJENT GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 12), 0, (0, 0, 0, 0),
-     ("P_AMP", 3, "P_AGAIN", 92, "P_AMID", 50, "P_APRES", 80)),
+     ("P_AMP", 3, "P_AGAIN", 108, "P_AMID", 50, "P_APRES", 80)),
     ("GUITAR", "LEAD GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 1, (0, 0, 0, 0),
-     ("P_AMP", 4, "P_AGAIN", 64, "P_LEG", 30, "P_VIB", 40)),
+     ("P_AMP", 4, "P_AGAIN", 80, "P_LEG", 30, "P_VIB", 40)),
     ("GUITAR", "DI GUITAR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 26), 0, (0, 0, 0, 0), ()),
-    ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 64)),
+    ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80)),
     ("BASSL", "PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 16), 1, (0, 0, 0, 0), ("P_AMP", 5)),
     ("BASSL", "DRIVE BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 16), 1, (0, 0, 0, 0), ("P_AMP", 6)),
     ("BASSL", "DJENT BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 14), 1, (0, 0, 0, 0), ("P_AMP", 7)),

@@ -1064,12 +1064,12 @@ async function editorDsyn() {
   if (hdr) {
     const kits = [...hdr.matchAll(/\{"([^"]*)", "[^"]*", (0x[0-9A-Fa-f]+|\d+), \{([\s\S]*?)\}\},/g)];
     const bytes = kits.flatMap((k) => [Number(k[2]), ...[...k[3].matchAll(/\{([^{}]*)\},/g)].flatMap((r) => r[1].split(",").map((x) => +x & 255))]);
-    ok(kits.length === 32 && js(kits.map((k) => k[1])) === js(E.DSYN_MOCK_NAMES) && js(Array.from(raw)) === js(bytes),
-      "dsyn: the mock's 32 kits == build/gen/felucca_drumkits.h");
+    ok(kits.length === E.DSYN_MOCK_NAMES.length && js(kits.map((k) => k[1])) === js(E.DSYN_MOCK_NAMES) && js(Array.from(raw)) === js(bytes),
+      "dsyn: the mock's kits == build/gen/felucca_drumkits.h (M-PYRE: 7)");
   }
   /* viewing never changes a value: decode / encode give every factory sound back */
   let same = true;
-  for (let i = 0; i < 32 * 16; i++) {
+  for (let i = 0; i < E.DSYN_MOCK_NAMES.length * 16; i++) {
     const at = Math.floor(i / 16) * 353 + 1 + (i % 16) * 22, b = raw.slice(at, at + 22);
     same = same && js(Array.from(DSYN.encode(DSYN.decode(b)))) === js(Array.from(b));
   }
@@ -1077,7 +1077,7 @@ async function editorDsyn() {
     tlev: 500, t2: 999, t2lev: 999, click: 999, nlev: 999, nhold: 999, ndec: 999, fmode: 7, fall: 1, res: 99, fcut: 999, fenv: -999, hpf: 999, chip: 999, drive: 999, level: 999 }));
   ok(same && wild.wave === 5 && wild.noise === 4 && wild.clap === 1 && wild.pitch === 127 && wild.fine === 15 && wild.bend === 96 && wild.decay === 0
     && wild.fmode === 3 && wild.res === 31 && wild.fenv === -128 && wild.level === 255 && wild.drive === 127,
-    "dsyn: decode / encode: all 512 factory sounds unchanged; out-of-range values into the firmware's ranges");
+    "dsyn: decode / encode: all the factory sounds unchanged; out-of-range values into the firmware's ranges");
   ok(Math.round(DSYN.hz(69)) === 440 && Math.round(DSYN.decayMs(127)) === 4000 && Math.round(DSYN.cutHz(0)) === 30 && DSYN.db(132) === 1,
     "dsyn: the units (Hz, ms, cutoff, dB) as tools/gen_tables.py");
   /* files and the backup object */
@@ -1094,18 +1094,18 @@ async function editorDsyn() {
   let L = E.parse[C.DSYN_LIST](await rq(E.req.dsynList()));
   const g0 = E.parse[C.DSYN_GET](await rq(E.req.dsynGet(DSYN.USER)));
   const f5 = E.parse[C.DSYN_GET](await rq(E.req.dsynGet(5)));
-  ok(L.factory === 32 && L.user === 4 && L.stored && L.names[0] === "808" && L.kits.map((k) => k.name).join() === "808,909,TRAP,TECHNO"
+  ok(L.factory === 7 && L.user === 4 && L.stored && L.names[0] === "808" && L.kits.map((k) => k.name).join() === "808,909,TRAP,INDUSTR"
     && g0.rc === 0 && g0.name === "808" && g0.src === 0 && js(g0.sounds.map((x) => Array.from(x))) === js(kit.sounds.map((x) => Array.from(x)))
-    && f5.rc === 0 && f5.name === "TRAP", "dsyn: LIST (32 + 4, stored), GET SYN1 = the 808, GET a factory kit");
+    && f5.rc === 0 && f5.name === "TRAP", "dsyn: LIST (7 + 4, stored), GET SYN1 = the 808, GET a factory kit");
   const o = DSYN.decode(g0.sounds[0]); o.decay = 20; o.wave = 4;
   const p1 = E.parse[C.DSYN_PUT](await rq(E.req.dsynSound(0, 0, DSYN.encode(o))));
   const p2 = E.parse[C.DSYN_PUT](await rq(E.req.dsynHead(0, "BOOM", 0x10, 0)));
-  const p3 = E.parse[C.DSYN_PUT](await rq(E.req.dsynCopy(3, 25)));
+  const p3 = E.parse[C.DSYN_PUT](await rq(E.req.dsynCopy(3, 4)));
   const pl = E.parse[C.DSYN_PLAY](await rq(E.req.dsynPlay(0, 0, 100)));
   const g1 = E.parse[C.DSYN_GET](await rq(E.req.dsynGet(DSYN.USER)));
   L = E.parse[C.DSYN_LIST](await rq(E.req.dsynList()));
   ok(p1.rc === 0 && p2.rc === 0 && p3.rc === 0 && pl.rc === 0 && g1.name === "BOOM" && g1.crush === 0x10 && DSYN.decode(g1.sounds[0]).decay === 20
-    && DSYN.decode(g1.sounds[0]).wave === 4 && L.kits[3].name === "CHIP" && !L.stored && m.state.dsynPlayed.length === 1 && m.state.dsynPlayed[0].sound[7] === 20,
+    && DSYN.decode(g1.sounds[0]).wave === 4 && L.kits[3].name === "VINTAGE" && !L.stored && m.state.dsynPlayed.length === 1 && m.state.dsynPlayed[0].sound[7] === 20,
     "dsyn: PUT a sound, the name and crush, a factory copy; PLAY hears the edit; LIST: not stored");
   m.sim.play(true);
   const s3 = E.parse[C.DSYN_STORE](await rq(E.req.dsynStore()));

@@ -26,7 +26,7 @@
 #define DRUM_PAIR (DRUM_USR + SMP_USER_SLOTS)   /* USR3+4: one kit in two slots (the editor splits it), ~15 s */
 #define DRUM_SYN (DRUM_PAIR + 1u)                /* SLOOP 2.5: SYN1..SYN4, your synthesised kits (drum_synth.c dsu) */
 #define DRUM_KITS (DRUM_SYN + DSU_N)
-static const char *const DRUM_KIT_NAMES[] = {"HOS KIT", "DEEP", "TIGHT", "BRIGHT", "DUST", DS_KIT_NAME_LIST,
+static const char *const DRUM_KIT_NAMES[] = {"HEAVY KIT", "DEEP", "TIGHT", "BRIGHT", "DUST", DS_KIT_NAME_LIST,
                                              "USR1", "USR2", "USR3", "USR4", "USR3+4",
                                              "SYN1", "SYN2", "SYN3", "SYN4"};
 static const char *const DRUM_KIT_STYLES[] = {"METAL", "SOFT", "PUNCHY", "BRIGHT", "DUSTY", DS_KIT_STYLE_LIST,
@@ -46,6 +46,8 @@ static struct {
     int32_t filter[NDRUM], env[NDRUM], denv[NDRUM];   /* denv (2.7): the DECAY's fade, Q15 */
     uint16_t dk[NDRUM];          /* (2.7) its factor a sample (DECAY_K), 0: none */
     uint8_t synth[NDRUM];        /* the voice plays a synthesised kit (ds[]) */
+    int16_t lg[NDRUM];           /* M-PYRE: its sound's LEVEL (drum_lvl), Q12 */
+    int32_t pu[NDRUM];           /* M-PYRE: its PUNCH: the attack's extra gain, Q12, falling ~6 ms */
     dsv_t ds[NDRUM];
     volatile uint16_t hits;      /* bit per lane hit since the UI last looked (pads, key LEDs) */
     volatile uint8_t kick;       /* a kick was hit (fx.c DUCK) */
@@ -107,6 +109,28 @@ static const uint8_t LANE_OF_GM[81 - 35 + 1] = {
 #define DRUM_DEC_MIN (-4)
 #define DRUM_DEC_MAX 3
 static int8_t drum_tune[DRUM_LANES], drum_dec[DRUM_LANES];
+/* M-PYRE, the DRUMS screen's KIT view: each sound's LEVEL (-8 .. +7: 1.5 dB steps, 0 as the kit has it) and PUNCH (0 ..
+ * 7: its attack lifted, up to +11 dB over the first ~6 ms - a transient shaper), kept with the project (project.c) */
+#define DRUM_LVL_MIN (-8)
+#define DRUM_LVL_MAX 7
+#define DRUM_PUNCH_MAX 7
+static int8_t drum_lvl[DRUM_LANES], drum_punch[DRUM_LANES];
+static const int16_t DRUM_LVL_Q12[16] = {1029, 1223, 1453, 1727, 2053, 2440, 2900, 3446, 4096, 4868, 5786, 6876, 8173, 9713, 11544, 13720};
+static uint32_t lane_of_note(uint32_t note);
+static void drum_vgain(uint32_t vi, uint32_t note)   /* a voice starting: its sound's LEVEL and PUNCH */
+{
+    uint32_t ln = lane_of_note(note);
+    int tw = note != 76u && note != 77u;
+    drums.lg[vi] = tw ? DRUM_LVL_Q12[(drum_lvl[ln] - DRUM_LVL_MIN) & 15] : 4096;
+    drums.pu[vi] = tw ? drum_punch[ln] * 1500 : 0;
+}
+/* a voice's sample through its LEVEL and PUNCH */
+static inline int32_t drum_vapply(uint32_t k, int32_t s)
+{
+    int32_t g = drums.lg[k] + ((drums.lg[k] * drums.pu[k]) >> 12);
+    drums.pu[k] -= drums.pu[k] >> 8;
+    return g == 4096 ? s : (int32_t)(((int64_t)s * g) >> 12);
+}
 static const uint8_t DK_SMP[4] = {47, 60, 74, 87};   /* a sample's DECAY -4 .. -1: -60 dB in 60, 120, 250, 500 ms */
 #define DRUM_CLICK(n) ((n) == 76u || (n) == 77u)    /* (the click's wood block: no lane, never tuned) */
 static uint32_t lane_of_note(uint32_t note);
@@ -114,7 +138,7 @@ static int drum_tweaked(void)
 {
     uint32_t l;
     for (l = 0; l < DRUM_LANES; l++)
-        if (drum_tune[l] || drum_dec[l])
+        if (drum_tune[l] || drum_dec[l] || drum_lvl[l] || drum_punch[l])
             return 1;
     return 0;
 }
@@ -252,6 +276,7 @@ static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel,
     v->age = ++drums.age;
     drums.synth[i] = 1;
     drums.kit[i] = (uint8_t)kit;
+    drum_vgain(i, note);
     {
         uint32_t ln = lane_of_note(note);
         tweak = tweak && !DRUM_CLICK(note);
@@ -353,6 +378,7 @@ static void drum_on(uint32_t note, uint32_t vel)
         int32_t shift = kit == 1u ? (note <= 36u ? -5 : -2) : kit == 3u ? 2 : kit == 4u ? -1 : 0;
         drums.kit[vi] = (uint8_t)kit;
         drums.synth[vi] = 0;
+        drum_vgain(vi, v->note);
         drums.filter[vi] = 0;
         drums.env[vi] = 32767;
         drums.denv[vi] = 32767;                     /* (2.7) DECAY below 0: a fade to -60 dB in 60 .. 500 ms (DK_SMP) */
@@ -396,7 +422,7 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
             v->active = 0;
         for (i = 0; i < m; i++) {
             int32_t s = mulq15(ds_buf[i], mulq15(lvl, 32767 - drums.a0 - (((drums.a1 - drums.a0) * (int32_t)i) >> CTL_LOG2)));
-            s = DRUM_VOICE_FX(k, s);
+            s = DRUM_VOICE_FX(k, drum_vapply(k, s));
             v->s[7] = s;
             if (s > pk || -s > pk)
                 pk = s < 0 ? -s : s;
@@ -458,7 +484,7 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
                 drums.denv[k] = (int32_t)(((uint32_t)drums.denv[k] * drums.dk[k]) >> 16);
                 if (drums.denv[k] < 8) v->active = 0;
             }
-            s = DRUM_VOICE_FX(k, s);
+            s = DRUM_VOICE_FX(k, drum_vapply(k, s));
             v->s[7] = s;
             if (s > pk || -s > pk)
                 pk = s < 0 ? -s : s;

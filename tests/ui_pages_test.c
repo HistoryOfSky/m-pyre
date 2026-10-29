@@ -1318,18 +1318,23 @@ int main(int argc, char **argv)
             encs[panel.enc[EN_SELECT]] = 1; frame();
             check(drum_page == 2, "DRUMS: SELECT right again: sound (2.7)");
             key(key_of_white(2)); frame();
-            encs[panel.enc[EN_K2]] = 3; frame();
-            encs[panel.enc[EN_K3]] = -2; frame();
-            check(drum_lane == 2 && drum_tune[2] == 3 && drum_dec[2] == -2, "sound: a key picks its sound, KNOB 2 its TUNE (+3), KNOB 3 its DECAY (-2)");
-            ui.force = 1; frame(); ppm("live-sound");
-            encs[panel.enc[EN_K2]] = 20; frame();
-            encs[panel.enc[EN_K1]] = 1; frame();
-            encs[panel.enc[EN_K4]] = -3; frame();
-            check(drum_lane == 3 && drum_tune[2] == 7 && song.g[G_DRLVL] == lv0 - 3, "sound: TUNE stops at +7; KNOB 1 the next sound, KNOB 4 the drums' level");
-            song.g[G_DRLVL] = (int16_t)lv0;
+            encs[panel.enc[EN_K3]] = 3; frame();
+            encs[panel.enc[EN_K4]] = -2; frame();
+            check(drum_lane == 2 && drum_tune[2] == 3 && drum_dec[2] == -2,
+                  "KIT view (M-PYRE): a key picks its sound, KNOB 3 its PITCH (+3), KNOB 4 its DECAY (-2)");
+            ui.force = 1; frame(); ppm("kit-view");
+            encs[panel.enc[EN_K3]] = 9; frame();
+            encs[panel.enc[EN_K1]] = -3; frame();
+            encs[panel.enc[EN_K2]] = 12; frame();
+            encs[panel.enc[EN_SELECT]] = 1; frame();
+            check(drum_lane == 3 && drum_tune[2] == 7 && drum_lvl[2] == -3 && drum_punch[2] == DRUM_PUNCH_MAX &&
+                  song.g[G_DRLVL] == lv0 && drum_page == 2,
+                  "KIT view: PITCH stops at +7; KNOB 1 LEVEL, KNOB 2 PUNCH (to its top); SELECT the next sound");
             memset(drum_tune, 0, sizeof drum_tune), memset(drum_dec, 0, sizeof drum_dec);
+            memset(drum_lvl, 0, sizeof drum_lvl), memset(drum_punch, 0, sizeof drum_punch);
+            drum_lane = 0;
             encs[panel.enc[EN_SELECT]] = -1; frame();
-            check(drum_page == 1, "DRUMS: SELECT left: kit");
+            check(drum_page == 1, "DRUMS: SELECT left of the kick: kit");
         }
         encs[panel.enc[EN_SELECT]] = -1; frame();
         check(drum_page == 0, "DRUMS: SELECT left: grid");

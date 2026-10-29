@@ -331,7 +331,7 @@ static int ds_render(dsv_t *s, int32_t *out, uint32_t n)
  * SYNTH page (editor_dsyn.c). Each is a kit as DS_KITS has them: 16 dsnd_t and the crush, with a name. They live
  * in RAM (the drum voices play them from there, so an edit is heard at once) and in flash after the settings
  * (project.c settings_write: one A/B object, so a cut-off write keeps the last copy). Never stored: copies of
- * 808, 909, TRAP and TECHNO. Every value from outside (the editor, a backup, flash) goes through dsu_fix, so the
+ * 808, 909, TRAP and INDUSTR. Every value from outside (the editor, a backup, flash) goes through dsu_fix, so the
  * voices only ever see values the factory kits could hold. */
 #define DSU_N 4u
 #define DSU_MAGIC 0x31555344u                     /* "DSU1" */
@@ -348,7 +348,7 @@ typedef struct {
 _Static_assert(sizeof(dsnd_t) == 22u && sizeof(dsu_kit_t) == 364u && sizeof(dsu_bank_t) == 1464u, "drum synth bank layout");
 static dsu_bank_t dsu;
 static volatile uint8_t dsu_dirty;                /* RAM differs from flash (an edit not stored yet) */
-static const uint8_t DSU_DEF[DSU_N] = {0, 1, 5, 12};   /* 808, 909, TRAP, TECHNO */
+static const uint8_t DSU_DEF[DSU_N] = {0, 1, 5, 6};   /* 808, 909, TRAP, INDUSTR (M-PYRE: the kits trimmed) */
 
 static void dsu_from_factory(uint32_t k, uint32_t src)
 {

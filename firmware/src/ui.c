@@ -681,8 +681,8 @@ UI_SMALL static void select_engine(uint32_t e)
  * engine's preset table may change order; tests/ui_pages_test.c checks every preset is here once */
 /* M-PYRE: the riffbox's sounds by kind - the guitar (the sound pack through the amps), basses, keys and organs,
  * strings and pads, synths (fat analog basses and leads, brass), mallets and bells, retro (chip) */
-enum { BK_GTR, BK_BASS, BK_KEYS, BK_STR, BK_SYN, BK_MALL, BK_RETR };
-static const char *const BANK_KIND[] = {"GTR", "BASS", "KEYS", "STR", "SYN", "MALL", "RETR"};
+enum { BK_GTR, BK_BASS, BK_KEYS, BK_STR, BK_SYN, BK_HYB, BK_MALL, BK_RETR };
+static const char *const BANK_KIND[] = {"GTR", "BASS", "KEYS", "STR", "SYN", "HYBR", "MALL", "RETR"};
 static const struct { uint8_t kind, e; const char *name; } BANK[] = {
     {BK_GTR, 4, "CLEAN GTR"}, {BK_GTR, 4, "CRUNCH GTR"}, {BK_GTR, 4, "HI-GAIN"}, {BK_GTR, 4, "DJENT GTR"},
     {BK_GTR, 4, "LEAD GTR"}, {BK_GTR, 4, "PALM MUTE"}, {BK_GTR, 4, "DI GUITAR"}, {BK_BASS, 4, "PICK BASS"},
@@ -698,7 +698,18 @@ static const struct { uint8_t kind, e; const char *name; } BANK[] = {
     {BK_SYN, 0, "FAT LEAD"}, {BK_SYN, 6, "SYNC LEAD"}, {BK_SYN, 0, "SUPERSAW"}, {BK_SYN, 0, "G-FUNK LD"},
     {BK_SYN, 0, "PWM LEAD"}, {BK_SYN, 6, "SQR LEAD"}, {BK_SYN, 6, "HOOVER"}, {BK_SYN, 0, "SYN BRASS"},
     {BK_SYN, ENGI_FM6, "BRASS SECT"}, {BK_SYN, 6, "80S POLY"}, {BK_SYN, 6, "POWER STAB"}, {BK_SYN, 2, "CZ LEAD"},
-    {BK_SYN, 2, "CZ BRASS"}, {BK_MALL, 1, "MARIMBA"}, {BK_MALL, 4, "VIBES"}, {BK_MALL, 1, "TUBE BELL"},
+    {BK_SYN, 2, "CZ BRASS"},
+    /* M-PYRE: HYBRID, the Clipper voice (eng_hybrid.c; in NOISE's engine slot) */
+    {BK_HYB, ENGI_NOISE, "CLIPPER"}, {BK_HYB, ENGI_NOISE, "POLY PAD"}, {BK_HYB, ENGI_NOISE, "STRINGS"},
+    {BK_HYB, ENGI_NOISE, "ACID"}, {BK_HYB, ENGI_NOISE, "SYNC LEAD"}, {BK_HYB, ENGI_NOISE, "FM BELL"},
+    {BK_HYB, ENGI_NOISE, "FM KEYS"}, {BK_HYB, ENGI_NOISE, "WOBBLE"}, {BK_HYB, ENGI_NOISE, "REESE"},
+    {BK_HYB, ENGI_NOISE, "HOOVER"}, {BK_HYB, ENGI_NOISE, "BRASS"}, {BK_HYB, ENGI_NOISE, "VOX"},
+    {BK_HYB, ENGI_NOISE, "PLUCK"}, {BK_HYB, ENGI_NOISE, "RISER"}, {BK_HYB, ENGI_NOISE, "METAL"},
+    {BK_HYB, ENGI_NOISE, "FOLD BASS"}, {BK_HYB, ENGI_NOISE, "CHIP LEAD"}, {BK_HYB, ENGI_NOISE, "GLASS PAD"},
+    {BK_HYB, ENGI_NOISE, "DRONE"}, {BK_HYB, ENGI_NOISE, "808 SUB"}, {BK_HYB, ENGI_NOISE, "TRANCE"},
+    {BK_HYB, ENGI_NOISE, "SAW PLUCK"}, {BK_HYB, ENGI_NOISE, "SPACE BEL"}, {BK_HYB, ENGI_NOISE, "INIT"},
+    {BK_HYB, ENGI_NOISE, "MOOG BASS"}, {BK_HYB, ENGI_NOISE, "MOOG LEAD"}, {BK_HYB, ENGI_NOISE, "LADDER PAD"},
+    {BK_MALL, 1, "MARIMBA"}, {BK_MALL, 4, "VIBES"}, {BK_MALL, 1, "TUBE BELL"},
     {BK_MALL, ENGI_FM6, "GLASS BELL"}, {BK_MALL, 1, "MUSIC BOX"}, {BK_MALL, 1, "CELESTA"}, {BK_MALL, 1, "GLOCKEN"},
     {BK_MALL, ENGI_FM6, "WOOD BARS"}, {BK_MALL, 1, "HARP"}, {BK_MALL, 2, "RESO PLUCK"}, {BK_RETR, 3, "GB BASS"},
     {BK_RETR, 3, "NES BASS"}, {BK_RETR, 3, "GAME LEAD"}, {BK_RETR, 3, "WAVE LEAD"}, {BK_RETR, 3, "8BIT ARP"},

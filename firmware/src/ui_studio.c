@@ -375,6 +375,125 @@ UI_SMALL static void pads_tick(void)                             /* once a frame
         }
 }
 
+/* M-PYRE: the KIT view (the DRUMS screen's third page): the whole kit drawn - cymbals, hi-hat, toms, snare, kick, floor
+ * tom, the two effects as pads - its sounds lit as they are hit, the one SELECT picks white. Shapes, in the canvas
+ * (240 x 124, from screen row 40); several sounds share one (SNARE / GHOST, the hi-hat's three, RIDE / BELL) */
+enum { KS_KICK, KS_SNARE, KS_HAT, KS_PEDAL, KS_RIDE, KS_BELL, KS_TOM1, KS_TOM2, KS_FLOOR, KS_CRASH, KS_CRASH2, KS_CHINA,
+       KS_REV, KS_DROP };
+static const uint8_t LANE_SHAPE[DRUM_LANES] = {KS_KICK, KS_SNARE, KS_SNARE, KS_HAT, KS_HAT, KS_PEDAL, KS_RIDE, KS_BELL,
+                                               KS_TOM1, KS_TOM2, KS_FLOOR, KS_CRASH, KS_CRASH2, KS_CHINA, KS_REV, KS_DROP};
+UI_SMALL static void kv_ell(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint16_t c, int ring)   /* an ellipse */
+{
+    int32_t x, y;
+    for (y = -ry; y <= ry; y++)
+        for (x = -rx; x <= rx; x++) {
+            int32_t d = x * x * ry * ry + y * y * rx * rx, r2 = rx * rx * ry * ry;
+            if (d <= r2 + rx * ry && (!ring || d >= r2 - 2 * rx * ry * (rx > ry ? rx : ry) / (rx < ry ? rx : ry) - rx * ry))
+                cv_pset(cx + x, cy + y, c);
+        }
+}
+/* one shape: st 0 as it is, 1 picked (white edge), 2 hit (lit) */
+UI_SMALL static void kv_shape(uint32_t id, int st)
+{
+    static const int16_t CY[4][5] = {   /* cymbals: cx, cy, rx, ry, stand foot y */
+        {48, 16, 30, 7, 70}, {150, 12, 28, 7, 34}, {210, 22, 24, 6, 60}, {200, 56, 32, 8, 112}};
+    uint16_t bronze = st == 2 ? TE_DRUM : RGB(206, 164, 64), head = st == 2 ? TE_DRUM : RGB(222, 216, 202);
+    uint16_t shell = RGB(150, 30, 20), edge = st == 1 ? RGB(255, 140, 30) : RGB(40, 30, 24), hw = RGB(120, 120, 130);
+    int32_t hl = st == 1 ? 2 : 1;                       /* (picked: a wider glowing edge) */
+    switch (id) {
+    case KS_CRASH: case KS_CRASH2: case KS_CHINA: case KS_RIDE: {
+        const int16_t *c = CY[id == KS_CRASH ? 0 : id == KS_CRASH2 ? 1 : id == KS_CHINA ? 2 : 3];
+        cv_rect(c[0], c[1], 1, c[4] - c[1], hw);         /* its stand */
+        kv_ell(c[0], c[1], c[2] + hl, c[3] + hl, edge, 0);
+        kv_ell(c[0], c[1], c[2], c[3], bronze, 0);
+        kv_ell(c[0] - c[2] / 3, c[1] - 1, c[2] / 3, 1, RGB(250, 226, 150), 0);   /* a glint */
+        if (id == KS_CHINA)
+            kv_ell(c[0], c[1], c[2], c[3], RGB(120, 80, 20), 1);   /* (its turned-up rim) */
+        cv_rect(c[0] - 1, c[1] - 1, 3, 2, RGB(90, 70, 30));   /* the bell */
+        break;
+    }
+    case KS_BELL:                                       /* the ride's bell */
+        if (st == 1)
+            kv_ell(200, 56, 11, 5, edge, 0);
+        kv_ell(200, 56, 9, 3, st == 2 ? TE_DRUM : RGB(236, 200, 110), 0);
+        break;
+    case KS_HAT:
+        cv_rect(22, 47, 1, 63, hw);
+        kv_ell(22, 52, 19 + hl, 4 + hl, edge, 0), kv_ell(22, 52, 19, 4, bronze, 0);
+        kv_ell(22, 47, 19 + hl, 4 + hl, edge, 0), kv_ell(22, 47, 19, 4, bronze, 0);
+        kv_ell(16, 46, 6, 1, RGB(250, 226, 150), 0);
+        break;
+    case KS_PEDAL:                                      /* its foot board */
+        cv_rect(14 - hl, 109 - hl, 18 + 2 * hl, 6 + 2 * hl, edge);
+        cv_rect(14, 109, 18, 6, st == 2 ? TE_DRUM : st == 1 ? RGB(200, 200, 205) : RGB(90, 90, 98));
+        break;
+    case KS_TOM1: case KS_TOM2: case KS_SNARE: case KS_FLOOR: {
+        int32_t cx = id == KS_TOM1 ? 96 : id == KS_TOM2 ? 140 : id == KS_SNARE ? 58 : 184;
+        int32_t cy = id == KS_TOM1 || id == KS_TOM2 ? 44 : id == KS_SNARE ? 78 : 86;
+        int32_t rx = id == KS_SNARE || id == KS_FLOOR ? 22 : 16, ry = rx / 3, h = id == KS_FLOOR ? 24 : id == KS_SNARE ? 10 : 14;
+        if (id == KS_FLOOR)
+            cv_rect(cx - rx + 2, cy + h, 1, 14, hw), cv_rect(cx + rx - 2, cy + h, 1, 14, hw);   /* its legs */
+        if (id == KS_SNARE)
+            cv_rect(cx, cy + h, 1, 32, hw);
+        cv_rect(cx - rx - hl, cy, 2 * rx + 1 + 2 * hl, h + hl, edge);   /* the shell */
+        cv_rect(cx - rx, cy, 2 * rx + 1, h, id == KS_SNARE ? RGB(176, 176, 184) : shell);
+        cv_rect(cx - rx, cy + 1, 2 * rx + 1, 1, id == KS_SNARE ? RGB(230, 230, 236) : RGB(200, 60, 36));
+        kv_ell(cx, cy + h, rx + hl, ry + hl, edge, 0);
+        kv_ell(cx, cy + h, rx, ry, id == KS_SNARE ? RGB(150, 150, 158) : RGB(110, 22, 14), 0);
+        kv_ell(cx, cy, rx + hl, ry + hl, edge, 0);
+        kv_ell(cx, cy, rx, ry, head, 0);                /* the head */
+        break;
+    }
+    case KS_KICK:                                       /* the bass drum, its front head */
+        te_disc(118, 90, 30 + hl, edge);
+        te_disc(118, 90, 30, shell);
+        te_disc(118, 90, 26, st == 2 ? TE_DRUM : RGB(26, 22, 22));
+        te_disc(118, 90, 9, st == 2 ? RGB(255, 200, 120) : RGB(60, 40, 34));   /* (its port) */
+        te_text_c(118, 66, "m-pyre", st == 2 ? C_BLACK : RGB(230, 120, 40));
+        break;
+    default: {                                          /* REV CRASH, DROP: a pad each */
+        int32_t x = id == KS_REV ? 2 : 198;
+        cv_rect(x, 104, 40, 18, st == 1 ? edge : TE_G2);
+        cv_rect(x + 1, 105, 38, 16, st == 2 ? TE_DRUM : TE_G1);
+        te_text_c(x + 20, 105, id == KS_REV ? "rev" : "drop", st == 2 ? C_BLACK : st == 1 ? C_WHITE : TE_G3);
+        break;
+    }
+    }
+}
+UI_SMALL static void kit_view_draw(void)
+{
+    static const uint8_t ORDER[] = {KS_CRASH2, KS_CHINA, KS_RIDE, KS_BELL, KS_CRASH, KS_KICK, KS_TOM1, KS_TOM2, KS_FLOOR,
+                                    KS_HAT, KS_PEDAL, KS_SNARE, KS_REV, KS_DROP};   /* back to front (the two pads: in
+                                                     * the name row, below) */
+    uint32_t i, l;
+    cv_begin(240, 124, C_BLACK);
+    for (i = 0; i < sizeof ORDER; i++) {
+        int st = 0;
+        if (ORDER[i] == KS_REV) {                       /* the name row: the sound's name, the two effect pads */
+            cv_blit(0, 40);
+            cv_begin(240, 20, C_BLACK);
+            cv_oy = -102;
+        }
+        for (l = 0; l < DRUM_LANES; l++)
+            if (LANE_SHAPE[l] == ORDER[i]) {
+                if (pad_lit[l])
+                    st = 2;
+                else if (l == drum_lane && st == 0)
+                    st = 1;
+            }
+        kv_shape(ORDER[i], st);
+    }
+    cv_oy = 0;
+    {
+        char b[24];
+        str_cpy(b, LANE_NAME[drum_lane], sizeof b);
+        te_text_c(120, 2, b, C_WHITE);
+        if (drum_lvl[drum_lane] || drum_punch[drum_lane] || drum_tune[drum_lane] || drum_dec[drum_lane])
+            cv_rect(120 - text_w(&FONT_S, b) / 2 - 8, 8, 4, 4, TE_DRUM);   /* (this sound is changed) */
+    }
+    cv_blit(0, 164);
+}
+
 UI_SMALL static void drum_screen_draw(void)
 {
     static uint32_t head, title_sig, body_sig, footer;
@@ -395,7 +514,15 @@ UI_SMALL static void drum_screen_draw(void)
         te_header(st, TE_DRUM, &head, -1);
     }
     sig = kit * 131u + drum_page * 7u + drum_lane * 977u + bank * 31u + len + (uint32_t)drum_tweaked() * 7919u;   /* title band */
-    if (ui.force || sig != title_sig) {
+    if (drum_page == 2u) {                              /* M-PYRE: the KIT view, over the title band and the pads */
+        sig = sig * 31u + 77u;
+        for (i = 0; i < DRUM_LANES; i++) sig = sig * 3u + (pad_lit[i] != 0);
+        if (ui.force || sig != body_sig) {
+            body_sig = sig;
+            title_sig = 0;
+            kit_view_draw();
+        }
+    } else if (ui.force || sig != title_sig) {
         char b[8];
         title_sig = sig;
         cv_begin(240, 44, C_BLACK);
@@ -420,7 +547,7 @@ UI_SMALL static void drum_screen_draw(void)
         sig = sig * 31u + s->lvl[0] + s->lvl[1] * 7u + s->lvl[2] * 49u + s->lvl[3] * 343u;
         sig = sig * 31u + s->rat[0] + s->rat[1] * 7u + s->rat[2] * 49u + s->rat[3] * 343u;
     }
-    if (ui.force || sig != body_sig) {
+    if (drum_page != 2u && (ui.force || sig != body_sig)) {
         body_sig = sig;
         cv_begin(240, 100, C_BLACK);
         if (!drum_page) {                              /* GRID: the 16 lanes x 16 steps of this bank */
@@ -479,7 +606,7 @@ UI_SMALL static void drum_screen_draw(void)
         static char v[4][12];
         const char *val[4] = {v[0], v[1], v[2], v[3]};
         static const char *const LG[4] = {"sound", "step", "hit", "level"}, *const LK[4] = {"kit", "level", "reverb", "pan"},
-                                 *const LS[4] = {"sound", "tune", "decay", "level"};
+                                 *const LS[4] = {"level", "punch", "pitch", "decay"};
         int32_t ratio[4];
         if (!drum_page) {
             const dstep_t *s = &TDRUM->dstep[drum_cursor];
@@ -493,18 +620,20 @@ UI_SMALL static void drum_screen_draw(void)
             ratio[3] = dstep_has(s, drum_lane) ? (int32_t)lvl_rank(dstep_lvl(s, drum_lane)) * 333 : 0;   /* ghost left ..
                                                                      * hard right (2.5: it followed the stored order) */
             te_dials(184, LG, val, ratio, 1u, &footer);
-        } else if (drum_page == 2u) {                  /* SOUND (2.7): the sound, its TUNE and DECAY, the drums' level */
-            str_cpy(v[0], LANE_SHORT[drum_lane], 8);
-            fmt_int(v[1], drum_tune[drum_lane]);
-            if (drum_tune[drum_lane] > 0) { v[1][0] = '+'; fmt_int(v[1] + 1, drum_tune[drum_lane]); }
-            fmt_int(v[2], drum_dec[drum_lane]);
-            if (drum_dec[drum_lane] > 0) { v[2][0] = '+'; fmt_int(v[2] + 1, drum_dec[drum_lane]); }
-            fmt_int(v[3], song.g[G_DRLVL] * 100 / 127);
-            ratio[0] = (int32_t)drum_lane * 1000 / (DRUM_LANES - 1);
-            ratio[1] = (drum_tune[drum_lane] - DRUM_TUNE_MIN) * 1000 / (DRUM_TUNE_MAX - DRUM_TUNE_MIN);
-            ratio[2] = (drum_dec[drum_lane] - DRUM_DEC_MIN) * 1000 / (DRUM_DEC_MAX - DRUM_DEC_MIN);
-            ratio[3] = song.g[G_DRLVL] * 1000 / 127;
-            te_dials(184, LS, val, ratio, 3u, &footer);
+        } else if (drum_page == 2u) {                  /* M-PYRE KIT view: the picked sound's LEVEL PUNCH PITCH DECAY */
+            int8_t lv = drum_lvl[drum_lane];
+            fmt_int(v[0], lv * 3 / 2);                  /* (dB, 1.5 a step) */
+            if (lv > 0) { v[0][0] = '+'; fmt_int(v[0] + 1, lv * 3 / 2); }
+            fmt_int(v[1], drum_punch[drum_lane]);
+            fmt_int(v[2], drum_tune[drum_lane]);
+            if (drum_tune[drum_lane] > 0) { v[2][0] = '+'; fmt_int(v[2] + 1, drum_tune[drum_lane]); }
+            fmt_int(v[3], drum_dec[drum_lane]);
+            if (drum_dec[drum_lane] > 0) { v[3][0] = '+'; fmt_int(v[3] + 1, drum_dec[drum_lane]); }
+            ratio[0] = (lv - DRUM_LVL_MIN) * 1000 / (DRUM_LVL_MAX - DRUM_LVL_MIN);
+            ratio[1] = drum_punch[drum_lane] * 1000 / DRUM_PUNCH_MAX;
+            ratio[2] = (drum_tune[drum_lane] - DRUM_TUNE_MIN) * 1000 / (DRUM_TUNE_MAX - DRUM_TUNE_MIN);
+            ratio[3] = (drum_dec[drum_lane] - DRUM_DEC_MIN) * 1000 / (DRUM_DEC_MAX - DRUM_DEC_MIN);
+            te_dials(184, LS, val, ratio, 3u + drum_lane * 977u, &footer);
         } else {
             fmt_int(v[0], (int32_t)kit + 1);
             fmt_int(v[1], song.g[G_DRLVL] * 100 / 127);
@@ -679,7 +808,18 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
             return;
         }
     }
-    if ((s = panel_enc(EN_SELECT)) && (uint32_t)clamp((int32_t)drum_page + s, 0, 2) != drum_page) {   /* SELECT: grid <-
+    if (drum_page == 2u && (s = panel_enc(EN_SELECT)) != 0) {   /* M-PYRE KIT view: SELECT picks the sound */
+        if ((int32_t)drum_lane + s < 0) {
+            drum_page = 1;                              /* (left of the kick: back to the pads) */
+        } else {
+            uint8_t l = (uint8_t)clamp(drum_lane + s, 0, DRUM_LANES - 1);
+            if (l != drum_lane && !song.playing)
+                drum_hear(l);
+            drum_lane = l;
+        }
+        ui.msg_t = 0;
+        ui.force = 1;
+    } else if ((s = panel_enc(EN_SELECT)) && (uint32_t)clamp((int32_t)drum_page + s, 0, 2) != drum_page) {   /* SELECT: grid <-
                                                                      * kit -> sound (2.7), its pages */
         drum_page = (uint8_t)clamp((int32_t)drum_page + s, 0, 2);
         ui.msg_t = 0;
@@ -732,23 +872,17 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
                 fm1_irq_on();
                 sync_reload = 1;
             }
-        } else if (drum_page == 2u) {                  /* SOUND (2.7) */
-            if (k == 0) {
-                uint8_t l = (uint8_t)clamp(drum_lane + s, 0, DRUM_LANES - 1);
-                if (l != drum_lane) drum_hear(l);
-                drum_lane = l;
+        } else if (drum_page == 2u) {                  /* M-PYRE KIT view: LEVEL PUNCH PITCH DECAY of the picked sound */
+            static const int8_t LO[4] = {DRUM_LVL_MIN, 0, DRUM_TUNE_MIN, DRUM_DEC_MIN}, HI[4] = {DRUM_LVL_MAX, DRUM_PUNCH_MAX,
+                                                                                               DRUM_TUNE_MAX, DRUM_DEC_MAX};
+            int8_t *p = k == 0 ? &drum_lvl[drum_lane] : k == 1 ? &drum_punch[drum_lane] : k == 2 ? &drum_tune[drum_lane]
+                                                                                                : &drum_dec[drum_lane];
+            int8_t nv = (int8_t)clamp(*p + s, LO[k], HI[k]);
+            if (nv != *p) {
+                *p = nv;
+                if (!song.playing)
+                    audition_lane(drum_lane);           /* (the next hit has it: heard at once) */
             }
-            if (k == 1 || k == 2) {                    /* TUNE, DECAY: the next hit has them (heard at once) */
-                int8_t *p = k == 1 ? &drum_tune[drum_lane] : &drum_dec[drum_lane];
-                int32_t lo = k == 1 ? DRUM_TUNE_MIN : DRUM_DEC_MIN, hi = k == 1 ? DRUM_TUNE_MAX : DRUM_DEC_MAX;
-                int8_t nv = (int8_t)clamp(*p + s, lo, hi);
-                if (nv != *p) {
-                    *p = nv;
-                    if (!song.playing)
-                        audition_lane(drum_lane);
-                }
-            }
-            if (k == 3) song.g[G_DRLVL] = (int16_t)clamp(song.g[G_DRLVL] + s, 0, 127);
         } else {
             if (k == 0) TDRUM->p[P_E0] = (int16_t)clamp(TDRUM->p[P_E0] + s, 0, DRUM_KITS - 1);
             if (k == 1) song.g[G_DRLVL] = (int16_t)clamp(song.g[G_DRLVL] + s, 0, 127);

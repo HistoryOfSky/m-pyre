@@ -172,13 +172,13 @@ static inline int32_t cab_run(amp_st_t *a, const int16_t *h, int32_t x)
 }
 
 /* one 88.2 kHz sample through the gain stages */
-static inline int32_t amp_stages(amp_st_t *a, const amp_model_t *m, int32_t g1, int32_t u, int32_t b0)
+static inline int32_t amp_stages(amp_st_t *a, const amp_model_t *m, int32_t g1, int32_t g2, int32_t u, int32_t b0)
 {
     int32_t y = amp_tanh(((u * g1) >> 4) + m->b1) - b0;
     y = bq(&m->mid[0], &a->mid[0], y);
     y = bq(&m->mid[1], &a->mid[1], y);
-    if (m->g2)
-        y = amp_tanh((y * m->g2) >> 4);
+    if (g2)
+        y = amp_tanh((y * g2) >> 4);
     if (m->g3) {
         y = bq(&m->mid[2], &a->mid[2], y);
         y = amp_tanh((y * m->g3) >> 4);
@@ -243,7 +243,7 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
     int32_t type = t->p[P_AMP], cab = t->p[P_CAB];
     const amp_model_t *m;
     const int16_t *h;
-    int32_t g1, b0, kb[4], mk;
+    int32_t g1, g2, b0, kb[4], mk, gmk = 4096;
     if (type < 1 || type > AMP_NMODELS + 3) {        /* OFF: nothing */
         a->on = 0;
         return;
@@ -259,16 +259,29 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
     }
     m = &AMP_MODELS[type - 1];
     h = cab >= 1 && cab <= CAB_N ? CAB_IR[cab - 1] : cab == 0 ? CAB_IR[m->cab] : 0;
-    /* GAIN: 64 = as voiced, 0 = a quarter, 127 = about 4x (2^((g - 64) / 32), from the pitch table) */
-    g1 = (int32_t)((((uint64_t)m->g1 << 8) * pow2_q16((t->p[P_AGAIN] - 64) * 6)) >> 24);
     b0 = amp_tanh(m->b1);
+    {   /* GAIN. CLEAN: 2^((g - 64) / 32) on its one stage, 64 as voiced. The driven amps: on both stages, the first
+         * 2^((g - 80) / 16), the second 2^((g - 80) / 24) - 80 as voiced (the factory sounds sit there), turned down
+         * to 0 a light crunch (1/32 and 1/10), up to 127 the clipping thickens and squeezes (x 7.6, x 3.9). The level
+         * stays about the same: the stages saturate (measured, /tmp an/ampt) */
+        int32_t gk = t->p[P_AGAIN] - (type > 1 ? 80 : 64);
+        g1 = (int32_t)((((uint64_t)m->g1 << 8) * pow2_q16(gk * (type > 1 ? 12 : 6))) >> 24);
+        g2 = m->g2 ? (int32_t)((((uint64_t)m->g2 << 8) * pow2_q16(gk * 8)) >> 24) : 0;
+        if (g2 < 1 && m->g2)
+            g2 = 1;
+        if (type > 1 && gk < 0) {                       /* below 80 the stages leave saturation: made up, measured
+                                                         * (CRNCH -29 dB at 0, HIGH -7.5, LEAD -7: ~ gk^2) */
+            static const uint8_t MKC[3] = {147, 38, 36};
+            gmk = (int32_t)(pow2_q16((gk * gk * MKC[(type - 2) % 3]) >> 10) >> 4);
+        }
+    }
     for (j = 0; j < 4u; j++) {                       /* the knobs: + up to x1 (about +6 dB) .. - x0.5 */
         int32_t v = t->p[P_ABASS + j] - 64;
         kb[j] = v > 0 ? v * 260 : v * 128;          /* Q14 */
     }
     {   /* make-up per amp: a held note about as loud as the CLEAN amp's, under the master limiter (measured renders) */
         static const int16_t MK[4] = {13000, 1840, 2100, 2200};
-        mk = MK[(type - 1) & 3];
+        mk = (int32_t)(((int64_t)MK[(type - 1) & 3] * gmk) >> 12);
     }
     for (i = 0; i < n; i++) {
         int32_t x = b[i] >> AMP_IN_SHIFT, y, u0;
@@ -284,8 +297,8 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
                 x = bq(&m->pre[j], &a->pre[j], x);
         u0 = (a->xprev + x) >> 1;                   /* 2x: the half-way sample, then this one */
         a->xprev = x;
-        (void)amp_stages(a, m, g1, u0, b0);         /* (the half-way sample: through the filters, then dropped) */
-        y = amp_stages(a, m, g1, x, b0);
+        (void)amp_stages(a, m, g1, g2, u0, b0);     /* (the half-way sample: through the filters, then dropped) */
+        y = amp_stages(a, m, g1, g2, x, b0);
         for (j = 0; j < 3u; j++)
             if (bq_used(&m->post[j]))
                 y = bq(&m->post[j], &a->post[j], y);

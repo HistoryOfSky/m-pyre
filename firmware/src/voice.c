@@ -779,7 +779,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         d = wt - t->rf_wham;
         t->rf_wham += d > 240 ? 240 : d < -240 ? -240 : d;
         bendq += t->rf_bend + t->rf_wham;
-        t->rf_vph += 16520000u;                         /* the vibrato: 5.3 Hz at a block of 32 samples */
+        t->rf_vph += 14024700u + (uint32_t)t->p[P_VIB] * 110430u;   /* the vibrato: 4.5 Hz, faster as VIB goes up: 9 Hz at
+                                                         * 100 % (a block of 32 samples) */
     }
     if (e->block)                                       /* the engine's per-part work (DRAWBAR: bars, rotor) */
         e->block(t);

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* SLOOP 2.5: the drum track's SYN1..SYN4, your own synthesised kits (drum_synth.c dsu), and the editor's DRUM
  * SYNTH commands (editor_dsyn.c, protocol v10), through hostsim.c:
- *   the kits list ends with SYN1..SYN4; never stored they are copies of 808, 909, TRAP, TECHNO
+ *   the kits list ends with SYN1..SYN4; never stored they are copies of 808, 909, TRAP, INDUSTR
  *   SYN1 (a copy of 808) plays every lane bit for bit as the 808 kit; an edit is heard at once, undone it is the same
  *   any byte the editor (or a file, or flash) sends is put into range: 2000 random kits play bounded and finite
  *   DSYN_LIST / GET / PUT (a sound, the name, a factory copy) / PLAY (queued, played by the audio block) / STORE
@@ -134,8 +134,8 @@ int main(void)
     for (k = 0; k < DSU_N; k++)
         ok &= !memcmp(dsu.k[k].s, DS_KITS[DSU_DEF[k]].s, sizeof dsu.k[k].s) && dsu.k[k].crush == DS_KITS[DSU_DEF[k]].crush &&
               !strncmp(dsu.k[k].name, DS_KITS[DSU_DEF[k]].name, 8) && dsu.k[k].src == DSU_DEF[k];
-    check(ok && !strcmp(DS_KITS[DSU_DEF[0]].name, "808") && !strcmp(DS_KITS[DSU_DEF[3]].name, "TECHNO"),
-          "never stored: SYN1..4 = 808, 909, TRAP, TECHNO");
+    check(ok && !strcmp(DS_KITS[DSU_DEF[0]].name, "808") && !strcmp(DS_KITS[DSU_DEF[3]].name, "INDUSTR"),
+          "never stored: SYN1..4 = 808, 909, TRAP, INDUSTR");
     {
         uint32_t d[DS_LANES], act = 0;
         check(lanes_same(DS_KITS[0].s, DS_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, 0),

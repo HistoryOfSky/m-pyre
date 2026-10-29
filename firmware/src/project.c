@@ -461,6 +461,30 @@ static void drum_tw_get(const project_t *p)
     }
 }
 
+/* M-PYRE: each drum sound's LEVEL (4 bits) and PUNCH (3 bits) in the drum track's bytes of the amp's parameters
+ * (P_AMP .. P_AMP + 15: no amp on the drums), a mark after them (P_AMP + 16); without it (an older project) every
+ * sound as the kit has it. The drum track's amp values stay at their defaults (proj_apply) */
+#define DRUM_MX_MARK 0xA7u
+UI_SMALL static void drum_mx_put(project_t *p)
+{
+    uint8_t *x = p->t[TRK_DRUM].x;
+    uint32_t l;
+    for (l = 0; l < DRUM_LANES; l++)
+        x[P_AMP - PROJ_NC6 + l] = (uint8_t)(((uint32_t)drum_lvl[l] & 15u) | ((uint32_t)drum_punch[l] & 7u) << 4);
+    x[P_AMP - PROJ_NC6 + DRUM_LANES] = DRUM_MX_MARK;
+}
+static void drum_mx_get(const project_t *p)
+{
+    const uint8_t *x = p->t[TRK_DRUM].x;
+    uint32_t l, ok = x[P_AMP - PROJ_NC6 + DRUM_LANES] == DRUM_MX_MARK;
+    for (l = 0; l < DRUM_LANES; l++) {
+        uint32_t v = ok ? x[P_AMP - PROJ_NC6 + l] : 0u;
+        drum_lvl[l] = (int8_t)((int32_t)((v & 15u) ^ 8u) - 8);
+        drum_punch[l] = (int8_t)((v >> 4) & 7u);
+    }
+}
+_Static_assert(P_AMP + DRUM_LANES < P_E0 && P_AMP >= PROJ_NC6, "the drum sounds' LEVEL / PUNCH bytes");
+
 UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, as a project */
 {
     uint32_t i;
@@ -484,6 +508,7 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
         memcpy(p->t[i].lock, trk[i].lock, sizeof trk[i].lock);
     }
     drum_tw_put(p);                                     /* (2.7) the drum sounds' TUNE and DECAY */
+    drum_mx_put(p);                                     /* (M-PYRE) and their LEVEL, PUNCH */
     p->sum = proj_sum(p);
 }
 
@@ -502,6 +527,7 @@ static void proj_apply(const project_t *p, int all)
     song.g[G_DRDLY] = (int16_t)clamp(p->drdly, GP[G_DRDLY].min, GP[G_DRDLY].max);   /* (a load and a section, as REV) */
     proj_tx_get(p);                                     /* GLO > TEXTURE (2.6): a load and a section */
     drum_tw_get(p);                                     /* (2.7) the drum sounds' TUNE and DECAY: a load and a section */
+    drum_mx_get(p);                                     /* (M-PYRE) and their LEVEL, PUNCH */
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
@@ -514,6 +540,9 @@ static void proj_apply(const project_t *p, int all)
                                     i >= P_E0 && i <= P_E7 ? &ENGINES[e]->edit[i - P_E0] : &TP[i];
             t->p[i] = (int16_t)clamp(pt_get(s, i), d->min, d->max);
         }
+        if (k == TRK_DRUM)                              /* (M-PYRE: those bytes held the drum sounds' LEVEL, PUNCH) */
+            for (i = P_AMP; i <= P_WAH; i++)
+                t->p[i] = TP[i].def;
         if (!(p->rsv[0] & 0x40u) && !t->p[P_AMODE])
             t->p[P_AHOLD] = 0;                          /* (2.7) saved before 2.7: HOLD with the arp OFF did nothing then; it
                                                          * is KBD HOLD now, so it starts OFF (no note held by surprise) */
