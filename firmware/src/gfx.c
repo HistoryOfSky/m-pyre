@@ -42,14 +42,17 @@ static uint16_t pal_hi = 0xFFFFu;        /* the accent: white unless a theme say
 typedef struct {
     const char *name;
     uint16_t c[5];
+    uint16_t bg, hi;                             /* M-PYRE: the background and the accent (0 / 0: black and white) */
 } palette_t;
+/* M-PYRE: AMBER RED MONO, and BEIGE - a light screen, dark text (the accent black), the tracks' colours darker */
 static const palette_t PALETTES[] = {
-    {"GREEN", {RGB(0, 40, 12), RGB(0, 84, 30), RGB(16, 140, 54), RGB(56, 200, 92), RGB(120, 255, 146)}},
-    {"AMBER", {RGB(60, 26, 0), RGB(110, 50, 0), RGB(170, 82, 0), RGB(225, 120, 8), RGB(255, 166, 40)}},
-    {"CYAN", {RGB(0, 30, 50), RGB(0, 62, 96), RGB(16, 112, 160), RGB(56, 172, 222), RGB(140, 222, 255)}},
-    {"RED", {RGB(52, 8, 8), RGB(100, 18, 14), RGB(170, 36, 26), RGB(226, 64, 48), RGB(255, 112, 92)}},
-    {"MONO", {RGB(40, 40, 40), RGB(80, 80, 80), RGB(130, 130, 130), RGB(186, 186, 186), RGB(226, 226, 226)}},
+    {"AMBER", {RGB(60, 26, 0), RGB(110, 50, 0), RGB(170, 82, 0), RGB(225, 120, 8), RGB(255, 166, 40)}, 0, 0},
+    {"RED", {RGB(52, 8, 8), RGB(100, 18, 14), RGB(170, 36, 26), RGB(226, 64, 48), RGB(255, 112, 92)}, 0, 0},
+    {"MONO", {RGB(40, 40, 40), RGB(80, 80, 80), RGB(130, 130, 130), RGB(186, 186, 186), RGB(226, 226, 226)}, 0, 0},
+    {"BEIGE", {RGB(208, 196, 172), RGB(168, 154, 130), RGB(118, 106, 88), RGB(70, 60, 48), RGB(24, 18, 12)},
+     RGB(238, 228, 206), 1},
 };
+#define PAL_LIGHT 3u                             /* (BEIGE: its own tracks' colours, palette_set) */
 #define NPALETTES (sizeof(PALETTES) / sizeof(PALETTES[0]))
 static uint16_t pal[5];
 #define C_LINE pal[0]                /* 1 rules, separators */
@@ -166,16 +169,19 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
 {
     uint32_t k;
     int cu = theme_shown();
+    const palette_t *pp = &PALETTES[i % NPALETTES];
+    static const uint16_t LIGHT_TRK[4] = {RGB(196, 28, 14), RGB(214, 92, 0), RGB(176, 124, 0), RGB(44, 38, 30)};
+    int light = !cu && i % NPALETTES == PAL_LIGHT;
     for (k = 0; k < 5u; k++)
-        pal[k] = cu ? theme.c[k] : PALETTES[i % NPALETTES].c[k];
-    pal_bg = cu ? theme.bg : 0u;
-    pal_hi = cu ? theme.hi : 0xFFFFu;
+        pal[k] = cu ? theme.c[k] : pp->c[k];
+    pal_bg = cu ? theme.bg : pp->bg;
+    pal_hi = cu ? theme.hi : pp->hi ? 0u : 0xFFFFu;
     for (k = 0; k < 4u; k++)
         te_g[k] = te_gray(TE_G_DEF[k]);
     for (k = 0; k < 4u; k++) {
-        TE_COL[k] = cu ? theme.trk[k] : TE_COL_DEF[k];
-        TE_MID[k] = cu ? rgb565_scale(theme.trk[k], 2u, 3u) : TE_MID_DEF[k];
-        TE_DIM[k] = cu ? rgb565_scale(theme.trk[k], 1u, 3u) : TE_DIM_DEF[k];
+        TE_COL[k] = cu ? theme.trk[k] : light ? LIGHT_TRK[k] : TE_COL_DEF[k];
+        TE_MID[k] = cu ? rgb565_scale(theme.trk[k], 2u, 3u) : light ? rgb565_over(LIGHT_TRK[k], 2u, 3u) : TE_MID_DEF[k];
+        TE_DIM[k] = cu ? rgb565_scale(theme.trk[k], 1u, 3u) : light ? rgb565_over(LIGHT_TRK[k], 1u, 3u) : TE_DIM_DEF[k];
     }
 }
 

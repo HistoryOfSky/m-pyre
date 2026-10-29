@@ -170,9 +170,10 @@ def main(out):
     L.append("static const bq_coef_t AMP_BANDS[4] = {" + ", ".join(bq(c) for c in BANDS) + "};")
     L.append(f"static const bq_coef_t CAB_AA = {bq(CAB_AA)};")
     L.append("static const bq_coef_t AMP_DEC[2] = {" + ", ".join(bq(c) for c in AMP_DEC) + "};")
-    # the wah: a resonant band-pass (Q 4) from 350 Hz (heel) to 2.2 kHz (toe), 64 positions, exponential
+    # the wah, as a Cry Baby: a resonant band-pass from ~450 Hz (heel) to ~1.8 kHz (toe), its Q from ~6.5 at the heel
+    # to ~4 at the toe; the rocker's audio-taper pot: the sweep slow at the heel, quick toward the toe (t^1.35)
     L.append("static const bq_coef_t WAH_BQ[64] = {" + ", ".join(
-        bq(biquad("bp", 350 * (2200 / 350) ** (i / 63), FS, 4.0)) for i in range(64)) + "};")
+        bq(biquad("bp", 450 * (1800 / 450) ** ((i / 63) ** 1.35), FS, 6.5 - 2.5 * i / 63)) for i in range(64)) + "};")
     for k, c in list(BASS_BQ.items()) + list(PRE_BQ.items()):
         L.append(f"static const bq_coef_t {k} = {bq(c)};")
     L.append(f"static const int16_t CAB_IR[CAB_N][CAB_TAPS] = {{   /* {'History Of Sky IRs' if have else 'generic'} */")

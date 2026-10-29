@@ -345,7 +345,7 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
     }
     if (ui.sheet) {                                     /* OCT+ held: the note's sheet */
         char nu[8];
-        const char *val[6] = {cs->flags & SF_SLIDE ? "ON" : "OFF", nu, FILL_N[step_fill(t, ui.cursor) % 3u], "", "", ""};
+        const char *val[6] = {ART_N[note_art(t, ui.cursor)], nu, FILL_N[step_fill(t, ui.cursor) % 3u], "", "", ""};
         fmt_int(nu, t->micro[ui.cursor]);
         if (t->micro[ui.cursor] > 0) { nu[0] = '+'; fmt_int(nu + 1, t->micro[ui.cursor]); }
         sheet_bar(H_GRAPH - 16, SHEET_N, val, ui.sheet - 1u, TE_DIM[song.sel & 3u]);
@@ -835,6 +835,7 @@ UI_SMALL static uint32_t page_pos(uint32_t *n)
     return k;
 }
 
+#include "ui_amp.c"                                    /* M-PYRE: the AMP view (draw_foot asks) */
 UI_SMALL static void draw_foot(void)
 {
     char s[48], pn[16], en[10], ti[20];
@@ -916,7 +917,10 @@ UI_SMALL static void draw_foot(void)
         cv_text(x + 10, 20, &FONT_S, pf, C_AMB);
     }
     cv_text(236 - text_w(&FONT_S, ti), 20, &FONT_S, ti, C_GRAY);
-    cv_blit(0, Y_FOOT);
+    if (amp_view_on())
+        cv_blit_from(0, Y_FOOT, 18);                    /* (M-PYRE: the AMP view reaches down into the step row) */
+    else
+        cv_blit(0, Y_FOOT);
 }
 UI_SMALL static void draw_columns(void)
 {
@@ -1145,6 +1149,16 @@ UI_SMALL static void ui_draw(void)
         return;
     }
     cursor_fix();
+    if (amp_view_on()) {                                /* M-PYRE: EDIT > AMP / AMP 2, the amp itself */
+        if (ui.force)
+            lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, C_BLACK);
+        draw_head();
+        amp_view_draw();
+        ui_timers();
+        draw_foot();
+        ui.force = 0;
+        return;
+    }
     if (ui.force)
         draw_frame();
     felucca_dbg.stage = 3;

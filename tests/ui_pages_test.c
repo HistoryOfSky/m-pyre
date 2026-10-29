@@ -176,8 +176,8 @@ int main(int argc, char **argv)
     }
     panel = PANEL_DEFAULT;
     layers_init();
-    settings.palette = 4;
-    palette_set(4);
+    settings.palette = 2;
+    palette_set(2);
     host_tracks_init();
     for (i = 0; i < NPART; i++) { set_engine_of(&trk[i], TRK_DEF[i][0]); apply_preset_to(&trk[i], TRK_DEF[i][1]); trk[i].engine = trk[i].eng_req; }
     TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;
@@ -341,7 +341,9 @@ int main(int argc, char **argv)
     release(B_FX); frames(2); check(ui.layer == LY_PLAY, "and FX let go: back to playing");
     press(B_FX); frames(3); tap(B_HOME); release(B_FX); frames(3);
     press(B_HOME); frames(50); release(B_HOME); frames(2);
-    check(ui.menu && ly_lock == LY_PLAY, "locked, HOME held: the menu, unlocked");
+    check(!ui.menu && ly_lock == LY_PLAY && cur_page()->scope == SC_TRK, "locked, HOME held: unlocked, TRACKS (no menu)");
+    press(B_GLO); frames(120); release(B_GLO); frames(2);
+    check(ui.menu && ly_lock == LY_PLAY, "M-PYRE: GLO held alone ~1.2 s: the menu");
     ui.menu = 0; ui.force = 1; frames(2);
     song.g[G_DUST] = 0; song.g[G_FILT] = 0;
 
@@ -839,13 +841,13 @@ int main(int argc, char **argv)
             check(ok, "theme (2.7): checked (CRC, the strongest step and the accent standing out from the background, a "
                       "printable name); a first-beta THM1 taken with an accent");
             ui.menu = 1; ui.menu_sel = MI_COLOR; ui.force = 1; frame();
-            settings.palette = 4; theme_on = 0; palette_set(4);
-            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: MONO -> GREEN, as ever */
+            settings.palette = NPALETTES - 1u; theme_on = 0; palette_set(NPALETTES - 1u);
+            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: the last (BEIGE) -> the first (AMBER) */
             ok = settings.palette == 0u && !theme_on;
-            settings.palette = 4; palette_set(4);
+            settings.palette = NPALETTES - 1u; palette_set(NPALETTES - 1u);
             theme = th; theme_valid = 1;
             encs[panel.enc[EN_K1]] = 1; frame();      /* MONO -> SUNSET */
-            ok &= theme_on && settings.palette == 4u && pal[0] == th.c[0] && pal[4] == th.c[4] && C_BLACK == th.bg &&
+            ok &= theme_on && settings.palette == NPALETTES - 1u && pal[0] == th.c[0] && pal[4] == th.c[4] && C_BLACK == th.bg &&
                   TE_COL[0] == th.trk[0] && TE_COL[3] == th.trk[3] && TE_MID[1] == rgb565_scale(th.trk[1], 2, 3) &&
                   (lights_word() >> 30 & 1u) && !strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "SUNSET") && C_WHITE == th.hi;
             ui.force = 1; frame(); ppm("menu-theme");
@@ -1189,7 +1191,7 @@ int main(int argc, char **argv)
         check(!strcmp(PT(), "LFO 2"), "SELECT left: the page before");
         SEL(-1);
         check(!strcmp(PT(), "LFO"), "SELECT left: LFO");
-        tap(B_FX); SEL(4);                                /* (M-PYRE: AMP, AMP 2, PEDAL, FX, then FILTER) */
+        tap(B_FX); SEL(1);                                /* (M-PYRE: the amps went to EDIT: FX, then FILTER) */
         check(!strcmp(PT(), "FILTER"), "SELECT on FX: next page, the track FILTER");
         TSEL->p[P_TFLT] = -32; ui.force = 1; frames(2); ppm("page-filter");
         check(!strcmp(ui.big_l[0], "FILT") && !strcmp(ui.big_v[0], "LP50") && !ui.big_l[1][0],
@@ -1203,11 +1205,11 @@ int main(int argc, char **argv)
         }
         TSEL->p[P_TFLT] = 0;
         SEL(9);
-        check(!strcmp(PT(), "REV/CHO"), "SELECT on FX: on to the last page, REV/CHO");
+        check(!strcmp(PT(), "CHORUS"), "SELECT on FX: on to the last page, CHORUS (M-PYRE: REVERB, CHORUS)");
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
         SEL(9);
-        check(!strcmp(PT(), "VOICE 2"), "SELECT on EDIT: up to VOICE 2");
+        check(!strcmp(PT(), is_drum(TSEL) ? "VOICE 2" : "PEDAL"), "SELECT on EDIT: up to its last page (M-PYRE: PEDAL)");
         tap(B_SEQ); SEL(9);
         check(!strcmp(PT(), "PATTERN"), "SELECT on SEQ: STEP <-> PATTERN, not into the SONG screen");
         tap(B_ENV);
@@ -1936,15 +1938,17 @@ int main(int argc, char **argv)
         release(B_OCTUP); frame();
         check(ok && ui.sheet == 1u && song.octave == 0, "NOTES: OCT+ held 0.4 s: the note's sheet (the octave stays)");
         ui.force = 1; frame(); ppm("notes-sheet");
+        tap(B_OCTUP); frame();                              /* (M-PYRE: ART, NORM -> PALM -> SLIDE) */
+        ok = note_art(t, 4) == 1u;
         tap(B_OCTUP); frame();
-        ok = (t->step[4].flags & SF_SLIDE) != 0;
+        ok &= (t->step[4].flags & SF_SLIDE) != 0;
         encs[panel.enc[EN_K1]] = 1; frame();
         encs[panel.enc[EN_K2]] = 3; frame();
         ok &= ui.sheet == 2u && t->micro[4] == 3;
         encs[panel.enc[EN_K1]] = 1; frame();
         encs[panel.enc[EN_K2]] = 1; frame();
         ok &= step_fill(t, 4) == FC_FILL;
-        check(ok, "NOTES sheet: SLIDE (OCT+), NUDGE +3, FILL (KNOB 1 the row, KNOB 2 its value)");
+        check(ok, "NOTES sheet: ART PALM, SLIDE (OCT+), NUDGE +3, FILL (KNOB 1 the row, KNOB 2 its value)");
         encs[panel.enc[EN_K1]] = 1; frame();
         encs[panel.enc[EN_K2]] = -1; frame();
         ok = ui.cursor == 3u && t->step[3].n == 3u && t->step[3].note[1] == 65u && note_len(t, 3) == 3u && !step_on(&t->step[4]) &&

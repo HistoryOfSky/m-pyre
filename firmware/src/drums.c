@@ -81,23 +81,22 @@ static int32_t drum_set(void)
 /* The drum track's 16 sounds, one per white key, F3 (kick) .. G5 (cowbell): kicks, snare and clap,
  * the hi-hats, rim and a second snare, the toms, the cymbals, the percussion. Each plays a GM note
  * (the sampled kits: their samples; the synthesised kits: drum_synth.c DS_MAP). M-PYRE: a metal kit's lanes -
- * kick, snare and ghost, the hats, ride and its bell side by side, three toms, crash and china, then the effects:
- * the crash backwards, a riser, a drop (tools/prep_mpyre.py KIT). A black key plays
+ * kick, snare and ghost, the hats, ride and its bell side by side, three toms, two crashes and the china, then the
+ * effects: the crash backwards and a drop (tools/prep_mpyre.py KIT). A black key plays
  * the lane of the white key left of it (two fingers on one sound). */
-static const uint8_t LANE_NOTE[DRUM_LANES] = {36, 38, 40, 42, 46, 44, 51, 53, 48, 47, 43, 49, 52, 84, 82, 83};
+static const uint8_t LANE_NOTE[DRUM_LANES] = {36, 38, 40, 42, 46, 44, 51, 53, 48, 47, 43, 49, 57, 52, 84, 83};
 static const char *const LANE_NAME[DRUM_LANES] = {
     "KICK", "SNARE", "GHOST", "HAT", "OPEN HAT", "PEDAL", "RIDE", "BELL",
-    "HI TOM", "MID TOM", "FLOOR", "CRASH", "CHINA", "REV CRASH", "RISER", "DROP"};
+    "HI TOM", "MID TOM", "FLOOR", "CRASH", "CRASH 2", "CHINA", "REV CRASH", "DROP"};
 static const char *const LANE_SHORT[DRUM_LANES] = {           /* 5 characters: tiles, dials */
     "kick", "snare", "ghost", "hat", "open", "pedal", "ride", "bell",
-    "tom h", "tom m", "floor", "crash", "china", "rev", "riser", "drop"};
-/* a GM note (MIDI in, old projects) -> its lane: the nearest sound of the 16 (35..81; below: kick). M-PYRE: the three
- * effects (REV CRASH, RISER, DROP) are notes 84, 82, 83 (no GM sound: a GM part never plays them), above 81 else the
- * crash */
+    "tom h", "tom m", "floor", "crash", "crsh2", "china", "rev", "drop"};
+/* a GM note (MIDI in, old projects) -> its lane: the nearest sound of the 16 (35..81; below: kick). M-PYRE: the two
+ * effects (REV CRASH, DROP) are notes 84, 83 (no GM sound: a GM part never plays them), above 81 else the crash */
 static const uint8_t LANE_OF_GM[81 - 35 + 1] = {
     /* 35 */ 0, 0, 2, 1, 2, 2, 10, 3, 10, 5,
-    /* 45 */ 9, 4, 9, 8, 11, 8, 6, 12, 7, 3,
-    /* 55 */ 11, 7, 11, 12, 6, 8, 9, 8, 8, 9,
+    /* 45 */ 9, 4, 9, 8, 11, 8, 6, 13, 7, 3,
+    /* 55 */ 11, 7, 12, 13, 6, 8, 9, 8, 8, 9,
     /* 65 */ 8, 9, 7, 7, 3, 3, 7, 7, 3, 3,
     /* 75 */ 2, 2, 2, 9, 9, 7, 7};
 /* SLOOP 2.7, the DRUMS screen's SOUND page: each of the 16 sounds' TUNE (-8 .. +7 semitones) and DECAY (-4 .. +3,
@@ -121,7 +120,7 @@ static int drum_tweaked(void)
 }
 static uint32_t lane_of_note(uint32_t note)
 {
-    return note < 35u ? 0u : note == 82u ? 14u : note == 83u ? 15u : note == 84u ? 13u : note > 81u ? 11u : LANE_OF_GM[note - 35u];
+    return note < 35u ? 0u : note == 83u ? 15u : note == 84u ? 14u : note > 81u ? 11u : LANE_OF_GM[note - 35u];
 }
 /* the lane of key k (0 = F3 .. 26 = G5): white keys in order, a black key the white key left of it */
 static uint32_t lane_of_key(uint32_t k)

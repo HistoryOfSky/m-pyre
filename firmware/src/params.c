@@ -29,13 +29,8 @@ static const uint16_t ESYNC_UNITS[ESYNC_N] = {0, 4, 6, 8, 9, 12, 16, 18, 24, 32,
                                               96, 128, 144, 192, 256, 288, 384, 576, 768, 1152, 1536};
 static uint32_t esync_idx(int32_t v) { return (uint32_t)(v & 127) * ESYNC_N >> 7; }   /* (param_format's split) */
 /* the INSERT's types (fx.c IT_*; append-only: stored). Its three values A B C mean what the type says (ins_desc) */
-static const char *const N_ITYPE[] = {"OFF", "SOFT", "HARD", "FOLD", "FUZZ", "CRUSH", "PHASR", "FLANG", "CHOR",
-                                      "BOOST", "OD", "DIST", "BFUZZ"};   /* (M-PYRE: the guitar / bass pedals, after the amp) */
-/* CRUSH: BITS 1..16 and RATE (the held sample's rate) over the range in 16 even parts (0-terminated) */
-static const char *const N_IBITS[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
-                                      "16", 0};
-static const char *const N_IRATE[] = {"689", "919", "1.1k", "1.4k", "1.8k", "2.2k", "2.8k", "3.7k", "4.4k", "5.5k",
-                                      "7.4k", "8.8k", "11k", "15k", "22k", "44k", 0};
+static const char *const N_ITYPE[] = {"OFF", "PHASR", "FLANG", "CHOR", "TREM"};   /* (M-PYRE: modulation only) */
+static const char *const N_RTYPE[] = {"ROOM", "HALL", "PLATE", "SPRING"};   /* M-PYRE: G_RTYPE (fx.c fx_buses) */
 static const char *const N_AMODE[] = {"OFF", "UP", "DN", "UPDN", "RND", "ORD",   /* (append-only: seq.c AM_*) */
                                        "REPEAT", "DNUP", "UP+8", "CONV", "DIVG", "PINKY", "THUMB", "WALK", "CHORD"};
 static const char *const N_MOUT[] = {"KEYS", "SEQ"};
@@ -112,7 +107,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_SLEN] = PD("LEN", F_STEPS, 1, NSTEP, 16),
     [P_SDIV] = PE("DIV", N_SDIV, 2),
     [P_SSWING] = PD("SWG", F_SWING, 0, 100, 0),
-    [P_SGATE] = PD("GATE", F_PCT, 1, 127, 64),
+    [P_SGATE] = PD("GATE", F_PCT, 1, 127, 127),   /* (M-PYRE: 100 % - a riff's notes ring to the next) */
     [P_DIST] = PD("DST", F_PCT, 0, 127, 0),
     [P_CHOR] = PD("CHO", F_PCT, 0, 127, 0),
     [P_DLY] = PD("DLY", F_PCT, 0, 127, 0),
@@ -158,7 +153,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_COMP] = PD("COMP", F_OFFPCT, 0, 127, 0),
     [P_OCT] = PD("OCT", F_OCTST, 0, 48, 24),       /* semitones + 24: 24 = off */
     [P_OMIX] = PD("O MIX", F_PCT, 0, 127, 64),
-    [P_PALM] = PD("PALM", F_OFFPCT, 0, 127, 0),
+    [P_PALM] = PE("PALM", N_ONOFF, 0),          /* (M-PYRE: on / off - the palm mute samples) */
     [P_BEND] = PD("BEND", F_BEND, 0, 127, 0),
     [P_VIB] = PD("VIB", F_OFFPCT, 0, 127, 0),
     [P_LEG] = PD("LEGATO", F_OFFPCT, 0, 127, 0),
@@ -192,6 +187,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_RDAMP] = PD("DAMP", F_PCT, 0, 127, 60),
     [G_CRATE] = PD("CRT", F_LFOHZ, 0, 127, 40),
     [G_CDEPTH] = PD("CDP", F_PCT, 0, 127, 60),
+    [G_RTYPE] = PE("TYPE", N_RTYPE, 1),             /* M-PYRE: the reverb (fx.c): HALL as ever */
     [G_MIDI] = PE("OUT", N_MOUT, 0),            /* MIDI OUT: the keys, or the sequencer too (a setting of the FM-1) */
     [G_SYNC] = PE("SYNC", N_SYNC, 0),           /* a setting of the FM-1, not of a project (panel.c lights_sync) */
     [G_ROUTE] = PE("IN", N_MIN, 0),             /* MIDI IN: NOTES (and the clock), CLOCK only, or CH n: that channel only (a setting of the FM-1) */
@@ -236,17 +232,16 @@ static const param_desc_t DRUM_KIT_DESC = PE("KIT", DRUM_KIT_NAMES, 0);
 /* the INSERT's A B C as its TYPE means them (TP's ranges and defaults): the drives DRIVE TONE LEVEL, CRUSH BITS RATE
  * LPF, the swept ones RATE DEPTH FDBK; OFF TP's own */
 #define PU(l, f, df, n, u) {l, f, 0, 127, df, n, u}
-static const param_desc_t INS_DESC[3][3] = {
-    {PU("DRIVE", F_PCT, 64, 0, 0), PU("TONE", F_CUTOFF, 96, 0, 0), PU("LEVEL", F_DB, 96, 0, 0)},
-    {PU("BITS", F_INT, 64, N_IBITS, 0), PU("RATE", F_INT, 96, N_IRATE, "Hz"), PU("LPF", F_CUTOFF, 96, 0, 0)},
+static const param_desc_t INS_DESC[2][3] = {
     {PU("RATE", F_LFOHZ, 64, 0, 0), PU("DEPTH", F_PCT, 96, 0, 0), PU("FDBK", F_PCT, 96, 0, 0)},
+    {PU("RATE", F_LFOHZ, 80, 0, 0), PU("DEPTH", F_PCT, 90, 0, 0), PU("SHAPE", F_PCT, 0, 0, 0)},   /* TREM */
 };
 #undef PU
 static const param_desc_t *ins_desc(int32_t type, uint32_t k)
 {
     if (type <= 0 || type >= (int32_t)NELEM(N_ITYPE))
         return &TP[P_IA + k];
-    return &INS_DESC[type < 5 || type >= 9 ? 0 : type == 5 ? 1 : 2][k % 3u];   /* (SOFT .. FUZZ and M-PYRE's BOOST ..
+    return &INS_DESC[type == 4][k % 3u];   /* (SOFT .. FUZZ and M-PYRE's BOOST ..
                                                                                 * BFUZZ: DRIVE TONE LEVEL; CRUSH; the swept ones) */
 }
 static const param_desc_t ESYNC_DESC[3] = {   /* ATK DEC REL with ENV SYNC on: the range and defaults as ever */
@@ -456,18 +451,14 @@ static const page_t PAGES[] = {
     {"LFO", FAM_LFO, SC_TRACK, GR_LFO, {P_LRATE, P_LWAVE, P_LPHASE, P_LFADE}},
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_LSYNC, P_LTRIG, P_LPOL, 0xFF}},   /* 2.6 (Felucca 1.4): SYNC TRIG POL */
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_NONE, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
-    /* M-PYRE: the rig first - the amp, its cabinet and compressor, the pedal and the octaver in front of it (the LIVE
-     * view keeps the playing controls: chords, bend, vibrato, palm, legato, whammy, wah, volume) */
-    {"AMP", FAM_FX, SC_TRACK, GR_NONE, {P_AMP, P_AGAIN, P_ABASS, P_AMID}},
-    {"AMP 2", FAM_FX, SC_TRACK, GR_NONE, {P_ATREB, P_APRES, P_CAB, P_COMP}},
-    {"PEDAL", FAM_FX, SC_TRACK, GR_NONE, {P_PEDAL, P_PDRV, P_OCT, P_OMIX}},
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"FILTER", FAM_FX, SC_TRACK, GR_NONE, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},   /* drum track too */
     {"INSERT", FAM_FX, SC_TRACK, GR_INS, {P_ITYPE, P_IA, P_IB, P_IC}},   /* 2.6 (Felucca 1.5): the track's INSERT (fx.c), */
     {"INSERT 2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, 0xFF, 0xFF, 0xFF}},  /* .. its dry / wet; the drum track too */
     {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
-    {"REV/CHO", FAM_FX, SC_GLOBAL, GR_NONE, {G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH}},
+    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RTYPE, G_RSIZE, G_RDAMP, 0xFF}},   /* (M-PYRE: four kinds of room) */
+    {"CHORUS", FAM_FX, SC_GLOBAL, GR_NONE, {G_CRATE, G_CDEPTH, 0xFF, 0xFF}},
     {"SEL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_CHORD}},
     {"SEL 2", FAM_SCL, SC_TRACK, GR_SCALE, {P_TRANS, P_STRUM, P_VLEAD, 0xFF}},   /* (2.4: the chords played) */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
@@ -476,6 +467,11 @@ static const page_t PAGES[] = {
                                                                           * RES KTR (page_shown) */
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
+    /* M-PYRE: the rig, at the end of EDIT (a guitar's or bass's sound; a synth leaves AMP OFF): the amp view - AMP CAB
+     * PRES COMP on top, the amp's own knobs GAIN BASS MID TREB on its front (ui_draw.c) - then the pedal and the octaver */
+    {"AMP", FAM_EDIT, SC_TRACK, GR_NONE, {P_AMP, P_CAB, P_APRES, P_COMP}},
+    {"AMP 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_AGAIN, P_ABASS, P_AMID, P_ATREB}},
+    {"PEDAL", FAM_EDIT, SC_TRACK, GR_NONE, {P_PEDAL, P_PDRV, P_OCT, P_OMIX}},
     {"GLOBAL", FAM_GLO, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, G_TUNE}},
     {"MASTER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DUST, G_DUCK, G_FILT, G_ROLL}},
     {"SYSTEM", FAM_GLO, SC_GLOBAL, GR_NONE, {G_MIDI, G_SYNC, G_ROUTE, G_INFO}},
@@ -519,8 +515,7 @@ static int page_for_drum(const page_t *pg)
 /* a page the buttons and SELECT reach on the selected track: EDIT > FILTER (TYPE) on ANALOG only */
 static int page_shown(const page_t *pg)
 {
-    if (is_drum(TSEL) && pg->fam == FAM_FX && pg->scope == SC_TRACK &&
-        (pg->id[0] == P_AMP || pg->id[0] == P_ATREB || pg->id[0] == P_PEDAL))
+    if (is_drum(TSEL) && pg->scope == SC_TRACK && (pg->id[0] == P_AMP || pg->id[0] == P_AGAIN || pg->id[0] == P_PEDAL))
         return 0;                                   /* (M-PYRE: no amp, pedal or octaver on the drums) */
     return pg->id[0] != P_FTYPE || (!is_drum(TSEL) && TSEL->eng_req % NENGINES == 0u);
 }

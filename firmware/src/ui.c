@@ -287,7 +287,16 @@ UI_SMALL static void cursor_fix(void)                           /* LEN got short
 static const uint8_t NV_ZOOM[4] = {8, 16, 32, 64};
 static const char *const FORCE_N[5] = {"GHOST", "SOFT", "NORM", "HARD", "ACC"};
 static const uint8_t F_LVL[4] = {LV_GHOST, LV_SOFT, LV_NORM, LV_HARD};
-static const char *const SHEET_N[6] = {"SLIDE", "NUDGE", "FILL", "MOVE", "COPY", "DELETE"};
+/* M-PYRE: ART, the note's articulation - NORM, PALM (a lock of P_PALM on the step), SLIDE (glides into the next), HAMMR
+ * (legato: a hammer-on / pull-off into the next, no new attack) */
+static const char *const ART_N[4] = {"NORM", "PALM", "SLIDE", "HAMMR"};
+UI_SMALL static uint32_t note_art(const track_t *t, uint32_t i)   /* M-PYRE: the step's articulation (ART_N) */
+{
+    int k = lock_find(t, i, P_PALM, 0);
+    const step_t *st = &t->step[i];
+    return k >= 0 && t->lock[k].val ? 1u : (st->flags & SF_SLIDE) ? 2u : (st->flags & SF_LEG) ? 3u : 0u;
+}
+static const char *const SHEET_N[6] = {"ART", "NUDGE", "FILL", "MOVE", "COPY", "DELETE"};
 static const char *const FILL_N[3] = {"NORMAL", "FILL", "NO FILL"};
 static const char *const DSHEET_N[6] = {"RATCHET", "NUDGE", "FILL", "MOVE", "COPY", "DELETE"};
 UI_SMALL static void note_walk(int32_t dir)

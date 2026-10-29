@@ -66,7 +66,9 @@ static pre_st_t pre_st[NPART];
 static void track_pre(track_t *t, int32_t *b, uint32_t n)
 {
     pre_st_t *s = &pre_st[(uint32_t)(t - trk) % NPART];
-    int32_t vt = t->p[P_PVOL] >= 127 ? 32767 : t->p[P_PVOL] * t->p[P_PVOL] * 2, tone = t->p[P_TONE] - 64;
+    /* VOL as a guitar's volume pot (audio taper: half way about -20 dB, 10^(2 (v / 127 - 1)) = 2^((v - 127) * 10 / 192)) */
+    int32_t vt = t->p[P_PVOL] >= 127 ? 32767 : t->p[P_PVOL] <= 0 ? 0 : (int32_t)(pow2_q16((t->p[P_PVOL] - 127) * 10) >> 1);
+    int32_t tone = t->p[P_TONE] - 64;
     int32_t comp = t->p[P_COMP], ped = t->p[P_PEDAL], wah = t->p[P_WAH], i;
     const bq_coef_t *wc = wah ? &WAH_BQ[(wah - 1) * 63 / 126] : 0;
     int32_t pg = (int32_t)(pow2_q16((t->p[P_PDRV] - 64) * 6) >> 4);   /* DRIVE: Q12, 4096 = as voiced */
@@ -79,7 +81,8 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
         s->ped = (uint8_t)ped;
     }
     if (comp) {                                     /* COMP: the block's peak sets a gain that glides (fast down, slow up) */
-        int32_t pk = 1, thr = 60000 - comp * 400, tg;   /* threshold falls as COMP turns up */
+        int32_t pk = 1, thr = 20000 - comp * 140, tg;   /* threshold falls as COMP turns up (a guitar note: ~17000 peak;
+                                                     * was 60000 - 400 COMP: nothing below ~85 %) */
         for (i = 0; i < (int32_t)n; i++) {
             int32_t a = b[i] < 0 ? -b[i] : b[i];
             if (a > pk)
@@ -120,11 +123,13 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
             y = clamp(y + (y >> 1), -30000, 30000);
             x = bq(&PD_DSLP, &s->pd[1], y) >> 2;    /* (about +5 dB over the dry note, as the others) */
             break;
-        case 4:                                     /* FUZZ: two stages, a bias, the mids scooped */
-            y = amp_tanh((int32_t)(((int64_t)(x >> 2) * pg * 30) >> 12) + 4000);
-            y = amp_tanh(y * 3);
+        case 4:                                     /* FUZZ, a "muff": two clipping stages one after the other (the
+                                                     * second near square: the endless sustain), then the tone stack's
+                                                     * scoop - a low-pass and a high-pass at 1 kHz added (the mids down) */
+            y = amp_tanh((int32_t)(((int64_t)x * pg * 28) >> 12));
+            y = amp_tanh(y * 7);
             y = bq(&PD_FZAA, &s->pd[2], y);
-            x = (bq(&PD_FZLP, &s->pd[0], y) + bq(&PD_FZHP, &s->pd[1], y)) >> 2;
+            x = (bq(&PD_FZLP, &s->pd[0], y) + bq(&PD_FZHP, &s->pd[1], y)) >> 3;
             break;
         default:
             break;
@@ -132,7 +137,8 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
         if (wc)                                     /* WAH: the band (resonant), with a little of the dry under it; the
                                                      * higher the band the less of a guitar it finds: made up (as loud
                                                      * all the way, toe to heel) */
-            x = (int32_t)(((int64_t)(bq(wc, &s->wah, x) * 3 + (x >> 2)) * (384 + wah * 11)) >> 9);
+            x = (int32_t)(((int64_t)(bq(wc, &s->wah, x) * 4 + (x >> 3)) * (384 + wah * 9)) >> 9);   /* (the band
+                                                     * stronger, less dry: a direct, vocal wah) */
         b[i] = x;
     }
 }

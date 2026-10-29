@@ -2368,6 +2368,22 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
     uint32_t next_tie = nx->time == ST_TIE || (nx->time == ST_NOTE && (nx->flags & (SF_CONT_ALL | SF_LEG)));   /* (2.7: notes
                                                      * going on into the next step: held to it, it says which end;
                                                      * 2.7.2: a legato note next: held to it) */
+    step_t cs;
+    if (s->time == ST_NOTE && s->n == 1u && t->p[P_CHORD] && !is_drum(t) && !(s->flags & SF_CONT_ALL)) {
+        uint8_t c[4];                               /* M-PYRE: CHORD on while a single note plays: its chord (as a key plays
+                                                     * it), each note with the step's dynamics and ratchet */
+        uint32_t k = chord_notes(t, s->note[0], c), l;
+        if (k > 1u) {
+            cs = *s;
+            memcpy(cs.note, c, k);
+            cs.n = (uint8_t)k;
+            cs.lvl = cs.rat = 0;
+            for (l = 0; l < k; l++)
+                cs.lvl |= (uint8_t)((s->lvl & 3u) << (2u * l)), cs.rat |= (uint8_t)((s->rat & 3u) << (2u * l));
+            skip = skip & 1u ? 15u : 0u;
+            s = &cs;
+        }
+    }
     if (s->time == ST_TIE) {
         if (t->seq_n) {
             t->seq_off = gate + slen / 2u;

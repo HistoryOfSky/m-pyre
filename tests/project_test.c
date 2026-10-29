@@ -364,7 +364,7 @@ int main(void)
     step_fill_set(&trk[1], 2, FC_FILL);
     step_fill_set(TDRUM, 9, FC_NOFILL);
     step_fill_set(TDRUM, 63, FC_FILL);
-    trk[2].p[P_ITYPE] = 7, trk[2].p[P_IA] = 11, trk[2].p[P_IMIX] = 77, TDRUM->p[P_ITYPE] = 4;   /* 2.6 */
+    trk[2].p[P_ITYPE] = 3, trk[2].p[P_IA] = 11, trk[2].p[P_IMIX] = 77, TDRUM->p[P_ITYPE] = 4;   /* 2.6 (M-PYRE: CHOR, TREM) */
     trk[0].p[P_LSYNC] = 6, trk[0].p[P_LTRIG] = 1, trk[0].p[P_LPOL] = 1, trk[0].p[P_ESYNC] = 1, trk[0].p[P_FTYPE] = 1;
     proj_capture(&q);
     host_tracks_init();
@@ -377,7 +377,7 @@ int main(void)
          lock_find(&trk[1], 2, P_E1, 0) >= 0 && lock_find(TDRUM, 9, P_DIST, 0) >= 0 && lock_find(TDRUM, 9, P_E0, 0) < 0 &&
          step_fill(&trk[1], 2) == FC_FILL && step_fill(&trk[1], 3) == FC_NORM && step_fill(TDRUM, 9) == FC_NOFILL &&
          step_fill(TDRUM, 63) == FC_FILL && step_fill(TDRUM, 8) == FC_NORM &&
-         trk[2].p[P_ITYPE] == 7 && trk[2].p[P_IA] == 11 && trk[2].p[P_IMIX] == 77 && TDRUM->p[P_ITYPE] == 4 &&
+         trk[2].p[P_ITYPE] == 3 && trk[2].p[P_IA] == 11 && trk[2].p[P_IMIX] == 77 && TDRUM->p[P_ITYPE] == 4 &&
          trk[0].p[P_LSYNC] == 6 && trk[0].p[P_LTRIG] == 1 && trk[0].p[P_LPOL] == 1 && trk[0].p[P_ESYNC] == 1 &&
          trk[0].p[P_FTYPE] == 1;
     bad += check("the working project: capture -> apply round trip (levels, lanes, DUST, drum DLY, nudges, locks, fill conditions, the 2.6 parameters)", ok);

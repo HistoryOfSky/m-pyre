@@ -12,8 +12,8 @@ int main(int argc, char **argv)
     outdir = argc > 1 ? argv[1] : "build/host";
     panel = PANEL_DEFAULT;
     layers_init();
-    settings.palette = 4;
-    palette_set(4);
+    settings.palette = 2;                            /* MONO */
+    palette_set(2);
     { FILE *f = fopen(argc > 2 ? argv[2] : "build/mpyre/soundpack.bin", "rb"); if (f) { fread(host_slots, 1, sizeof host_slots, f); fclose(f); } }
     host_tracks_init();
     for (i = 0; i < SMP_USER_SLOTS; i++) smp_user_scan(i);
@@ -31,15 +31,24 @@ int main(int argc, char **argv)
     { int m = 0; for (i = 0; i < SCOPE_N; i++) if (abs(scope_buf[i]) > m) m = abs(scope_buf[i]); printf("held peak %d\n", m); }
     fm1_in.notes = 0; frames(4);
     press(B_HOME); frames(60); release(B_HOME); frames(3); ppm("mp-hold-tracks");
-    {   /* the FX section's guitar pages */
-        static const char *const T[4] = {"AMP", "AMP 2", "PEDAL", "OCTAVER"};
-        for (g = 0; g < 4u; g++) {
-            for (i = 0; i < NPAGES; i++)
-                if (PAGES[i].fam == FAM_FX && !strcmp(PAGES[i].title, T[g]))
-                    break;
-            ui.home = 0; ui.page = (uint8_t)i; ui.force = 1; frames(3);
-            snprintf(nm, sizeof nm, "mp-fx-%u", g + 1u); ppm(nm);
+    {   /* M-PYRE: the AMP view (EDIT > AMP, AMP 2), each amp; then the PEDAL page; then the BEIGE palette */
+        uint32_t pa = 0, pb = 0, pp = 0;
+        for (i = 0; i < NPAGES; i++) {
+            if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "AMP")) pa = i;
+            if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "AMP 2")) pb = i;
+            if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "PEDAL")) pp = i;
         }
+        for (g = 0; g <= 7u; g++) {
+            TSEL->p[P_AMP] = (int16_t)g;
+            ui.home = 0; ui.page = (uint8_t)(g & 1u ? pa : pb); ui.force = 1; frames(3);
+            snprintf(nm, sizeof nm, "mp-amp-%u", g); ppm(nm);
+        }
+        ui.page = (uint8_t)pp; ui.force = 1; frames(3); ppm("mp-pedal");
+        TSEL->p[P_AMP] = 2;
+        settings.palette = 3; palette_set(3);
+        ui.page = (uint8_t)pa; ui.force = 1; frames(3); ppm("mp-amp-beige");
+        go_home(); ui.force = 1; frames(3); ppm("mp-live-beige");
+        settings.palette = 2; palette_set(2);
     }
     { int m = 0; for (i = 0; i < SCOPE_N; i++) if (abs(scope_buf[i]) > m) m = abs(scope_buf[i]); printf("scope peak %d\n", m); }
     printf("ok\n");

@@ -112,6 +112,8 @@ enum {                          /* global parameters */
                                  * while SYNC is INT (seq.c clkout_block; a setting of the FM-1, kept in DR MAP's byte) */
     G_FXFADE,                   /* SLOOP 2.7.2, the FX layer (FX held), SELECT: how fast a punch-in FX fades in and out, 0 (instant, as
                                  * before) .. 15 (punch.c; a setting of the FM-1, kept in BEND's byte) */
+    G_RTYPE,                    /* M-PYRE: the reverb's type, ROOM HALL PLATE SPRING (fx.c fx_buses; a project keeps it in
+                                 * g[G_DRCH]'s top two bits, project.c proj_tx_put) */
     G_COUNT
 };
 

@@ -332,7 +332,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
         } else if (e == &ENG_PHASE) {
             v->s[0] = s0;                               /* the WAVE / WAVE2 toggles go with the phases kept */
             v->s[1] = s1;
-        } else if (e == &ENG_NOISE) {
+        } else if (ENGINES[ENGI_NOISE] != &ENG_HYBRID && e == ENGINES[ENGI_NOISE]) {
             v->s[0] = s0;                               /* the filter and the colour poles (2.5) */
             v->s[1] = s1;
             v->s[4] = s4;
@@ -442,21 +442,24 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
         t->lfo_fade = 0;
     }
     if (mode == V_POLY) {
-        voice_t *v = voice_alloc(t, note);
+        int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o, om = t->p[P_OMIX];
+        int oct = o && om && n2 >= 0 && n2 < 128;
+        /* M-PYRE OCTAVER, O MIX a crossfade: up to 50 % the octave voice comes in (the note stays), from 50 % on the
+         * note goes out - at 100 % only the octave voice sounds */
+        uint32_t dv = (oct && om > 64) ? vel * (uint32_t)(127 - om) / 63u : vel;
         t->nmono = 0;                                   /* no stale mono stack after a mode change */
         t->mono_note = 0;
-        v->fine = 0;
-        voice_start(t, v, note, vel, t->p[P_GLIDE] != 0);
-        {   /* M-PYRE OCTAVER: a second voice OCT semitones away (an octave down, up, or any interval), at O MIX */
-            int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o;
-            if (o && t->p[P_OMIX] && n2 >= 0 && n2 < 128) {
-                voice_t *v2 = voice_alloc(t, (uint32_t)n2);
-                v2->fine = 0;
-                {   /* O MIX: up to 1.4 x the note (the octave below fuller: under an amp's tight low cut it thins) */
-                    uint32_t ov = vel * (uint32_t)t->p[P_OMIX] / (o < 0 ? 80u : 110u) + 1u;
-                    voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, t->p[P_GLIDE] != 0);
-                }
-            }
+        if (dv) {
+            voice_t *v = voice_alloc(t, note);
+            v->fine = 0;
+            voice_start(t, v, note, dv, t->p[P_GLIDE] != 0);
+        }
+        if (oct) {
+            voice_t *v2 = voice_alloc(t, (uint32_t)n2);
+            /* the octave below a little fuller (under an amp's tight low cut it thins) */
+            uint32_t ov = vel * (uint32_t)(om > 64 ? 64 : om) / (o < 0 ? 40u : 55u) + 1u;
+            v2->fine = 0;
+            voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, t->p[P_GLIDE] != 0);
         }
         return;
     }

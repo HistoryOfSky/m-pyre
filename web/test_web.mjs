@@ -44,7 +44,7 @@ async function editorMock() {
   inp.onmidimessage = (e) => link.receive(e.data);
   const rq = async (r, o) => link.request(r, o);
   const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
-  ok(info.nengines === 12 && info.engines[9] === "FM6" && info.engines[10] === "PHYS" && info.engines[11] === "NOISE" && info.engines[5] === "VOICE" && info.engines[6] === "TRIO" && info.engines[7] === "WHEEL" && info.engines[8] === "GRAIN" && info.pcount === 91 && info.pe0 === 83 && info.engines[4] === "SAMPLE",
+  ok(info.nengines === 12 && info.engines[9] === "FM6" && info.engines[10] === "PHYS" && info.engines[11] === "HYBRID" && info.engines[5] === "VOICE" && info.engines[6] === "TRIO" && info.engines[7] === "WHEEL" && info.engines[8] === "GRAIN" && info.pcount === 91 && info.pe0 === 83 && info.engines[4] === "SAMPLE",
     "editor: INFO");
   let descs = 0;
   for (let i = 0; i < info.pcount; i++) if (E.parse[E.CMD.DESC](await rq(E.req.desc(0, i))).label) descs++;
@@ -662,7 +662,7 @@ async function editorV5() {
   const C = E.CMD;
   const { m, rq, ev, done } = attachMock({ watchMs: 1000 });
   const info = E.parse[C.INFO](await rq(E.req.info()));
-  ok(info.proto === 12 && /SLOOP/.test(info.version) && info.pcount === 91 && info.gcount === 50 && info.pe0 === 83, "v5..v12: INFO ends with the protocol version (12: LIVE); 50 globals (2.5: drum DLY; 2.6: GLO > MIDI, TEXTURE, BEND; 2.7: FX CH, DR MAP, REMOTE, CLK OUT; 2.7.2: FX FADE)");
+  ok(info.proto === 12 && /SLOOP/.test(info.version) && info.pcount === 91 && info.gcount === 51 && info.pe0 === 83, "v5..v12: INFO ends with the protocol version (12: LIVE); 51 globals (M-PYRE: the reverb TYPE) (2.5: drum DLY; 2.6: GLO > MIDI, TEXTURE, BEND; 2.7: FX CH, DR MAP, REMOTE, CLK OUT; 2.7.2: FX FADE)");
   /* the firmware says the same: ED_DRUM_STEP is command 33, INFO sends 5, P_CHORD / the master globals as the mock has them */
   const ec = readFileSync(join(HERE, "../firmware/src/editor.c"), "utf8"), pc = readFileSync(join(HERE, "../firmware/src/params.c"), "utf8");
   const en = (/enum \{ ED_INFO = 1,([^}]*)\}/.exec(ec) || [])[1] || "";
@@ -1000,7 +1000,7 @@ sys.stdout.buffer.write(hd+t1+b'MTrk'+struct.pack('>I',len(tr))+tr)`);
   ds[0].on = 1 | (1 << 4); ds[0].lvl[4] = 1; ds[4].on = 1 << 2; ds[4].lvl[2] = 3; ds[6].on = 1 << 15; ds[6].lvl[15] = 2;
   const dn = SMF.fromDrums(ds, 16, 2), dp = SMF.toSteps(SMF.read(SMF.write(dn, { ch: 9 })).tracks[0].notes, 96, 2, 64, true);
   ok(dn.map((n) => n.key).join() === "36,46,40,83" && dp.len === 7 && [0, 4, 6].every((i) => dp.dsteps[i].on === ds[i].on && js(dp.dsteps[i].lvl) === js(ds[i].lvl))
-    && SMF.laneOf(36) === 0 && SMF.laneOf(35) === 0 && SMF.laneOf(57) === 11 && SMF.laneOf(20) === 0 && SMF.laneOf(90) === 11 && SMF.laneOf(82) === 14,
+    && SMF.laneOf(36) === 0 && SMF.laneOf(35) === 0 && SMF.laneOf(57) === 12 && SMF.laneOf(20) === 0 && SMF.laneOf(90) === 11 && SMF.laneOf(82) === 11 && SMF.laneOf(84) === 14,
     "midi: the drum track: lanes as GM notes and back, levels ghost..hard kept (drums.c LANE_OF_GM)");
   const dc = readFileSync(join(HERE, "../firmware/src/drums.c"), "utf8");
   const tbl = (/LANE_OF_GM\[81 - 35 \+ 1\] = \{([^}]*)\}/.exec(dc) || [, ""])[1].replace(/\/\*[^*]*\*\//g, "").split(",").map((x) => +x.trim());
@@ -1393,9 +1393,9 @@ async function editorTheme() {
   const C = E.CMD, T = E.THEME;
   const gfx = readFileSync(join(HERE, "../firmware/src/gfx.c"), "utf8");
   const rgb = (s) => [...s.matchAll(/RGB\((\d+), (\d+), (\d+)\)/g)].map((m) => [+m[1], +m[2], +m[3]]);
-  const pals = [...gfx.matchAll(/\{"(\w+)", \{(RGB[^}]*)\}\}/g)].map((m) => [m[1], rgb(m[2])]);
+  const pals = [...gfx.matchAll(/\{"(\w+)", \{(RGB[^}]*)\},/g)].map((m) => [m[1], rgb(m[2])]);
   const tdef = rgb((/TE_COL_DEF\[4\] = \{([^}]*)\}/.exec(gfx) || [])[1] || "");
-  ok(js(pals) === js(T.BUILTIN) && js(tdef) === js(T.TRACKS), "theme: the built-in palettes and track colours == gfx.c (PALETTES, TE_COL_DEF)");
+  ok(js(pals) === js(T.BUILTIN.map((b) => [b[0], b[1]])) && js(tdef) === js(T.TRACKS), "theme: the built-in palettes and track colours == gfx.c (PALETTES, TE_COL_DEF)");
   ok(/#define THEME_MAGIC 0x324D4854u/.test(gfx) && /#define THEME_MAGIC1 0x314D4854u/.test(gfx)
     && /char name\[8\];[^]*uint16_t c\[5\];[^]*uint16_t trk\[4\];[^]*uint16_t bg;[^]*uint16_t hi;[^]*uint16_t rsv;[^]*uint32_t crc;/.test(gfx)
     && /sizeof\(theme_t\) == 40u/.test(gfx) && T.SIZE === 40 && T.MAGIC === 0x324D4854 && T.MAGIC1 === 0x314D4854,
@@ -1413,7 +1413,7 @@ async function editorTheme() {
   const dark = { ...mine, c: mine.c.map(() => [40, 40, 40]) };
   const noBg = T.encode({ ...mine, bg: undefined, hi: undefined });   /* (no background: black; no accent: white) */
   const lightOk = { ...mine, bg: [250, 250, 250], c: [...mine.c.slice(0, 4), [20, 20, 60]], hi: [0, 0, 0] };
-  ok(T.readable(mine) && T.readable(T.builtin(4)) && T.BUILTIN.every((_, i) => T.readable(T.builtin(i))) && !T.readable(dark)
+  ok(T.readable(mine) && T.readable(T.builtin(2)) && T.BUILTIN.every((_, i) => T.readable(T.builtin(i))) && !T.readable(dark)
     && !T.readable({ ...mine, bg: [255, 200, 120] }) && T.readable(lightOk)
     && !T.readable({ ...lightOk, hi: [255, 255, 255] }) && T.problems({ ...lightOk, hi: [255, 255, 255] }).acc && !T.problems({ ...lightOk, hi: [255, 255, 255] }).val
     && noBg[30] === 0 && noBg[31] === 0 && js(T.decode(noBg).bg) === js([0, 0, 0]) && js(T.decode(noBg).hi) === js([255, 255, 255]),

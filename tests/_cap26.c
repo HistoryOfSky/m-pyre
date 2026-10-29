@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 {
     uint32_t i, j;
     outdir = argc > 1 ? argv[1] : "/tmp";
-    panel = PANEL_DEFAULT; layers_init(); settings.palette = 4; palette_set(4);
+    panel = PANEL_DEFAULT; layers_init(); settings.palette = 2; palette_set(2);
     host_tracks_init();
     for (i = 0; i < NPART; i++) { set_engine_of(&trk[i], TRK_DEF[i][0]); apply_preset_to(&trk[i], TRK_DEF[i][1]); trk[i].engine = trk[i].eng_req; }
     load(0, "ACID 303"); load(1, "RHODES"); load(2, "KALIMBA");

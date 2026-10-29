@@ -176,7 +176,7 @@ static void sample_note_on(track_t *t, voice_t *v)
     v->ph[0] = 0;
     v->ph[1] = 0;
     v->ph[2] = 0;                                   /* (the de-emphasis) */
-    v->s[5] = t->p[P_PALM];                         /* (M-PYRE: PALM as the note began) */
+    v->s[5] = t->p[P_PALM] ? 40 : 0;                /* (M-PYRE: PALM as the note began: a little darker) */
     v->s[0] = 0;
     v->s[1] = 0;
     v->s[2] = v->s[3] = 0;

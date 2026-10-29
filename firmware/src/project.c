@@ -42,7 +42,8 @@
                                                 * so the format and its size do not change */
 _Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u,
                "the globals a project holds, then G_DRDLY (then 2.6's GLO > MIDI: settings of the FM-1)");
-_Static_assert(G_FXFADE == G_CLKOUT + 1u && G_COUNT == G_FXFADE + 1u, "G_FXFADE (2.7.2) is the last global, a setting of the FM-1");
+_Static_assert(G_FXFADE == G_CLKOUT + 1u && G_RTYPE == G_FXFADE + 1u && G_COUNT == G_RTYPE + 1u,
+               "G_FXFADE (2.7.2) a setting of the FM-1, then M-PYRE's G_RTYPE, the last global");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
 _Static_assert(PROJ_NC6 == PROJ_NP_V5 - 8u && PROJ_NX6 == 30u, "format 6 (M-PYRE): format 5's parameters, then 10 + 20 bytes");
@@ -399,7 +400,8 @@ UI_SMALL static void proj_tx_put(project_t *p)
     p->rsv[0] = (uint8_t)(0x80u | ((uint32_t)song.g[G_TXSRC] & 15u) | ((uint32_t)song.g[G_TXWHEN] & 1u) << 4 |
                           ((uint32_t)song.g[G_TXDUCK] & 1u) << 5 | 0x40u);   /* (0x40: saved by 2.7 or later) */
     p->rsv[1] = (uint8_t)song.g[G_TXRATE];
-    p->g[G_DRCH] = (int16_t)((song.g[G_TXLVL] & 127) | ((song.g[G_TXTONE] + 64) & 127) << 7);
+    p->g[G_DRCH] = (int16_t)(uint16_t)((song.g[G_TXLVL] & 127) | ((song.g[G_TXTONE] + 64) & 127) << 7 |
+                                       ((uint32_t)song.g[G_RTYPE] & 3u) << 14);   /* (M-PYRE: the reverb's type on top) */
     p->g[G_INFO] = song.g[G_TXMOVE];
 }
 static void proj_tx_get(const project_t *p)
@@ -416,6 +418,7 @@ static void proj_tx_get(const project_t *p)
     }
     for (i = 0; i < 7u; i++)
         song.g[ID[i]] = (int16_t)clamp(v[i], GP[ID[i]].min, GP[ID[i]].max);
+    song.g[G_RTYPE] = (int16_t)(p->rsv[0] & 0x80u ? ((uint16_t)p->g[G_DRCH] >> 14) & 3u : (uint32_t)GP[G_RTYPE].def);
 }
 
 /* (2.7) the DRUMS screen's SOUND page in a project: each sound's TUNE (4 bits) and DECAY (3 bits), two's complement

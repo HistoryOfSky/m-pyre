@@ -20,6 +20,8 @@ static struct {
     int32_t dly_lp;
     uint16_t line_i[4], ap_i[2];
     int32_t line_lp[4];
+    int32_t sp_hp, sp_lp;               /* M-PYRE SPRING: its input's band (the tank's thin, wiry sound) */
+    uint8_t rtype;                      /* the reverb type the lines hold */
 } fx;
 static volatile uint8_t rev_frz;         /* punch-in FREEZE (punch.c): the reverb holds, no loss, no damping */
 static int32_t rev_l[CTL], rev_r[CTL];   /* the reverb's own return of this block (FREEZE plays it) */
@@ -211,12 +213,28 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     if (thr_dly && fb < 89 * 230)                       /* ECHO THROW: FDBK at least 70 %, gliding with it (2.6) */
         fb += ((89 * 230 - fb) * thr_dly) >> 15;
     int32_t dmix = song.g[G_DMIX] * 258;
-    int32_t g = 17000 + song.g[G_RSIZE] * 104, lpk = 32767 - song.g[G_RDAMP] * 200;   /* loop gain (RT60 ~0.4..4 s), damping */
+    /* M-PYRE: the reverb's TYPE - the lines' length (of the full ones), the loop gain over SIZE, the damping over DAMP:
+     *   ROOM   lines at 45 %, shorter and darker: a small live room, ~0.2 .. 1.2 s
+     *   HALL   as ever: the full lines, RT60 ~0.4 .. 4 s
+     *   PLATE  lines at 70 %, a dense bright metal sheet: little damping, long
+     *   SPRING lines at 30 %, a band-passed input (~250 Hz .. 4 kHz), nearly undamped: the twang */
+    static const uint16_t RT_SC[4] = {115, 256, 180, 77};
+    static const int16_t RT_G0[4] = {13000, 17000, 18500, 20500}, RT_GK[4] = {110, 104, 100, 85}, RT_DK[4] = {230, 200, 90, 60};
+    uint32_t rt = (uint32_t)song.g[G_RTYPE] & 3u;
+    int32_t g = RT_G0[rt] + song.g[G_RSIZE] * RT_GK[rt], lpk = 32767 - song.g[G_RDAMP] * RT_DK[rt];   /* loop gain, damping */
+    uint32_t len1 = (REV_LINE[1] * RT_SC[rt]) >> 8, len2 = (REV_LINE[2] * RT_SC[rt]) >> 8, len3 = (REV_LINE[3] * RT_SC[rt]) >> 8;
     int32_t frnd = rev_frz ? 128 : 0;                  /* FREEZE: what is in the lines stays there (below: no
                                                          * loss, rounded to nearest; 0: as always, bit for bit) */
     int32_t cdepth = song.g[G_CDEPTH] * 6;
     int32_t ca0, ca1, cb0, cb1, ma, mb, dca, dcb;
-    const uint32_t L0 = REV_LINE[0] + REV_MOD + 2u, B1 = L0, B2 = B1 + REV_LINE[1], B3 = B2 + REV_LINE[2];
+    const uint32_t L0 = ((REV_LINE[0] * RT_SC[rt]) >> 8) + REV_MOD + 2u, B1 = REV_LINE[0] + REV_MOD + 2u,
+                   B2 = B1 + REV_LINE[1], B3 = B2 + REV_LINE[2];
+    if (fx.rtype != rt) {                               /* another room: the old one's lines would ring at the new lengths */
+        fx.rtype = (uint8_t)rt;
+        memset(rev_line, 0, sizeof rev_line);
+        memset(fx.line_i, 0, sizeof fx.line_i);
+        memset(fx.line_lp, 0, sizeof fx.line_lp);
+    }
     {   /* the chorus' two read points (Q8 samples back) and line 0's extra length, at both ends of the block */
         int32_t s0 = osc_sine(fx.cho_ph), s1, m0 = osc_sine(fx.rev_ph), m1;
         fx.cho_ph += LFO_INC[song.g[G_CRATE] & 127];
@@ -253,6 +271,11 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         yr += x;
         /* reverb: two diffusers, then the four lines */
         a = mulq15(rev_in[i], 13000);
+        if (rt == 3u) {                                 /* SPRING: ~250 Hz .. 4 kHz in */
+            fx.sp_hp += mulq15(a - fx.sp_hp, 1170);
+            fx.sp_lp += mulq15((a - fx.sp_hp) - fx.sp_lp, 14000);
+            a = fx.sp_lp + (fx.sp_lp >> 1);
+        }
         {
             int16_t *c = rev_ap;
             for (k = 0; k < 2u; k++) {
@@ -296,9 +319,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
                 c[B3 + fx.line_i[3]] = (int16_t)clamp(fx.line_lp[3] - a, -32768, 32767);
             }
             if (++fx.line_i[0] >= L0) fx.line_i[0] = 0;
-            if (++fx.line_i[1] >= REV_LINE[1]) fx.line_i[1] = 0;
-            if (++fx.line_i[2] >= REV_LINE[2]) fx.line_i[2] = 0;
-            if (++fx.line_i[3] >= REV_LINE[3]) fx.line_i[3] = 0;
+            if (++fx.line_i[1] >= len1) fx.line_i[1] = 0;
+            if (++fx.line_i[2] >= len2) fx.line_i[2] = 0;
+            if (++fx.line_i[3] >= len3) fx.line_i[3] = 0;
         }
         wet_l[i] = yl + o0 + o2;
         wet_r[i] = yr + o1 - o3;
@@ -447,12 +470,12 @@ static void tflt_run(djf_t *f, const tsvf_t *c, int32_t *b, uint32_t n, uint32_t
  * fades the new one in; so does a start from MIX 0 (no stale line or filter).
  * The drum track (SLOOP): its left, right, reverb send and delay send each through their own state, the same settings
  * (fx.c mix_block). State in RAM (.bss): 580 B a channel; noinline, its own loops */
-enum { IT_OFF, IT_SOFT, IT_HARD, IT_FOLD, IT_FUZZ, IT_CRUSH, IT_PHASER, IT_FLANGER, IT_CHORUS,
-       IT_BOOST, IT_OD, IT_DIST, IT_BFUZZ, IT_N };   /* M-PYRE: the pedals of a guitar or bass rig (ins_pedal) */
+/* M-PYRE: the INSERT is the modulation only (the drives are the PEDAL's and the amp's): PHASR FLANG CHOR, and TREM - a
+ * tremolo, RATE, DEPTH, SHAPE (a sine .. a square: the amp's chop) */
+enum { IT_OFF, IT_PHASER, IT_FLANGER, IT_CHORUS, IT_TREM, IT_N };
 _Static_assert(IT_N == sizeof N_ITYPE / sizeof N_ITYPE[0], "the INSERT's types as params.c names them");
 #define IL_LEN 256u                     /* FLANG / CHOR: the line, samples (a power of 2: masked) */
 #define PH_ST 4u                        /* PHASR: all-pass stages (two notches, the classic pedal's) */
-static const uint8_t INS_HOLD[16] = {64, 48, 40, 32, 24, 20, 16, 12, 10, 8, 6, 5, 4, 3, 2, 1};   /* CRUSH RATE */
 /* PHASR: the stages' coefficient over the sweep (Q14), 33 points */
 static const int16_t PH_A[33] = {
     -16038, -15998, -15955, -15906, -15853, -15793, -15727, -15653, -15572, -15481, -15381, -15270, -15147, -15012,
@@ -481,86 +504,6 @@ static int32_t ins_lpk(int32_t c)
     uint32_t g = SVF_G[clamp(c, 0, 127)];
     return (int32_t)((g << 16) / (4096u + g));
 }
-/* the drives' and CRUSH's shape of v (a voice's full scale 32768; v already through DRIVE) */
-static inline int32_t ins_shape(uint32_t ty, int32_t v, uint32_t sh)
-{
-    switch (ty) {
-    case IT_SOFT:
-        return softclip(v);
-    case IT_HARD:
-        return clamp(v, -24000, 24000);
-    case IT_FOLD: {
-        int32_t u = (int32_t)((uint32_t)(v + 16384) & 0xFFFFu) - 32768;   /* a triangle of period 65536: +-16384 */
-        u = 16384 - (u < 0 ? -u : u);
-        return u + (u >> 1);                            /* x 1.5 (no divide) */
-    }
-    case IT_FUZZ:
-        return v > 0 ? (v > 20000 ? 20000 : v) : softclip(v) >> 1;
-    case IT_CRUSH:                                      /* sh: 16 - BITS; to the nearest step */
-        return sh ? ((v + (1 << (sh - 1u))) >> sh) << sh : v;
-    default:
-        return v;
-    }
-}
-static inline uint32_t ins_bits_sh(int32_t a) { return 15u - (uint32_t)(clamp(a, 0, 127) >> 3); }   /* BITS 1..16 */
-
-/* SOFT .. FUZZ: low cut -> DRIVE -> shape -> TONE -> LEVEL -> DC blocker; CRUSH: held sample -> bits -> LPF. The state
- * in locals for the block (b may alias it as far as the compiler knows: no load / store a sample), written back */
-static __attribute__((noinline)) void ins_drive(ins_t *s, const int16_t *p, int32_t *b, uint32_t n, int32_t tw)
-{
-    uint32_t i, ty = s->type, sh = ins_bits_sh(p[P_IA]);
-    uint32_t hold = INS_HOLD[clamp(p[P_IB], 0, 127) >> 3];
-    int32_t a = clamp(p[P_IA], 0, 127), g = 4096 + a * a * 3;   /* DRIVE, Q12: 1x .. 12.8x, gentle at first */
-    int32_t w = s->w, lp1 = s->lp1, lp2 = s->lp2, x, y, v;
-    if (ty == IT_CRUSH) {
-        uint32_t k = (uint32_t)ins_lpk(p[P_IC]), cnt = s->cnt;
-        int32_t hd = s->hold;
-        for (i = 0; i < n; i++) {
-            x = b[i];
-            w += clamp(tw - w, -SL_SLOPE, SL_SLOPE);
-            if (!cnt) {
-                hd = ins_shape(IT_CRUSH, clamp(x, -262144, 262143), sh);
-                cnt = hold;
-            }
-            cnt--;
-            y = hd << 4;                                /* (x16: the low cutoffs' rounding leaves no offset) */
-            v = mulq16(y - lp1, k);                     /* LPF: two one-pole low-passes */
-            y = v + lp1;
-            lp1 = y + v;
-            v = mulq16(y - lp2, k);
-            y = v + lp2;
-            lp2 = y + v;
-            b[i] = ins_mix(x, (y + 8) >> 4, w);
-        }
-        s->cnt = (uint8_t)cnt;
-        s->hold = hd;
-    } else {
-        uint32_t k = (uint32_t)ins_lpk(p[P_IB]);
-        int32_t lvl = LEVEL_Q12[p[P_IC] & 127], hp = s->hp, dc = s->dc;
-        for (i = 0; i < n; i++) {
-            x = b[i];
-            w += clamp(tw - w, -SL_SLOPE, SL_SLOPE);
-            hp += ((x << 8) - hp) >> 8;                 /* ~27 Hz low cut (Q8: no offset left by the rounding) */
-            v = clamp(x - (hp >> 8), -230000, 230000);
-            y = ins_shape(ty, ((v >> 3) * g) >> 9, 0) << 4;   /* (>> 3 first: 32 bits; x16 as CRUSH) */
-            v = mulq16(y - lp1, k);                     /* TONE: two one-pole low-passes */
-            y = v + lp1;
-            lp1 = y + v;
-            v = mulq16(y - lp2, k);
-            y = v + lp2;
-            lp2 = y + v;
-            y = (((y + 8) >> 4) * lvl) >> 12;           /* LEVEL */
-            dc += ((y << 8) - dc) >> 9;                 /* DC blocker, ~14 Hz (FUZZ's lopsided halves) */
-            b[i] = ins_mix(x, y - (dc >> 8), w);
-        }
-        s->hp = hp;
-        s->dc = dc;
-    }
-    s->w = w;
-    s->lp1 = lp1;
-    s->lp2 = lp2;
-}
-
 /* PHASR, FLANG, CHOR: the sweep at RATE (one LFO per state), DEPTH, FDBK; the state in locals for the block */
 static __attribute__((noinline)) void ins_swept(ins_t *s, const int16_t *p, int32_t *b, uint32_t n, int32_t tw)
 {
@@ -621,54 +564,19 @@ static __attribute__((noinline)) void ins_swept(ins_t *s, const int16_t *p, int3
     s->dc = dc;
 }
 
-/* M-PYRE: BOOST OD DIST BFUZZ, a guitar's / bass's pedals: A DRIVE, B TONE (two one-pole low-passes), C LEVEL (112:
- * 0 dB), as SOFT .. FUZZ. Each its own circuit before the clipper:
- *   BOOST  the highs lifted (a one-pole high-pass at 1 kHz added), soft clip: louder and brighter, breaking up late
- *   OD     only what is above ~720 Hz clipped (softly), added to the clean signal: the lows stay tight (a "screamer")
- *   DIST   ~120 Hz and up, driven hard into a flat clip, softened: a rock / metal distortion
- *   BFUZZ  two stages with a bias (lopsided: even harmonics), the second clipped: a fat, woolly fuzz
- * The low cut, the TONE and the DC blocker are ins_drive's. s->hold: the one-pole's state (the split) */
-static __attribute__((noinline)) void ins_pedal(ins_t *s, const int16_t *p, int32_t *b, uint32_t n, int32_t tw)
+/* TREM: the level swept by the LFO at RATE, down to 1 - DEPTH; SHAPE from a sine (0) to nearly a square (127) */
+static __attribute__((noinline)) void ins_trem(ins_t *s, const int16_t *p, int32_t *b, uint32_t n, int32_t tw)
 {
-    uint32_t i, ty = s->type, k = (uint32_t)ins_lpk(p[P_IB]);
-    int32_t a = clamp(p[P_IA], 0, 127), g = 4096 + a * a * 3;   /* DRIVE, Q12: 1x .. 12.8x */
-    int32_t lvl = LEVEL_Q12[p[P_IC] & 127], w = s->w, lp1 = s->lp1, lp2 = s->lp2, hp = s->hp, dc = s->dc, sp = s->hold;
-    int32_t ks = ty == IT_BOOST ? 4349 : ty == IT_OD ? 3195 : 557;   /* the split: 1 kHz, 720 Hz, 120 Hz (Q15) */
-    for (i = 0; i < n; i++) {
-        int32_t x = b[i], v, u, y;
+    uint32_t i, inc = LFO_INC[clamp(p[P_IA], 0, 127)] / CTL, ph = s->ph;
+    int32_t dep = clamp(p[P_IB], 0, 127) * 258, sh = 1 + clamp(p[P_IC], 0, 127) / 8, w = s->w;   /* Q15; x1 .. x16 */
+    for (i = 0; i < n; i++, ph += inc) {
+        int32_t x = b[i], l = clamp(osc_sine(ph) * sh, -32767, 32767);   /* (osc_sine: +-32767; over-driven: squarer) */
+        int32_t g = 32768 - ((dep * ((32767 - l) >> 1)) >> 15);           /* 1 .. 1 - DEPTH, Q15 */
         w += clamp(tw - w, -SL_SLOPE, SL_SLOPE);
-        hp += ((x << 8) - hp) >> 8;                     /* ~27 Hz low cut */
-        v = clamp(x - (hp >> 8), -230000, 230000);
-        sp += mulq15(v - sp, ks);                       /* the split: sp low, v - sp high */
-        u = v - sp;
-        switch (ty) {
-        case IT_BOOST:
-            y = softclip(((((v + u) >> 3) * g) >> 9) >> 1);
-            break;
-        case IT_OD:
-            y = ((v >> 1) + softclip((((u >> 3) * g) >> 9) * 3)) >> 1;
-            break;
-        case IT_DIST:
-            y = clamp((((u >> 3) * g) >> 9) * 6, -26000, 26000);
-            y = (softclip(y + (y >> 2)) * 5) >> 4;
-            break;
-        default:                                        /* BFUZZ */
-            y = softclip((((v >> 3) * g) >> 9) * 5 + 9000) - 9000 * 9 / 10;   /* (softclip(9000) ~ 0.9 x 9000) */
-            y = (clamp(y * 3, -22000, 22000) * 5) >> 4;
-            break;
-        }
-        y <<= 4;
-        v = mulq16(y - lp1, k);                         /* TONE: two one-pole low-passes */
-        y = v + lp1;
-        lp1 = y + v;
-        v = mulq16(y - lp2, k);
-        y = v + lp2;
-        lp2 = y + v;
-        y = (((y + 8) >> 4) * lvl) >> 12;               /* LEVEL */
-        dc += ((y << 8) - dc) >> 9;                     /* DC blocker (BFUZZ's bias) */
-        b[i] = ins_mix(x, y - (dc >> 8), w);
+        b[i] = ins_mix(x, (int32_t)(((int64_t)x * g) >> 15), w);
     }
-    s->w = w, s->lp1 = lp1, s->lp2 = lp2, s->hp = hp, s->dc = dc, s->hold = sp;
+    s->ph = ph;
+    s->w = w;
 }
 
 /* the INSERT of the settings p on one channel b through state s: 1 while it runs (or fades out); 0: dry, bit for bit */
@@ -684,12 +592,10 @@ static __attribute__((noinline)) int ins_run(ins_t *s, const int16_t *p, int32_t
         memset(s, 0, sizeof *s);                        /* starting: no stale line or filter */
         s->type = (uint8_t)ty;
     }
-    if (s->type >= IT_BOOST)
-        ins_pedal(s, p, b, n, tw);
-    else if (s->type >= IT_PHASER)
-        ins_swept(s, p, b, n, tw);
+    if (s->type == IT_TREM)
+        ins_trem(s, p, b, n, tw);
     else
-        ins_drive(s, p, b, n, tw);
+        ins_swept(s, p, b, n, tw);
     return s->w != 0;
 }
 /* a part's INSERT on its block b (mix_part): nothing while TYPE is OFF or MIX is 0 and faded */
@@ -958,11 +864,11 @@ static void cpu1_units_job(uint32_t arg)                /* core 1's job: the uni
  * less the parts that must stay here (above) */
 static uint32_t units_split(void)
 {
-    uint32_t mask = cpu1_units < 0 ? (1u << (NPART - 1u)) | U_DRUMS : (uint32_t)cpu1_units & U_ALL, k, nform = 0;
+    uint32_t mask = cpu1_units < 0 ? (1u << (NPART - 1u)) | U_DRUMS : (uint32_t)cpu1_units & U_ALL, k, nform = 0, nhyb = 0;
     if (!mask)
         return 0;
     for (k = 0; k < NPART; k++)
-        nform += ENGINES[trk[k].engine] == &ENG_FORMANT;
+        nform += ENGINES[trk[k].engine] == &ENG_FORMANT, nhyb += ENGINES[trk[k].engine] == &ENG_HYBRID;
     for (k = 0; k < NPART; k++) {
         const track_t *t = &trk[k];
         const engine_t *e = ENGINES[t->engine];
@@ -974,7 +880,7 @@ static uint32_t units_split(void)
             continue;
         inc = p[P_LSYNC] ? lfo_sync_inc(p) : LFO_INC[p[P_LRATE] & 127];   /* (2.6: LFO 2 SYNC, as track_lfo_tick) */
         if (t->lfo_ph + inc < t->lfo_ph || (e == &ENG_PHYS && phys_render_draws(t, fade ? t->pe_old[0] : p[P_E0])) ||
-            (e == &ENG_FORMANT && nform > 1u))
+            (e == &ENG_FORMANT && nform > 1u) || (e == &ENG_HYBRID && nhyb > 1u))   /* (M-PYRE: HYBRID's scratch is one) */
             mask &= ~(1u << k);
     }
     return mask;

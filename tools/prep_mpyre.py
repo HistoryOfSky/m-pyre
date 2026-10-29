@@ -159,8 +159,8 @@ def melodic(path, roots, keep, loop_lo, loop_hi, skip=(), flatten=True, pitch_at
 KIT = [(36, "Kick", 0.6, 0), (38, "Snare", 0.9, -1), (40, "Snare Ghost", 0.6, -9),
        (42, "Hihat Closed", 0.3, -11), (46, "Hihat Open", 1.5, -9), (44, "Hihat Foot", 0.35, -12),
        (51, "Ride", 1.5, -13), (53, "Bell", 1.2, -12), (48, "Tom High", 1.0, -3.5), (47, "Tom Middle", 1.0, -3),
-       (43, "Tom Floor", 1.1, -3), (49, "Crash 1", 1.6, -10), (52, "China", 1.5, -10),
-       (84, "REV:Crash 1", 0.9, -10), (82, "FX:riser", 1.6, -11), (83, "FX:drop", 1.2, -3)]
+       (43, "Tom Floor", 1.1, -3), (49, "Crash 1", 1.6, -10), (57, "Crash 2", 1.6, -10),
+       (52, "China", 1.5, -10), (84, "REV:Crash 1", 0.9, -10), (83, "FX:drop", 1.2, -3)]
 KICK_LUFS, PEAK, KICK_PEAK = -14.5, -4.0, -1.5
 
 

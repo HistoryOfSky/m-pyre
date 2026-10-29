@@ -33,6 +33,7 @@ static inline int32_t soft_knee(int32_t y, int32_t k)   /* linear up to k, then 
 #if !MPYRE_LEAN
 #include "eng_grain.c"
 #endif
+#include "eng_hybrid.c"         /* M-PYRE: HYBRID, the Clipper voice (3dSam, GPL-3.0): in NOISE's place (ENGI_NOISE) */
 #include "eng_fm6.c"            /* FM6: 6-operator FM, msfa ported (fm6_core.c, Apache-2.0); SLOOP 2.4 */
 #if !MPYRE_LEAN
 #include "eng_phys.c"           /* PHYS: physical models, from Felucca 1.0 (DaisySP, Rings: MIT); SLOOP 2.5 */
@@ -55,7 +56,6 @@ static const engine_t ENG_NONE = {
 #define ENG_FORMANT ENG_NONE
 #define ENG_GRAIN ENG_NONE
 #define ENG_PHYS ENG_NONE
-#define ENG_NOISE ENG_NONE
 #endif
 
 typedef union {
@@ -65,6 +65,7 @@ typedef union {
 #endif
     drw_part_t drawbar;                  /* eng_drawbar.c: the part's wheels, percussion and rotary (sloop-lab) */
     fm6_part_t fm6;                      /* eng_fm6.c: six notes and the operator buses */
+    hy_part_t hybrid;                    /* eng_hybrid.c: the voices (M-PYRE) */
 } eng_arena_t;
 static eng_arena_t eng_arena[NPART] __attribute__((section(".pool")));
 static uint8_t eng_arena_own[NPART];            /* the engine + 1 whose state is in it, 0 = none */
@@ -119,7 +120,12 @@ static const engine_t *const ENGINES[NENGINES] = {&ENG_ANALOG, &ENG_DIGITAL, &EN
                                                     &ENG_FORMANT, &ENG_TRIO, &ENG_DRAWBAR,   /* 7: ENGI_DRAWBAR (eng_drawbar.c) */
                                                     &ENG_GRAIN,
                                                     &ENG_FM6,    /* 9 (ENGI_FM6): always; SLICE after it (core.h) */
-                                                    &ENG_PHYS, &ENG_NOISE,
+                                                    &ENG_PHYS,
+#if MPYRE_LEAN
+                                                    &ENG_HYBRID,  /* 11: M-PYRE's HYBRID where NOISE was */
+#else
+                                                    &ENG_NOISE,
+#endif
 #if FELUCCA_SLICE
                                                     &ENG_SLICE,
 #endif

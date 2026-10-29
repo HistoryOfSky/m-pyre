@@ -337,6 +337,20 @@ UI_SMALL static int on_notes_page(void)
 }
 /* the note's sheet (OCT+ held): KNOB 1 the row, KNOB 2 its value (MOVE: a step a detent); OCT+ acts (SLIDE on / off,
  * COPY: just after it, then MOVE moves the copy; DELETE), OCT- closes */
+UI_SMALL static void note_art_set(track_t *t, uint32_t i, uint32_t a)
+{
+    step_t *st = &t->step[i];
+    fm1_irq_off();
+    lock_del(t, i, P_PALM);
+    st->flags = (uint8_t)(st->flags & ~(SF_SLIDE | SF_LEG));
+    if (a == 1u && !lock_set(t, i, P_PALM, 1))
+        ui_message("NO LOCK LEFT");
+    else if (a == 2u)
+        st->flags |= SF_SLIDE;
+    else if (a == 3u)
+        st->flags |= SF_LEG;
+    fm1_irq_on();
+}
 UI_SMALL static void note_sheet_knob(uint32_t slot, int32_t steps)
 {
     track_t *t = TSEL;
@@ -352,7 +366,7 @@ UI_SMALL static void note_sheet_knob(uint32_t slot, int32_t steps)
     note_mark();
     switch (row) {
     case 0:
-        st->flags = (uint8_t)(steps > 0 ? st->flags | SF_SLIDE : st->flags & ~SF_SLIDE);
+        note_art_set(t, ui.cursor, (uint32_t)clamp((int32_t)note_art(t, ui.cursor) + (steps > 0 ? 1 : -1), 0, 3));
         break;
     case 1:
         t->micro[ui.cursor] = (int8_t)clamp(t->micro[ui.cursor] + steps, MICRO_MIN, MICRO_MAX);
@@ -385,7 +399,7 @@ UI_SMALL static void note_sheet_do(void)               /* OCT+ tapped in the she
     uint32_t row = ui.sheet - 1u;
     note_mark();
     if (row == 0u) {
-        t->step[ui.cursor].flags ^= SF_SLIDE;
+        note_art_set(t, ui.cursor, (note_art(t, ui.cursor) + 1u) & 3u);
     } else if (row == 4u) {
         int32_t to = note_shift(t, ui.cursor, 1, 1), k = ui.note_k;
         if (to < 0) {
@@ -555,7 +569,7 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
     d = page_desc(pg, slot, &vp);
     if (!d || !vp || d->max == d->min)
         return;
-    v = d->names == ESYNC_NAMES || d->names == N_IBITS || d->names == N_IRATE ? names_turn(d, *vp, steps)   /* (a name a detent) */
+    v = d->names == ESYNC_NAMES ? names_turn(d, *vp, steps)   /* (a name a detent) */
                                     : clamp(*vp + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
     *vp = (int16_t)v;
     if (pg->scope != SC_GLOBAL && p_lockable(id))
@@ -868,6 +882,14 @@ UI_SMALL static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_
         }
         if (d && note_edges)
             used[l] = 1;                                  /* a key while held: not a tap */
+        if (l == LY_MIX && d && !used[l] && now - t0[l] >= 1200u && !ui.menu && !ui.confirm && ly_lock == LY_PLAY) {
+            used[l] = 1;                                  /* M-PYRE: GLO held alone ~1.2 s: the menu (the options) */
+            ui.layer = LY_PLAY;
+            ui.menu = 1;
+            ui.menu_sel = 0;
+            ui.force = 1;
+            song.seq_mode = 0;
+        }
         if (!d && down[l] && !used[l] && now - t0[l] < TAP_MS && !ui.menu && !ui.confirm)
             layer_tap(l);
         if (!d && down[l] && l == LY_SONG)
@@ -875,6 +897,10 @@ UI_SMALL static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_
         down[l] = (uint8_t)d;
         if (d && held == LY_PLAY)
             held = l;
+    }
+    if (ui.menu) {                                        /* (M-PYRE: GLO's hold just opened the menu) */
+        ui.layer = LY_PLAY;
+        return 1;
     }
     if (held != LY_PLAY && home == BT_TAP && !home_eat) {  /* held + HOME: locked open */
         ly_lock = (uint8_t)held;
@@ -1109,20 +1135,13 @@ UI_SMALL static void ui_input(void)
     page_fix();                                         /* (a page the track does not have: its neighbour, 2.6) */
     midi_entry();                                       /* (the STEP page's MIDI notes: read every frame, 2.6) */
     if (home == BT_HOLD) {                              /* M-PYRE: HOME held - from LIVE (or a page) to the TRACKS screen;
-                                                         * held on TRACKS: the menu (held there again: leave it) */
+                                                         * the menu open: leave it */
         if (ui.menu) {
             menu_close();
-        } else if (ui.home || cur_page()->scope != SC_TRK) {
+        } else {                                        /* (the menu: GLO held, layers_input) */
             layer_unlock();
             vis_on = 0;
             go_home();
-        } else {
-            layer_unlock();
-            ui.menu = 1;
-            ui.menu_sel = 0;
-            ui.confirm = 0;
-            ui.force = 1;
-            song.seq_mode = 0;
         }
     }
     kb_grid = (uint8_t)grid_keys_on();                  /* (seq.c: the keys are the grid's steps) */

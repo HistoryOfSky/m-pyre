@@ -382,7 +382,7 @@ int main(int argc, char **argv)
     bank_resolve();
     panel = PANEL_DEFAULT;
     layers_init();
-    settings.palette = 4;
+    settings.palette = 2;
     palette_set(4);
     host_tracks_init();
     for (i = 0; i < NPART; i++) { set_engine_of(&trk[i], TRK_DEF[i][0]); apply_preset_to(&trk[i], TRK_DEF[i][1]); trk[i].engine = trk[i].eng_req; }

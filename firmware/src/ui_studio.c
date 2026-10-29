@@ -55,22 +55,34 @@ UI_SMALL static void te_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)     
             if (x * x + y * y <= r * r + r)
                 cv_pset(cx + x, cy + y, c);
 }
-/* a dial: a 270-degree ring (lit up to the value), a pointer; ratio 0..1000, -1 = a plain ring */
+/* a dial (M-PYRE): a knob in a ring of fire LEDs - 13 over 270 degrees, lit up to the value, from red to yellow; a
+ * dark cap lit from the top left, a pointer. ratio 0..1000, -1 = every LED dim. (c, dim: the track's colours, the
+ * pointer's tip) */
 UI_SMALL static void te_dial(int32_t cx, int32_t cy, int32_t r, int32_t ratio, uint16_t c, uint16_t dim)
 {
-    int32_t i, end = ratio < 0 ? 768 : ratio * 768 / 1000;
-    for (i = 0; i <= 768; i += 8) {
-        uint32_t a = (uint32_t)(384 + i) & 1023u;
-        int32_t co = SINE[(a + 256u) & 1023u], si = SINE[a], k;
-        uint16_t col = ratio < 0 || i <= end ? c : dim;
-        for (k = r - 2; k <= r; k++)
-            cv_pset(cx + ((co * k) >> 15), cy + ((si * k) >> 15), col);
+    int32_t i, end = ratio < 0 ? -1 : ratio * 768 / 1000, x, y;
+    (void)dim;
+    for (i = 0; i <= 12; i++) {
+        uint32_t a = (uint32_t)(384 + i * 64) & 1023u;
+        int32_t co = SINE[(a + 256u) & 1023u], si = SINE[a], on = ratio >= 0 && i * 64 <= end;
+        uint16_t col = on ? RGB(255, 50 + 180 * i / 12, 16) : RGB(64, 34, 26);
+        x = cx + ((co * (r - 1)) >> 15), y = cy + ((si * (r - 1)) >> 15);
+        if (on) {
+            cv_rect(x - 1, y - 1, 3, 3, col);
+            cv_pset(x, y, RGB(255, 236, 196));
+        } else {
+            cv_rect(x - 1, y, 3, 1, col), cv_rect(x, y - 1, 1, 3, col);
+        }
+    }
+    for (i = r - 5; i >= 1; i--) {                      /* the cap: a dark dome */
+        int32_t v = 30 + (r - 5 - i) * 12;
+        te_disc(cx - (r - 5 - i) / 3, cy - (r - 5 - i) / 3, i, RGB(v, v, v + 4));
     }
     if (ratio >= 0) {
         uint32_t a = (uint32_t)(384 + end) & 1023u;
         int32_t co = SINE[(a + 256u) & 1023u], si = SINE[a];
-        cv_line(cx, cy, cx + ((co * (r - 4)) >> 15), cy + ((si * (r - 4)) >> 15), C_WHITE);
-        te_disc(cx, cy, 2, C_WHITE);
+        cv_line(cx + ((co * 2) >> 15), cy + ((si * 2) >> 15), cx + ((co * (r - 6)) >> 15), cy + ((si * (r - 6)) >> 15), c);
+        cv_line(cx + 1 + ((co * 2) >> 15), cy + ((si * 2) >> 15), cx + 1 + ((co * (r - 6)) >> 15), cy + ((si * (r - 6)) >> 15), c);
     }
 }
 UI_SMALL static void te_play_icon(int32_t x, int32_t y, int playing)
@@ -121,7 +133,7 @@ UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *
         int32_t cx = 30 + 60 * (int32_t)k;
         if (!lab[k][0])
             continue;
-        te_dial(cx, 12, 11, ratio[k], TE_COL[k], TE_DIM[k]);
+        te_dial(cx, 12, 12, ratio[k], RGB(255, 210, 150), TE_DIM[k]);
         te_text_c(cx, 24, lab[k], TE_G3);
     }
     cv_blit(0, (uint32_t)y0);

@@ -104,7 +104,8 @@ def generate():
             [tools / "gen_drumkits.py", GEN / "felucca_drumkits.h"],
             [tools / "gen_fm6_patches.py", GEN / "felucca_fm6.h"],
             [tools / "gen_mpyre_splash.py", GEN / "sloop_logo.h"],   # (M-PYRE: the artwork; gen_logo.py drew SLOOP's)
-            [tools / "gen_mpyre_amp.py", GEN / "mpyre_amp.h"]]
+            [tools / "gen_mpyre_amp.py", GEN / "mpyre_amp.h"],
+            [tools / "gen_mpyre_amplogo.py", GEN / "mpyre_amplogo.h"]]
     procs = [subprocess.Popen([sys.executable, *map(str, c)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               text=True) for c in cmds]
     failed = []
