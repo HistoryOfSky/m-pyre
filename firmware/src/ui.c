@@ -982,16 +982,18 @@ UI_SMALL static void go_live(void)
 }
 UI_SMALL static const param_desc_t *home_param(uint32_t k, int16_t **vp)
 {
-    static const uint8_t DRUM_HOME[4][2] = {{1, G_DRLVL}, {1, G_DRREV}, {0, P_PAN}, {0, P_SLEN}};
+    /* M-PYRE: the drums' LIVE view - the whole kit's LEVEL, PUNCH, LO CUT, HI CUT (drums.c P_D*) */
+    static const param_desc_t DRUM_LIVE[3] = {
+        {"PUNCH", F_CTR, 0, 127, 64, 0, 0}, {"LOCUT", F_OFFPCT, 0, 127, 0, 0, 0}, {"HICUT", F_PCT, 0, 127, 127, 0, 0}};
+    static const uint8_t DRUM_LIVE_ID[3] = {P_DPUNCH, P_DLOCUT, P_DHICUT};
     uint32_t id;
     if (is_drum(TSEL)) {
-        id = DRUM_HOME[k & 3u][1];
-        if (DRUM_HOME[k & 3u][0]) {
-            *vp = &song.g[id];
-            return &GP[id];
+        if (!(k & 3u)) {
+            *vp = &song.g[G_DRLVL];
+            return &GP[G_DRLVL];
         }
-        *vp = &TSEL->p[id];
-        return &TP[id];
+        *vp = &TSEL->p[DRUM_LIVE_ID[(k & 3u) - 1u]];
+        return &DRUM_LIVE[(k & 3u) - 1u];
     }
     id = home_id(k);
     *vp = &TSEL->p[id];

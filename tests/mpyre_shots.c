@@ -50,10 +50,13 @@ int main(int argc, char **argv)
         go_home(); ui.force = 1; frames(3); ppm("mp-live-beige");
         settings.palette = 2; palette_set(2);
     }
-    {   /* M-PYRE: the DRUMS screen's KIT view, the snare picked, then the ride's bell */
-        song.sel = TRK_DRUM; studio_open(SC_DRUM); drum_page = 2; drum_lane = 1; ui.force = 1; frames(3); ppm("mp-kit-1");
+    {   /* M-PYRE: the DRUMS screen's sound editor (EDIT), the snare, then the ride's bell; the drums' LIVE view, hits lit */
+        song.sel = TRK_DRUM; studio_open(SC_DRUM); drum_page = 2; drum_lane = 1; drum_lvl[1] = 2; drum_punch[1] = 2;
+        ui.force = 1; frames(3); ppm("mp-kit-1");
         drum_lane = 7; drum_lvl[7] = -2; drum_punch[7] = 3; ui.force = 1; frames(3); ppm("mp-kit-2");
-        drum_lane = 13; ui.force = 1; frames(3); ppm("mp-kit-3");
+        drum_lane = 0; ui.force = 1; frames(3); ppm("mp-kit-3");
+        go_live(); ui.force = 1; frames(2);
+        pad_lit[0] = 6; pad_lit[1] = 2; pad_lit[11] = 6; ui.force = 1; frame(); ppm("mp-kit-live");
     }
     { int m = 0; for (i = 0; i < SCOPE_N; i++) if (abs(scope_buf[i]) > m) m = abs(scope_buf[i]); printf("scope peak %d\n", m); }
     printf("ok\n");

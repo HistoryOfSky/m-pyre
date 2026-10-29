@@ -1339,6 +1339,10 @@ int main(int argc, char **argv)
         encs[panel.enc[EN_SELECT]] = -1; frame();
         check(drum_page == 0, "DRUMS: SELECT left: grid");
         go_home(); frame();
+        go_live(); frames(2);
+        tap(B_EDIT); frames(2);
+        check(on_drum_page() && drum_page == 2, "M-PYRE: the drum track's EDIT from the LIVE view: its sound editor");
+        go_home(); frame();
         memset(pad_lit, 0, sizeof pad_lit);
         pen_lane = 0;
         press(B_SEQ); frames(3);

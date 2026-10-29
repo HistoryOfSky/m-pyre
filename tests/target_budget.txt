@@ -4,6 +4,7 @@
 # M-PYRE (reviewed): FORMANT / GRAIN gone; cab_run (the cabinet FIR, its loop unrolled x4) added; drums_mix
 # halved (the sampled HOS kit is the default); fm1_alnk0_irq 174 -> 264 (not looked into yet: check
 # on the device's CPU meter); FM6 budgeted at last.
+# drums_mix 2893 -> 3276: each sound's LEVEL / PUNCH and the kit's LO CUT / HI CUT (two one-poles each, skipped when off).
 analog_render 630
 digital_render 333
 phase_render 79
@@ -15,7 +16,7 @@ drawbar_render 271
 drawbar_block 103
 cab_run 18
 slicer_track 832
-drums_mix 2893
+drums_mix 3276
 fm6_op_run 72
 fm6_op_fb 26
 fm6_render 362

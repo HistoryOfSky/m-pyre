@@ -789,8 +789,14 @@ UI_SMALL static void layer_tap(uint32_t layer)
         break;
     case LY_ERASE:
     case LY_STEP:
-        if (on_drum_page()) {                             /* DRUMS: GRID -> KIT -> SOUND (2.7) */
-            drum_page = (uint8_t)((drum_page + 1u) % 3u);
+        if (on_drum_page()) {                             /* DRUMS (M-PYRE): EDIT the sound editor; SEQ GRID <-> KIT */
+            drum_page = layer == LY_ERASE ? 2u : (uint8_t)(drum_page ? 0u : 1u);
+            ui.force = 1;
+            break;
+        }
+        if (is_drum(TSEL) && layer == LY_ERASE) {        /* M-PYRE: the drum track's EDIT, from anywhere: its sounds */
+            studio_open(SC_DRUM);
+            drum_page = 2;
             ui.force = 1;
             break;
         }

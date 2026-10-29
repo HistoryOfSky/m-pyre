@@ -48,6 +48,8 @@ static struct {
     uint8_t synth[NDRUM];        /* the voice plays a synthesised kit (ds[]) */
     int16_t lg[NDRUM];           /* M-PYRE: its sound's LEVEL (drum_lvl), Q12 */
     int32_t pu[NDRUM];           /* M-PYRE: its PUNCH: the attack's extra gain, Q12, falling ~6 ms */
+    int32_t fl[NDRUM][2], fh[NDRUM][2];   /* M-PYRE: its HI CUT (two one-pole low-passes), LO CUT (two high-passes) */
+    int32_t klp, khp;            /* their coefficients this block, Q15 (0: off) */
     dsv_t ds[NDRUM];
     volatile uint16_t hits;      /* bit per lane hit since the UI last looked (pads, key LEDs) */
     volatile uint8_t kick;       /* a kick was hit (fx.c DUCK) */
@@ -109,10 +111,17 @@ static const uint8_t LANE_OF_GM[81 - 35 + 1] = {
 #define DRUM_DEC_MIN (-4)
 #define DRUM_DEC_MAX 3
 static int8_t drum_tune[DRUM_LANES], drum_dec[DRUM_LANES];
-/* M-PYRE, the DRUMS screen's KIT view: each sound's LEVEL (-8 .. +7: 1.5 dB steps, 0 as the kit has it) and PUNCH (0 ..
- * 7: its attack lifted, up to +11 dB over the first ~6 ms - a transient shaper), kept with the project (project.c) */
+/* M-PYRE, the drums' LIVE view: the whole kit's PUNCH, LO CUT and HI CUT, in drum-track values no drum uses (the
+ * synth voices' LFO -> AMP, the guitar's VOL and WAH): kept with the project as the track's */
+#define P_DPUNCH P_TONE                 /* 0 .. 127, 64 none: the whole kit's attack softer / harder */
+#define P_DLOCUT P_LD_AMP               /* 0 off .. 127: a 12 dB low cut, 20 .. 800 Hz */
+#define P_DHICUT P_PVOL                 /* 127 off .. 0: a 12 dB high cut, 20 kHz .. 1 kHz */
+/* M-PYRE, the DRUMS screen's sound editor: each sound's LEVEL (-8 .. +7: 1.5 dB steps, 0 as the kit has it) and PUNCH
+ * (-8 .. +7, 0 none: its attack over the first ~12 ms lifted, up to about +11 dB, or softened, down to nearly
+ * none - a transient shaper), kept with the project (project.c) */
 #define DRUM_LVL_MIN (-8)
 #define DRUM_LVL_MAX 7
+#define DRUM_PUNCH_MIN (-8)
 #define DRUM_PUNCH_MAX 7
 static int8_t drum_lvl[DRUM_LANES], drum_punch[DRUM_LANES];
 static const int16_t DRUM_LVL_Q12[16] = {1029, 1223, 1453, 1727, 2053, 2440, 2900, 3446, 4096, 4868, 5786, 6876, 8173, 9713, 11544, 13720};
@@ -122,14 +131,28 @@ static void drum_vgain(uint32_t vi, uint32_t note)   /* a voice starting: its so
     uint32_t ln = lane_of_note(note);
     int tw = note != 76u && note != 77u;
     drums.lg[vi] = tw ? DRUM_LVL_Q12[(drum_lvl[ln] - DRUM_LVL_MIN) & 15] : 4096;
-    drums.pu[vi] = tw ? drum_punch[ln] * 1500 : 0;
+    drums.pu[vi] = tw ? clamp(drum_punch[ln] * 1200 + (trk[TRK_DRUM].p[P_DPUNCH] - 64) * 70, -3900, 12000) : 0;
+    drums.fl[vi][0] = drums.fl[vi][1] = drums.fh[vi][0] = drums.fh[vi][1] = 0;
 }
 /* a voice's sample through its LEVEL and PUNCH */
 static inline int32_t drum_vapply(uint32_t k, int32_t s)
 {
     int32_t g = drums.lg[k] + ((drums.lg[k] * drums.pu[k]) >> 12);
-    drums.pu[k] -= drums.pu[k] >> 8;
-    return g == 4096 ? s : (int32_t)(((int64_t)s * g) >> 12);
+    drums.pu[k] -= drums.pu[k] >> 9;                /* (back to 0 over ~12 ms: from below the attack swells) */
+    if (g != 4096)
+        s = (int32_t)(((int64_t)s * g) >> 12);
+    if (drums.klp) {                                /* HI CUT */
+        drums.fl[k][0] += mulq15(s - drums.fl[k][0], drums.klp);
+        drums.fl[k][1] += mulq15(drums.fl[k][0] - drums.fl[k][1], drums.klp);
+        s = drums.fl[k][1];
+    }
+    if (drums.khp) {                                /* LO CUT */
+        drums.fh[k][0] += mulq15(s - drums.fh[k][0], drums.khp);
+        s -= drums.fh[k][0];
+        drums.fh[k][1] += mulq15(s - drums.fh[k][1], drums.khp);
+        s -= drums.fh[k][1];
+    }
+    return s;
 }
 static const uint8_t DK_SMP[4] = {47, 60, 74, 87};   /* a sample's DECAY -4 .. -1: -60 dB in 60, 120, 250, 500 ms */
 #define DRUM_CLICK(n) ((n) == 76u || (n) == 77u)    /* (the click's wood block: no lane, never tuned) */
@@ -399,6 +422,13 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
     int32_t lvl = expr_gain(song.g[G_DRLVL] * 200, TRK_DRUM), send = send_thr(song.g[G_DRREV] * 258, thr_rev),
             dsend = send_thr(song.g[G_DRDLY] * 258, thr_dly), pk = drums.peak;   /* (2.6: the THROWs) */
     int32_t pan = trk[TRK_DRUM].p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
+    {   /* M-PYRE: LO CUT / HI CUT's coefficients, 2 pi fc / FS (the one-pole's, near enough), Q15 */
+        int32_t lo = trk[TRK_DRUM].p[P_DLOCUT], hi = trk[TRK_DRUM].p[P_DHICUT];
+        drums.khp = lo <= 0 ? 0 : (int32_t)(((uint64_t)pow2_q16(lo * 1152 / 127) * 20u * 3217u) / (44100u * 1024u));   /* 20 Hz
+                                                         * x 2^(0..6) */
+        drums.klp = hi >= 127 ? 0 : clamp((int32_t)(((uint64_t)pow2_q16(hi * 829 / 127) * 1000u * 3217u) / (44100u * 1024u)),
+                                          1, 32767);    /* 1 kHz x 2^(0..4.3) */
+    }
     if (!drums.gon)                                 /* (2.7) LEVEL and PAN glide, block by block (mix_glide) */
         drums.glv = lvl, drums.ggl = gl, drums.ggr = gr, drums.gon = 1;
     lvl = drums.glv = mix_glide(drums.glv, lvl);

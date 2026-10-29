@@ -461,16 +461,16 @@ static void drum_tw_get(const project_t *p)
     }
 }
 
-/* M-PYRE: each drum sound's LEVEL (4 bits) and PUNCH (3 bits) in the drum track's bytes of the amp's parameters
+/* M-PYRE: each drum sound's LEVEL and PUNCH (4 bits each, two's complement) in the drum track's bytes of the amp's parameters
  * (P_AMP .. P_AMP + 15: no amp on the drums), a mark after them (P_AMP + 16); without it (an older project) every
  * sound as the kit has it. The drum track's amp values stay at their defaults (proj_apply) */
-#define DRUM_MX_MARK 0xA7u
+#define DRUM_MX_MARK 0xA8u                      /* (0xA7: PUNCH 0..7, before it was bipolar) */
 UI_SMALL static void drum_mx_put(project_t *p)
 {
     uint8_t *x = p->t[TRK_DRUM].x;
     uint32_t l;
     for (l = 0; l < DRUM_LANES; l++)
-        x[P_AMP - PROJ_NC6 + l] = (uint8_t)(((uint32_t)drum_lvl[l] & 15u) | ((uint32_t)drum_punch[l] & 7u) << 4);
+        x[P_AMP - PROJ_NC6 + l] = (uint8_t)(((uint32_t)drum_lvl[l] & 15u) | ((uint32_t)drum_punch[l] & 15u) << 4);
     x[P_AMP - PROJ_NC6 + DRUM_LANES] = DRUM_MX_MARK;
 }
 static void drum_mx_get(const project_t *p)
@@ -480,7 +480,7 @@ static void drum_mx_get(const project_t *p)
     for (l = 0; l < DRUM_LANES; l++) {
         uint32_t v = ok ? x[P_AMP - PROJ_NC6 + l] : 0u;
         drum_lvl[l] = (int8_t)((int32_t)((v & 15u) ^ 8u) - 8);
-        drum_punch[l] = (int8_t)((v >> 4) & 7u);
+        drum_punch[l] = (int8_t)((int32_t)(((v >> 4) & 15u) ^ 8u) - 8);
     }
 }
 _Static_assert(P_AMP + DRUM_LANES < P_E0 && P_AMP >= PROJ_NC6, "the drum sounds' LEVEL / PUNCH bytes");
@@ -541,7 +541,7 @@ static void proj_apply(const project_t *p, int all)
             t->p[i] = (int16_t)clamp(pt_get(s, i), d->min, d->max);
         }
         if (k == TRK_DRUM)                              /* (M-PYRE: those bytes held the drum sounds' LEVEL, PUNCH) */
-            for (i = P_AMP; i <= P_WAH; i++)
+            for (i = P_AMP; i <= P_AMP + DRUM_LANES; i++)   /* (the drum bus' PUNCH, HI CUT after them: its own) */
                 t->p[i] = TP[i].def;
         if (!(p->rsv[0] & 0x40u) && !t->p[P_AMODE])
             t->p[P_AHOLD] = 0;                          /* (2.7) saved before 2.7: HOLD with the arp OFF did nothing then; it

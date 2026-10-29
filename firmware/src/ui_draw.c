@@ -752,7 +752,10 @@ UI_SMALL static void draw_graph(void)
     ui.graph_sig = sig;
     cv_begin(240, H_GRAPH, C_BLACK);
     cv_oy = G_OY;
-    if (ui.home) {
+    if (ui.home && is_drum(t)) {                    /* M-PYRE: the drums' LIVE view - the whole kit, lit as it plays */
+        cv_oy = 0;
+        kv_kit(-1);
+    } else if (ui.home) {
         graph_scope(c);
     } else if (drum_note) {                          /* a page the drum track has no use for */
         static const char *const L[2] = {"DRUM TRACK", "SEQ  TRACKS  GLO DRUMS"};
@@ -802,8 +805,8 @@ UI_SMALL static void draw_graph(void)
             break;
         }
     }
-    top = !ui.home && !drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
-                                     pg->graph == GR_ROLL || big_page(pg));   /* these draw from the top */
+    top = (ui.home && is_drum(t)) || (!ui.home && !drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
+                                     pg->graph == GR_ROLL || big_page(pg)));   /* these draw from the top */
     cv_oy = 0;
     if (ui.hot_t && settings.zoom && !(top && (big_page(pg) || pg->graph == GR_ROLL) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
         int32_t x;
