@@ -452,7 +452,10 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
             if (o && t->p[P_OMIX] && n2 >= 0 && n2 < 128) {
                 voice_t *v2 = voice_alloc(t, (uint32_t)n2);
                 v2->fine = 0;
-                voice_start(t, v2, (uint32_t)n2, vel * (uint32_t)t->p[P_OMIX] / 127u + 1u, t->p[P_GLIDE] != 0);
+                {   /* O MIX: up to 1.4 x the note (the octave below fuller: under an amp's tight low cut it thins) */
+                    uint32_t ov = vel * (uint32_t)t->p[P_OMIX] / (o < 0 ? 80u : 110u) + 1u;
+                    voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, t->p[P_GLIDE] != 0);
+                }
             }
         }
         return;

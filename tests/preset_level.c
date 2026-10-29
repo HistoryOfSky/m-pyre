@@ -3,6 +3,9 @@
  * 4.75 s each, through the whole mix (sends, master), for tools/level_presets.py.
  *   argv[1]: a WAV of them all, argv[2]: the list (engine preset role name), argv[3]: mono int32 raw
  *   cc -O2 -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/preset_level.c -lm -o build/host/preset_level */
+#include <stdint.h>
+static uint32_t host_slots[4u * 0x14000u / 4u];   /* M-PYRE: the sound pack (guitar, palm, bass) in the user slots */
+#define SMP_USER_XIP(k) ((const uint8_t *)host_slots + (k) * SMP_USER_SIZE)
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -45,6 +48,16 @@ static void play(uint32_t note, uint32_t vel, uint32_t off)
 
 int main(int argc, char **argv)
 {
+    {   /* M-PYRE: the sound pack (tools/mpyre_slots.py), as an FM-1 with it installed */
+        FILE *sp = fopen("build/mpyre/soundpack.bin", "rb");
+        uint32_t k;
+        if (sp) {
+            if (fread(host_slots, 1, sizeof host_slots, sp)) {}
+            fclose(sp);
+        }
+        for (k = 0; k < SMP_USER_SLOTS; k++)
+            smp_user_scan(k);
+    }
     FILE *w = fopen(argv[1], "wb"), *rep = fopen(argv[2], "w"), *raw = fopen(argv[3], "wb");
     uint32_t frames = 0, e, pi, b, n, i;
     const uint32_t step = FS * 60u / 100u / 4u, nb = (FS * 9u / 2u) / CTL, tail = (FS / 4u) / CTL;

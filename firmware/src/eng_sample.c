@@ -64,7 +64,7 @@ static smp_zone_t usr_zone[SMP_USER_SLOTS][16];     /* RAM copy, off rebased ont
 static uint8_t usr_nz[SMP_USER_SLOTS];
 /* M-PYRE: the four slots hold the sound pack (tools/mpyre_slots.py): GUITAR over USR1 + USR2 (one set: a note finds
  * its zone in either), the palm mutes in USR3, the bass in USR4 */
-static const char *const SMP_ALL_NAMES[SMP_NALL] = {SMP_SET_NAMES_INIT, "GUITAR", "GUITAR", "PALM", "BASS"};
+static const char *const SMP_ALL_NAMES[SMP_NALL] = {SMP_SET_NAMES_INIT, "GTR", "GTR", "PALM", "BASS"};   /* (5 characters a value) */
 #define SMP_GTR SMP_NSETS                           /* the SET of the guitar (USR1 + USR2) */
 
 #ifndef SMP_USER_XIP                                /* host tests: a RAM image of the slots */

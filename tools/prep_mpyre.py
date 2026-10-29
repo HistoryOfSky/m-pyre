@@ -72,14 +72,16 @@ def segments(x, sr, n_expect):
     return out
 
 
-def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True):
+def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True, pitch_at=(0.2, 1.0)):
     """one recorded note -> (float samples at TR, loop start, loop end)"""
     a = max(0, s - int(0.05 * sr))
     sub = x[a:e]
     sp = np.abs(sub).max()
-    o = max(0, a + int(np.argmax(np.abs(sub) > sp * 0.02)) - int(0.002 * sr))
+    o = max(0, a + int(np.argmax(np.abs(sub) > sp * (0.12 if not flatten else 0.02))) - int(0.002 * sr))   # (palm: tight)
     target = 440 * 2 ** ((root - 69) / 12)
-    hz = yin(x[o + int(0.2 * sr):o + int(1.0 * sr):2].tolist(), sr // 2, fmax=1500, fmin=25)
+    hz = yin(x[o + int(pitch_at[0] * sr):o + int(pitch_at[1] * sr):2].tolist(), sr // 2, fmax=1500, fmin=25)
+    if not hz or abs(1200 * np.log2(hz / target)) > 150:   # (a palm mute rings briefly: no pitch, or an octave off)
+        hz = target
     fr = Fraction(TR * hz / (sr * target)).limit_denominator(1000)   # read at hz / target: in tune
     y = resample_poly(x[o:e], fr.numerator, fr.denominator)
     if flatten:                                       # the drift after 0.15 s, frame by frame
@@ -130,7 +132,7 @@ def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True):
     return z, ls, L - 1
 
 
-def melodic(path, roots, keep, loop_lo, loop_hi, skip=()):
+def melodic(path, roots, keep, loop_lo, loop_hi, skip=(), flatten=True, pitch_at=(0.2, 1.0)):
     x = load(path)
     sr = 48000
     segs = [s for s in segments(x, sr, len(roots) + len(skip))]
@@ -138,7 +140,7 @@ def melodic(path, roots, keep, loop_lo, loop_hi, skip=()):
     zones = []
     for k, (name, root) in enumerate(roots):
         e = segs[k + 1] if k + 1 < len(segs) else len(x)
-        z, ls, le = note(x, sr, segs[k], e, root, keep, loop_lo, loop_hi)
+        z, ls, le = note(x, sr, segs[k], e, root, keep, loop_lo, loop_hi, flatten, pitch_at)
         zones.append(dict(name=name, root=root, x=z, loop=None if ls is None else [ls, le]))
     ref = np.mean([k_loud(z["x"], TR) for z in zones])            # the same loudness, note to note
     for z in zones:
@@ -154,17 +156,50 @@ def melodic(path, roots, keep, loop_lo, loop_hi, skip=()):
 
 
 # the drum track's 16 lanes (firmware/src/drums.c LANE_NOTE): GM note, file, length (s), level vs the kick (dB)
-KIT = [(36, "Kick", 0.6, 0), (35, "Kick", 0.6, 0), (38, "Snare", 0.9, -1), (40, "Snare Ghost", 0.6, -9),
+KIT = [(36, "Kick", 0.6, 0), (38, "Snare", 0.9, -1), (40, "Snare Ghost", 0.6, -9),
        (42, "Hihat Closed", 0.3, -11), (46, "Hihat Open", 1.5, -9), (44, "Hihat Foot", 0.35, -12),
-       (53, "Bell", 1.2, -12), (48, "Tom High", 1.0, -3.5), (47, "Tom Middle", 1.0, -3), (43, "Tom Floor", 1.1, -3),
-       (49, "Crash 1", 1.6, -10), (51, "Ride", 1.5, -13), (57, "Crash 2", 1.6, -10), (52, "China", 1.5, -10),
-       (55, "REV:Crash 1", 0.9, -10)]
+       (51, "Ride", 1.5, -13), (53, "Bell", 1.2, -12), (48, "Tom High", 1.0, -3.5), (47, "Tom Middle", 1.0, -3),
+       (43, "Tom Floor", 1.1, -3), (49, "Crash 1", 1.6, -10), (52, "China", 1.5, -10),
+       (84, "REV:Crash 1", 0.9, -10), (82, "FX:riser", 1.6, -11), (83, "FX:drop", 1.2, -3)]
 KICK_LUFS, PEAK, KICK_PEAK = -14.5, -4.0, -1.5
+
+
+def fx_sound(kind, secs):
+    """the effect lanes: RISER, noise swept up through a band-pass and a rising tone under it, swelling into the next
+    downbeat (it ends at full level); DROP, an impact: a click and a sub tone falling from 110 Hz to 32 Hz, decaying"""
+    rng = np.random.default_rng(7)
+    n = int(secs * TR)
+    t = np.arange(n) / TR
+    if kind == "riser":
+        noise = rng.standard_normal(n)
+        y = np.zeros(n)
+        fc = 250 * (7000 / 250) ** (t / secs)                     # the band's centre, 250 Hz .. 7 kHz
+        zi = np.zeros(2)
+        for i0 in range(0, n, 256):                               # a band-pass a block at a time (its state carried)
+            i1 = min(n, i0 + 256)
+            w = 2 * np.pi * fc[i0] / TR
+            al = np.sin(w) / (2 * 2.5)
+            y[i0:i1], zi = lfilter([al, 0, -al], [1 + al, -2 * np.cos(w), 1 - al], noise[i0:i1], zi=zi)
+        f0 = 110 * (880 / 110) ** (t / secs)
+        tone = np.sin(2 * np.pi * np.cumsum(f0) / TR) * 0.35
+        x = (y / (np.abs(y).max() + 1e-9) + tone) * (t / secs) ** 2.2
+        x[-int(0.01 * TR):] *= np.linspace(1, 0.2, int(0.01 * TR))
+        return x
+    # drop
+    f0 = 32 + 78 * np.exp(-t * 4.5)
+    sub = np.tanh(2.2 * np.sin(2 * np.pi * np.cumsum(f0) / TR)) * np.exp(-t * 2.2)
+    click = rng.standard_normal(n) * np.exp(-t * 90) * 0.6
+    x = sub + click
+    x[-int(0.2 * TR):] *= np.linspace(1, 0, int(0.2 * TR)) ** 2
+    return x
 
 
 def drums():
     out, cache = [], {}
     for gm, fn, keep, rel in KIT:
+        if fn.startswith("FX:"):                      # M-PYRE: made here, no recording
+            out.append(dict(name=fn[3:].upper(), gm=gm, x=fx_sound(fn[3:], keep), rel=rel))
+            continue
         rev = fn.startswith("REV:")
         f = fn[4:] if rev else fn
         if f not in cache:
@@ -200,7 +235,8 @@ def main():
                                                       ("G3", 55), ("B3", 59), ("E4", 64), ("A4", 69), ("E5", 76),
                                                       ("A5", 81)], 1.2, 0.4, 0.55),
         "PALM": melodic(ASSETS / "palm_di.aif", [("A1", 33), ("C2", 36), ("E2", 40), ("A2", 45), ("C3", 48),
-                                                  ("F3", 53), ("A3", 57), ("D4", 62)], 0.55, None, None),
+                                                  ("F3", 53), ("A3", 57), ("D4", 62)], 0.55, None, None,
+                        flatten=False, pitch_at=(0.02, 0.18)),   # (short, decaying: the pitch early, no drift to flatten)
     }
     js = {}
     for name, zones in sets.items():

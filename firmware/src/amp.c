@@ -11,17 +11,20 @@
  * Fixed point: signals in Q15 (32768 = 1.0) inside, biquads with Q28 coefficients in 64-bit sums. State per part. */
 #include "mpyre_amp.h"
 
-typedef struct { int32_t s[4]; } bq_st_t;       /* x1 x2 y1 y2 */
+typedef struct { int32_t s[4]; } bq_st_t;       /* x1 x2, y1 y2 (y with 8 more bits: x 256) */
+/* a biquad, its output kept 8 bits finer than the signal: a low-frequency filter's feedback at Q28 with the
+ * output rounded to the signal's own steps had a dead band (a quiet guitar note into the high-gain amp's
+ * high-pass came out as silence, then in bursts: the "wobble") */
 static inline int32_t bq(const bq_coef_t *c, bq_st_t *st, int32_t x)
 {
-    int64_t a = (int64_t)c->c[0] * x + (int64_t)c->c[1] * st->s[0] + (int64_t)c->c[2] * st->s[1] -
+    int64_t a = (((int64_t)c->c[0] * x + (int64_t)c->c[1] * st->s[0] + (int64_t)c->c[2] * st->s[1]) << 8) -
                 (int64_t)c->c[3] * st->s[2] - (int64_t)c->c[4] * st->s[3];
-    int32_t y = (int32_t)(a >> 28);                 /* (Q28 coefficients) */
+    int32_t yf = (int32_t)(a >> 28);                /* (Q28 coefficients; y x 256) */
     st->s[1] = st->s[0];
     st->s[0] = x;
     st->s[3] = st->s[2];
-    st->s[2] = y;
-    return y;
+    st->s[2] = yf;
+    return yf >> 8;
 }
 static inline int bq_used(const bq_coef_t *c) { return c->c[1] | c->c[2] | c->c[3] | c->c[4] | (c->c[0] != (1 << 28)); }
 
@@ -34,13 +37,14 @@ static inline int32_t amp_tanh(int32_t x)
 }
 
 typedef struct {
-    bq_st_t pre[3], mid[2], post[3], band[4], aa;   /* (mid: at 88.2 kHz, two samples a step) */
+    bq_st_t pre[3], mid[3], post[3], band[4], aa, dec[2], up;   /* (mid, dec: at 88.2 kHz, two samples a step) */
     bq_st_t bs[12];                                 /* the bass amps' (track_bass) */
     int32_t xprev;                                  /* the last input (the 2x interpolation) */
     int32_t fir[2 * CAB_TAPS];                      /* the cabinet's history, twice (a straight read) */
     uint32_t fw;                                    /* its write position */
     int32_t c0, c1;                                 /* the cabinet's last two outputs (22.05 kHz) */
     int32_t dcx, dcy;                               /* the DC blocker after the amp (asymmetric stages leave an offset) */
+    int32_t genv, gg;                               /* the gate before the driven amps: the input's envelope, its gain (Q15) */
     uint8_t ph, model, on;                         /* ph: the cabinet's half-rate phase */
 } amp_st_t;
 /* one pole at ~20 Hz: y = x - x[-1] + 0.99715 y[-1] (y kept 6 bits finer) */
@@ -114,24 +118,26 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
             y = bq(&PD_DSHP, &s->pd[0], x >> 2);
             y = amp_tanh((int32_t)(((int64_t)y * pg * 40) >> 12));
             y = clamp(y + (y >> 1), -30000, 30000);
-            x = bq(&PD_DSLP, &s->pd[1], y) << 2;
+            x = bq(&PD_DSLP, &s->pd[1], y) >> 2;    /* (about +5 dB over the dry note, as the others) */
             break;
         case 4:                                     /* FUZZ: two stages, a bias, the mids scooped */
             y = amp_tanh((int32_t)(((int64_t)(x >> 2) * pg * 30) >> 12) + 4000);
             y = amp_tanh(y * 3);
             y = bq(&PD_FZAA, &s->pd[2], y);
-            x = (bq(&PD_FZLP, &s->pd[0], y) + bq(&PD_FZHP, &s->pd[1], y)) << 1;
+            x = (bq(&PD_FZLP, &s->pd[0], y) + bq(&PD_FZHP, &s->pd[1], y)) >> 2;
             break;
         default:
             break;
         }
-        if (wc)                                     /* WAH: the band (resonant), with a little of the dry under it */
-            x = (int32_t)(((int64_t)bq(wc, &s->wah, x) * 3 + (x >> 2)) >> 1);
+        if (wc)                                     /* WAH: the band (resonant), with a little of the dry under it; the
+                                                     * higher the band the less of a guitar it finds: made up (as loud
+                                                     * all the way, toe to heel) */
+            x = (int32_t)(((int64_t)(bq(wc, &s->wah, x) * 3 + (x >> 2)) * (384 + wah * 11)) >> 9);
         b[i] = x;
     }
 }
 
-#define AMP_IN_SHIFT 2                              /* the part's buffer -> the amp's Q15: a loud note near 0.5 */
+#define AMP_IN_SHIFT 0                              /* the part's buffer as the amp's Q15: a loud guitar note near 0.5 (as the amps were voiced) */
 
 static void amp_reset(amp_st_t *a)
 {
@@ -167,9 +173,11 @@ static inline int32_t amp_stages(amp_st_t *a, const amp_model_t *m, int32_t g1, 
     y = bq(&m->mid[1], &a->mid[1], y);
     if (m->g2)
         y = amp_tanh((y * m->g2) >> 4);
-    if (m->g3)
+    if (m->g3) {
+        y = bq(&m->mid[2], &a->mid[2], y);
         y = amp_tanh((y * m->g3) >> 4);
-    return y;
+    }
+    return bq(&AMP_DEC[1], &a->dec[1], bq(&AMP_DEC[0], &a->dec[0], y));   /* (88.2 -> 44.1 kHz: no fold-back fizz) */
 }
 
 /* the bass amps: the low end clean, the mids and highs driven, in parallel (B-CLEAN: the bands only). BLEND is
@@ -184,7 +192,10 @@ static void track_bass(track_t *t, amp_st_t *a, int32_t type, int32_t *b, uint32
         kb[j] = v > 0 ? v * 260 : v * 128;
     }
     for (i = 0; i < (int32_t)n; i++) {
-        int32_t x = b[i] >> AMP_IN_SHIFT, lo, d, y;
+        int32_t x = (b[i] * 21) >> 5, lo, d, y;     /* (the bass samples come in hotter than the guitar: to ~0.5) */
+#ifdef AMP_DEBUG
+        { static int32_t mx; static uint32_t cnt; int32_t ax = x < 0 ? -x : x; if (ax > mx) mx = ax; if (++cnt % 22050u == 0u) { fprintf(stderr, "bass in max %d\n", mx); mx = 0; } }
+#endif
         if (type == 5) {                            /* B-CLEAN */
             y = x;
         } else if (type == 6) {                     /* B-DRIVE */
@@ -197,7 +208,7 @@ static void track_bass(track_t *t, amp_st_t *a, int32_t type, int32_t *b, uint32
             y = lo + ((((d * 15) >> 5) * bl) >> 14);   /* (the drive at about the low end's level) x BLEND x 2 */
         } else {                                    /* DJENT */
             lo = bq(&DJ_LO, &a->bs[1], bq(&DJ_LO, &a->bs[0], x));
-            lo = amp_tanh(lo * 5) >> 1;             /* squeezed: every note as fat */
+            lo = amp_tanh(lo * 5);                  /* squeezed: every note as fat (as loud as the reference's) */
             d = bq(&DJ_HI, &a->bs[3], bq(&DJ_HI, &a->bs[2], x));
             d = bq(&DJ_PK1, &a->bs[4], d);
             d = amp_tanh((int32_t)(((int64_t)d * 120 * g) >> 12));
@@ -218,7 +229,7 @@ static void track_bass(track_t *t, amp_st_t *a, int32_t type, int32_t *b, uint32
         y = bq(&B_HP30, &a->bs[11], y);
         if (h)
             y = cab_run(a, h, y);
-        b[i] = amp_dc(a, y << AMP_IN_SHIFT);
+        b[i] = amp_dc(a, type == 5 ? (y * 3) >> 1 : (y * 9) >> 3);   /* (back to the part's level; the driven ones as B-CLEAN) */
     }
 }
 
@@ -252,16 +263,29 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
         int32_t v = t->p[P_ABASS + j] - 64;
         kb[j] = v > 0 ? v * 260 : v * 128;          /* Q14 */
     }
-    mk = type == 1 ? 26000 : 20000;                 /* make-up: about the level of the dry part */
+    {   /* make-up per amp: a held note about as loud as the CLEAN amp's, under the master limiter (measured renders) */
+        static const int16_t MK[4] = {13000, 1840, 2100, 2200};
+        mk = MK[(type - 1) & 3];
+    }
     for (i = 0; i < n; i++) {
         int32_t x = b[i] >> AMP_IN_SHIFT, y, u0;
+        if (type > 1) {                             /* a gate (the reference's, -40 dB): between notes the driven amps
+                                                     * would raise the samples' hiss to a roar */
+            int32_t ax = x < 0 ? -x : x;
+            a->genv = ax > a->genv ? ax : a->genv - (a->genv >> 11);   /* (the peak, falling ~50 ms) */
+            a->gg += a->genv > 330 ? (32767 - a->gg) >> 5 : -(a->gg >> 11);
+            x = (int32_t)(((int64_t)x * a->gg) >> 15);
+        }
+#ifdef AMP_DEBUG
+        { static int32_t mx; static uint32_t cnt; int32_t ax = x < 0 ? -x : x; if (ax > mx) mx = ax; if (++cnt % 22050u == 0u) { fprintf(stderr, "amp in max %d\n", mx); mx = 0; } }
+#endif
         for (j = 0; j < 3u; j++)
             if (bq_used(&m->pre[j]))
                 x = bq(&m->pre[j], &a->pre[j], x);
         u0 = (a->xprev + x) >> 1;                   /* 2x: the half-way sample, then this one */
         a->xprev = x;
-        y = amp_stages(a, m, g1, u0, b0);
-        y = (y + amp_stages(a, m, g1, x, b0)) >> 1;
+        (void)amp_stages(a, m, g1, u0, b0);         /* (the half-way sample: through the filters, then dropped) */
+        y = amp_stages(a, m, g1, x, b0);
         for (j = 0; j < 3u; j++)
             if (bq_used(&m->post[j]))
                 y = bq(&m->post[j], &a->post[j], y);
@@ -272,7 +296,10 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
                     y += (bq(&AMP_BANDS[j], &a->band[j], yb) * kb[j]) >> 14;
         }
         if (h)
-            y = cab_run(a, h, y);
+            y = bq(&CAB_AA, &a->up, cab_run(a, h, y));   /* (the half-rate cabinet back to 44.1 kHz: its images cut) */
         b[i] = amp_dc(a, (int32_t)(((int64_t)y * mk) >> (13 - AMP_IN_SHIFT)));
+#ifdef AMP_DEBUG
+        { static int32_t mo; static uint32_t c2; int32_t ao = b[i] < 0 ? -b[i] : b[i]; if (ao > mo) mo = ao; if (++c2 % 22050u == 0u) { fprintf(stderr, "amp out max %d (y %d)\n", mo, y); mo = 0; } }
+#endif
     }
 }

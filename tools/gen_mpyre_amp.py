@@ -7,7 +7,7 @@
 Biquads as Q28 coefficients {b0, b1, b2, a1, a2} (RBJ cookbook), for 44.1 kHz (AMP_FS) and for the amps' 2x
 oversampled stages (88.2 kHz). The cabinets: History Of Sky's IRs (assets/mpyre-src/ir, CLEAN CRUNCH HIGAIN LEAD),
 resampled to 22.05 kHz (the cabinet runs at half rate: a guitar speaker passes next to nothing above 8 kHz), cut to
-CAB_TAPS (11.6 ms: the box; the rest is room) with a fade, normalised to unity gain at 1 kHz, Q15. Without the IRs
+CAB_TAPS (11.6 ms: the box; the rest is room) with a fade, normalised to unity power gain over the guitar band (pink), Q15. Without the IRs
 (a public build), a generic 4x12 made of filters stands in. A bass cabinet (no IR): an 8x10's curve, made here.
 """
 import math
@@ -57,24 +57,24 @@ NONE = [Q30, 0, 0, 0, 0]                                # a pass-through biquad
 # the amps (as tested in the A/B renders, tools: scripts amp.py / amp_ir.py of the design): per model
 #   pre[3]   biquads at 44.1 kHz before the gain stages (hiss cut, tightening high-pass, mid boost)
 #   g1, b1   stage 1: gain (x 1/16) and bias (Q15) into tanh, at 88.2 kHz
-#   mid[2]   biquads between the stages, at 88.2 kHz
+#   mid[3]   biquads between the stages, at 88.2 kHz (the third: before the power stage, as the reference)
 #   g2, g3   stage 2 and the power stage gains (x 1/16; 0: none)
 #   post[3]  the fixed voicing after the stages, 44.1 kHz
 #   cab      the cabinet (CAB_NAMES index)
 AMPS = [
-    dict(name="CLEAN", pre=[NONE, NONE, NONE], g1=24, b1=0, mid=[NONE, NONE], g2=0, g3=0,
+    dict(name="CLEAN", pre=[NONE, NONE, NONE], g1=24, b1=0, mid=[NONE, NONE, NONE], g2=0, g3=0,
          post=[biquad("lowshelf", 150, FS, 0.7, 2), biquad("peak", 500, FS, 0.8, -3), biquad("highshelf", 2500, FS, 0.7, 3)],
          cab=0),
-    dict(name="CRUNCH", pre=[biquad("hp", 90, FS, 0.7), biquad("peak", 900, FS, 0.9, 5), NONE], g1=224, b1=3932,
-         mid=[biquad("lp", 9000, 2 * FS), biquad("hp", 40, 2 * FS)], g2=40, g3=0,
+    dict(name="CRUNCH", pre=[biquad("hp", 90, FS, 0.7), biquad("peak", 900, FS, 0.9, 5), biquad("lp", 6000, FS, 0.7)], g1=224, b1=3932,
+         mid=[biquad("lp", 9000, 2 * FS), biquad("hp", 40, 2 * FS), NONE], g2=40, g3=0,
          post=[biquad("lowshelf", 120, FS, 0.7, 3), biquad("peak", 1000, FS, 0.8, 2), biquad("highshelf", 2200, FS, 0.7, 5)],
          cab=1),
     dict(name="HI-GAIN", pre=[biquad("lp", 4500, FS, 0.7), biquad("hp", 140, FS, 0.7), biquad("peak", 800, FS, 0.8, 9)],
-         g1=400, b1=6554, mid=[biquad("hp", 60, 2 * FS), biquad("lp", 9000, 2 * FS)], g2=96, g3=48,
+         g1=400, b1=6554, mid=[biquad("hp", 60, 2 * FS), biquad("lp", 9000, 2 * FS), biquad("lp", 10000, 2 * FS)], g2=96, g3=48,
          post=[biquad("lowshelf", 100, FS, 0.7, 7), biquad("peak", 500, FS, 0.9, -6), biquad("highshelf", 2500, FS, 0.7, 4)],
          cab=2),
     dict(name="LEAD", pre=[biquad("lp", 4500, FS, 0.7), biquad("hp", 110, FS, 0.7), biquad("peak", 800, FS, 0.8, 9)],
-         g1=400, b1=6554, mid=[biquad("hp", 60, 2 * FS), biquad("lp", 7000, 2 * FS)], g2=96, g3=48,
+         g1=400, b1=6554, mid=[biquad("hp", 60, 2 * FS), biquad("lp", 7000, 2 * FS), biquad("lp", 8000, 2 * FS)], g2=96, g3=48,
          post=[biquad("lowshelf", 100, FS, 0.7, 4), biquad("peak", 700, FS, 0.8, 3), biquad("peak", 3500, FS, 1.2, -4)],
          cab=3),
 ]
@@ -82,6 +82,8 @@ AMPS = [
 BANDS = [biquad("lp", 120, FS, 0.6), biquad("bp", 700, FS, 0.8), biquad("hp", 2200, FS, 0.6), biquad("bp", 4000, FS, 0.9)]
 # the half-rate cabinet: its anti-alias low-pass before taking every other sample
 CAB_AA = biquad("lp", 9500, FS, 0.6)
+# 88.2 -> 44.1 kHz after the stages: a 4th-order Butterworth at 10.5 kHz (two biquads; the reference resampled to 22.05)
+AMP_DEC = [biquad("lp", 10500, 2 * FS, 0.5412), biquad("lp", 10500, 2 * FS, 1.3066)]
 CAB_NAMES = ["CLEAN", "CRUNCH", "HIGAIN", "LEAD", "BASS"]
 # the bass amps (amp.c track_bass): the low end split off clean, only the mids and highs driven (in parallel)
 #   B-CLEAN  the bass through the knobs' bands only (+ the bass cabinet)
@@ -117,13 +119,14 @@ def load_ir(path):
 
 
 def shape_ir(h):
-    """22.05 kHz, CAB_TAPS with a fade over the last quarter, unity gain at 1 kHz -> Q15"""
+    """22.05 kHz, CAB_TAPS with a fade over the last quarter, unity power gain over 100 Hz .. 5 kHz (pink) -> Q15"""
     h = resample_poly(h, 147, 320)[:CAB_TAPS].copy()
     h = np.pad(h, (0, max(0, CAB_TAPS - len(h))))
     q = CAB_TAPS // 4
     h[-q:] *= np.linspace(1, 0, q) ** 2
-    w = np.exp(-2j * np.pi * 1000 / CAB_FS * np.arange(CAB_TAPS))
-    h /= abs(np.dot(h, w))
+    H = np.abs(np.fft.rfft(h, 4096)); fr = np.fft.rfftfreq(4096, 1 / CAB_FS)
+    band = (fr >= 100) & (fr <= 5000)                   # (the power gain over a guitar's band, each octave alike:
+    h /= np.sqrt(np.mean(H[band] ** 2 / fr[band]) / np.mean(1 / fr[band]))   # every cabinet as loud as the others)
     if np.abs(h).max() > 0.999:                         # (a tall first tap: the whole IR down, the level comes back
         h *= 0.999 / np.abs(h).max()                    # in the make-up gain)
     return [int(round(v * 32767)) for v in h]
@@ -155,7 +158,7 @@ def main(out):
     L = ["/* generated by tools/gen_mpyre_amp.py: M-PYRE amps and cabinets */", "#pragma once", "#include <stdint.h>",
          f"#define AMP_NMODELS {len(AMPS)}", f"#define CAB_TAPS {CAB_TAPS}", f"#define CAB_N {len(cabs)}",
          "typedef struct { int32_t c[5]; } bq_coef_t;",
-         "typedef struct { bq_coef_t pre[3], mid[2], post[3]; int16_t g1, b1, g2, g3; uint8_t cab; } amp_model_t;",
+         "typedef struct { bq_coef_t pre[3], mid[3], post[3]; int16_t g1, b1, g2, g3; uint8_t cab; } amp_model_t;",
          "static const amp_model_t AMP_MODELS[AMP_NMODELS] = {"]
 
     def bq(c):
@@ -166,6 +169,7 @@ def main(out):
     L.append("};")
     L.append("static const bq_coef_t AMP_BANDS[4] = {" + ", ".join(bq(c) for c in BANDS) + "};")
     L.append(f"static const bq_coef_t CAB_AA = {bq(CAB_AA)};")
+    L.append("static const bq_coef_t AMP_DEC[2] = {" + ", ".join(bq(c) for c in AMP_DEC) + "};")
     # the wah: a resonant band-pass (Q 4) from 350 Hz (heel) to 2.2 kHz (toe), 64 positions, exponential
     L.append("static const bq_coef_t WAH_BQ[64] = {" + ", ".join(
         bq(biquad("bp", 350 * (2200 / 350) ** (i / 63), FS, 4.0)) for i in range(64)) + "};")

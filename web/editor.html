@@ -1351,8 +1351,8 @@ const F = { INT: 0, PCT: 1, BIPCT: 2, TIME: 3, LFOHZ: 4, CUTOFF: 5, DB: 6, SEMI:
   SWING: 14, FILT: 15, CTR: 16, OCTST: 17, WHAM: 18, BEND: 19, OFFPCT: 20 };   /* (16..20: M-PYRE, params.c) */
 /* v5 (SLOOP 2.0): the drum track's 16 sounds (firmware drums.c LANE_NOTE / LANE_NAME), one per white key
    F3..G5; a hit has a level (NORM, GHOST, SOFT, HARD: OCT- / OCT+ held on the device) and a ratchet x1..x4 */
-const DRUM_LANES = [[36, "KICK"], [35, "KICK 2"], [38, "SNARE"], [40, "GHOST"], [42, "HAT"], [46, "OPEN HAT"], [44, "PEDAL"], [53, "BELL"],
-  [48, "HI TOM"], [47, "MID TOM"], [43, "FLOOR"], [49, "CRASH"], [51, "RIDE"], [57, "CRASH 2"], [52, "CHINA"], [55, "REV CRASH"]];   /* (M-PYRE) */
+const DRUM_LANES = [[36, "KICK"], [38, "SNARE"], [40, "GHOST"], [42, "HAT"], [46, "OPEN HAT"], [44, "PEDAL"], [51, "RIDE"], [53, "BELL"],
+  [48, "HI TOM"], [47, "MID TOM"], [43, "FLOOR"], [49, "CRASH"], [52, "CHINA"], [84, "REV CRASH"], [82, "RISER"], [83, "DROP"]];   /* (M-PYRE) */
 const LV_NAMES = ["NORM", "GHOST", "SOFT", "HARD"];
 const LV_ORDER = [1, 2, 0, 3];                       /* by loudness: GHOST SOFT NORM HARD (as the device's LEVEL knob) */
 /* an empty drum step: no lane on */
@@ -2953,7 +2953,7 @@ function makeMockDevice(opt = {}) {
     E("CHORD", ["OFF", "PW", "PW+", "OCT", "TERZ", "TRIAD", "7TH", "9TH", "SUS4"], 0),
     D("FILT", F.FILT, -64, 63, 0), D("STRUM", F.INT, -60, 60, 0), E("VLEAD", NONOFF, 0),
     /* SLOOP 2.6 (after Felucca 1.4 / 1.5): INSERT, ANALOG's filter TYPE, ENV SYNC, LFO 2 */
-    E("INSRT", ["OFF", "SOFT", "HARD", "FOLD", "FUZZ", "CRUSH", "PHASR", "FLANG", "CHOR"], 0),
+    E("INSRT", ["OFF", "SOFT", "HARD", "FOLD", "FUZZ", "CRUSH", "PHASR", "FLANG", "CHOR", "BOOST", "OD", "DIST", "BFUZZ"], 0),
     D("INS A", F.PCT, 0, 127, 64), D("INS B", F.PCT, 0, 127, 96), D("INS C", F.PCT, 0, 127, 96), D("MIX", F.PCT, 0, 127, 127),
     E("TYPE", ["LP", "BP", "HP"], 0), E("ESYNC", NONOFF, 0),
     E("SYNC", ["OFF", "4BAR", "2BAR", "1BAR", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0),
@@ -2968,7 +2968,7 @@ function makeMockDevice(opt = {}) {
   ];
   const GP = [
     D("BPM", F.BPM, 40, 240, 90), D("SWING", F.SWING, 0, 100, 0), E("CLICK", ["OFF", "REC", "ON"], 0), D("TUNE", F.INT, -50, 50, 0),
-    E("TIME", NDLY, 1), D("FDBK", F.PCT, 0, 120, 60), D("COLR", F.PCT, 0, 127, 70), D("MIX", F.PCT, 0, 127, 90),
+    E("TIME", NDLY, 1), D("FDBK", F.PCT, 0, 120, 60), D("COLR", F.PCT, 0, 127, 70), D("MIX", F.PCT, 0, 127, 48),
     D("SIZE", F.PCT, 0, 127, 90), D("DAMP", F.PCT, 0, 127, 60), D("CRT", F.LFOHZ, 0, 127, 40), D("CDP", F.PCT, 0, 127, 60),
     E("OUT", ["KEYS", "SEQ"], 0), E("SYNC", ["INT", "USB", "TRS"], 0), E("IN", ["NOTES", "CLOCK", ...Array.from({ length: 16 }, (_, k) => `CH ${k + 1}`)], 0), D("CPU", F.INT, 0, 0, 0),
     D("SECT", F.INT, 1, 4, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),
@@ -2994,9 +2994,9 @@ function makeMockDevice(opt = {}) {
   /* the drum track's P_E0: its kit (drums.c DRUM_KIT_NAMES; 5 = 808, the power-on kit) */
   const KIT = E("KIT", ["HOS KIT", "DEEP", "TIGHT", "BRIGHT", "DUST", "808", "909", "606", "80S", "VINTAGE", "TRAP", "DRILL", "BOOMBAP", "LO-FI", "PHONK", "HOUSE", "D.HOUSE", "TECHNO", "MINIMAL", "ELECTRO", "DISCO", "GARAGE", "JUNGLE", "DUBSTEP", "DEMBOW", "AMAPIANO", "AFRO", "LATIN", "TRIBAL", "SYNTHWV", "CHIP", "ARCADE", "GLITCH", "INDUSTR", "HYPER", "AMBIENT", "JAZZ", "USR1", "USR2", "USR3", "USR4", "USR3+4", "SYN1", "SYN2", "SYN3", "SYN4"], 0);
   /* a GM note -> its drum lane (drums.c LANE_OF_GM: 35..81) */
-  const LANE_OF_GM = [1, 0, 3, 2, 2, 3, 10, 4, 10, 6, 9, 5, 9, 8, 11, 8, 12, 14, 7, 4, 15, 7, 13, 14, 12, 8, 8, 9, 9, 10,
-    8, 9, 7, 7, 4, 4, 7, 7, 4, 4, 3, 3, 3, 9, 9, 7, 7];
-  const laneOf = (n) => (n < 35 ? 0 : n > 81 ? 13 : LANE_OF_GM[n - 35]);
+  const LANE_OF_GM = [0, 0, 2, 1, 2, 2, 10, 3, 10, 5, 9, 4, 9, 8, 11, 8, 6, 12, 7, 3, 11, 7, 11, 12, 6, 8, 9, 8, 8, 9,
+    8, 9, 7, 7, 3, 3, 7, 7, 3, 3, 2, 2, 2, 9, 9, 7, 7];
+  const laneOf = (n) => (n < 35 ? 0 : n === 82 ? 14 : n === 83 ? 15 : n === 84 ? 13 : n > 81 ? 11 : LANE_OF_GM[n - 35]);
   const v5 = !opt.legacy && !opt.v3;              /* SLOOP 2.0: steps with level / ratchet, DRUM_STEP, TRACK solo */
   const mockProto = opt.noBackup ? 5 : opt.v7 ? 7 : opt.v8 ? 8 : opt.v9 ? 9 : opt.v10 ? 10 : opt.v11 ? 11 : 12;   /* INFO's protocol */
   /* the drum step as an old (v1..v4) step: its first 4 lanes as GM notes, ACC when one is hard (editor.c ed_dstep_old) */
@@ -4239,9 +4239,9 @@ const SMF = {
     return out;
   },
   /* the GM drum note -> its lane (firmware drums.c LANE_OF_GM) */
-  LANE_OF_GM: [1, 0, 3, 2, 2, 3, 10, 4, 10, 6, 9, 5, 9, 8, 11, 8, 12, 14, 7, 4, 15, 7, 13, 14, 12, 8, 8, 9, 9, 10,
-    8, 9, 7, 7, 4, 4, 7, 7, 4, 4, 3, 3, 3, 9, 9, 7, 7],
-  laneOf: (key) => (key < 35 ? 0 : key > 81 ? 13 : SMF.LANE_OF_GM[key - 35]),
+  LANE_OF_GM: [0, 0, 2, 1, 2, 2, 10, 3, 10, 5, 9, 4, 9, 8, 11, 8, 6, 12, 7, 3, 11, 7, 11, 12, 6, 8, 9, 8, 8, 9,
+    8, 9, 7, 7, 3, 3, 7, 7, 3, 3, 2, 2, 2, 9, 9, 7, 7],
+  laneOf: (key) => (key < 35 ? 0 : key === 82 ? 14 : key === 83 ? 15 : key === 84 ? 13 : key > 81 ? 11 : SMF.LANE_OF_GM[key - 35]),
   levelOf: (vel) => (vel < 56 ? 1 : vel < 88 ? 2 : vel < 116 ? 0 : 3),   /* (drums.c vel_lvl: GHOST, SOFT, NORM, HARD) */
   /* notes -> the steps of a track at DIV div, at most nstep. The report says what changed on the way:
      {notes, steps, moved (off the grid by more than a quarter step), chordCut (notes over 4 on a step),
