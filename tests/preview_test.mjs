@@ -23,7 +23,9 @@ async function request(m, [cmd, a]) {
   const inp = [...m.access.inputs.values()][0], out = [...m.access.outputs.values()][0];
   return new Promise((resolve) => { inp.onmidimessage = ({data}) => resolve(E.unframe(data)); out.send(E.frame(cmd, a)); });
 }
+const REMOVED = [5, 8, 10, 11];                       // (M-PYRE: VOICE GRAIN PHYS NOISE are silent stand-ins)
 for (let engine = 0; engine < 12; engine++) {
+  if (REMOVED.includes(engine)) { console.log(`engine ${engine}: removed in M-PYRE`); continue; }
   const m = device();
   await request(m, E.req.set(1, 20, engine));
   await request(m, E.req.preset(engine, 0));

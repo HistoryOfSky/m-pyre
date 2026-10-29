@@ -3242,8 +3242,8 @@ function makeMockDevice(opt = {}) {
   st.fm6bank[0] = FM6.pack(FM6.setName(FM6.factory(0), "MY TINES"));   /* B1: a stored patch to look at */
   /* a mix to look at: pads left, lead right, and a GM drum pattern on track 4 */
   st.tracks[1].p[39] = -24; st.tracks[2].p[39] = 20; st.tracks[2].p[0] = 92; st.tracks[TRK_DRUM].p[39] = 0;
-  /* a boom bap beat on the 16 lanes: kick 0, snare 2, clap 3, hat 4, open hat 5; a ghost snare, a hat roll (x2) */
-  const KICK = 0, SNARE = 2, CLAP = 3, HAT = 4, OHAT = 5;
+  /* a boom bap beat on the 16 lanes: kick 0, snare 1, ghost 2, hat 3, open hat 4 (M-PYRE's); a ghost snare, a hat roll */
+  const KICK = 0, SNARE = 1, CLAP = 2, HAT = 3, OHAT = 4;
   [[KICK, HAT], [HAT], [HAT], [HAT], [SNARE, HAT], [HAT], [HAT], [KICK, OHAT], [KICK, HAT], [HAT], [KICK], [HAT, SNARE], [SNARE, CLAP], [HAT], [HAT], [OHAT]]
     .forEach((ls, i) => {
       const d = st.tracks[TRK_DRUM].dstep[i];
@@ -3906,7 +3906,7 @@ function makeMockDevice(opt = {}) {
     arm(i = st.sel) { st.rec ^= 1 << i; return (st.rec >> i) & 1; },
     step(i = Math.floor(Math.random() * 16)) {
       const x = st.step[i];
-      if (drumSel()) { const d = st.tracks[st.sel].dstep[i]; d.on ^= 1 << 4; d.lvl[4] = d.rat[4] = 0; }   /* the hat lane */
+      if (drumSel()) { const d = st.tracks[st.sel].dstep[i]; d.on ^= 1 << 3; d.lvl[3] = d.rat[3] = 0; }   /* the hat lane */
       else if (x.n) x.flags ^= 1;
       else Object.assign(x, { n: 1, notes: [60 + Math.floor(Math.random() * 12), 0, 0, 0], time: 0, flags: 0, vel: 96 });
       push(CMD.STEP_CHANGED, opt.legacy ? [i] : [i, st.sel]);

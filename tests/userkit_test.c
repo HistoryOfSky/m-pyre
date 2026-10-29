@@ -107,8 +107,8 @@ int main(void)
     drum_on(40, 110);                                    /* GM electric snare -> SNARE 2 lane: no sound in the kit */
     check(!drum_voice_on(DZ_USR + 1) && run_peak(40) < 64, "a lane without a sound (SNARE 2): silent");
     quiet();
-    drum_on(35, 110);                                    /* GM 35 -> KICK 2: none */
-    check(run_peak(40) < 64, "GM 35 (KICK 2 lane): silent, not the kick");
+    drum_on(35, 110);                                    /* GM 35 -> (M-PYRE: no KICK 2) the kick */
+    check(drum_voice_on(DZ_USR + 0), "GM 35 (the acoustic bass drum): the kick");
     quiet();
     drum_on(76, 110);
     check(run_peak(40) < 64, "the click's wood block (76): not a lane");

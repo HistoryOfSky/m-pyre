@@ -707,10 +707,10 @@ async function editorV5() {
   const old = E.parse[C.TRACK_STEP](await rq(E.req.trackStep(3, 5)));
   await rq(E.req.trackStep(3, 6, { n: 2, notes: [38, 46, 0, 0], time: 0, flags: 1, vel: 100 }));
   const d6 = E.parse[C.DRUM_STEP](await rq(E.req.drumStep(6)));
-  ok(old.n === 3 && old.notes.slice(0, 3).join() === "36,42,55" && old.flags === 1 && d6.on === ((1 << 2) | (1 << 5)) && d6.lvl[2] === 3 && d6.lvl[5] === 3,
+  ok(old.n === 3 && old.notes.slice(0, 3).join() === "36,46,83" && old.flags === 1 && d6.on === ((1 << 1) | (1 << 4)) && d6.lvl[1] === 3 && d6.lvl[4] === 3,
     "v5: the drum track through TRACK_STEP: lanes <-> GM notes");
-  ok(E.DRUM_LANES.length === 16 && E.DRUM_LANES[0][0] === 36 && E.DRUM_LANES[15][0] === 55 && E.LV_NAMES.join() === "NORM,GHOST,SOFT,HARD",
-    "v5: the 16 lanes (kick .. reverse crash), 4 levels");
+  ok(E.DRUM_LANES.length === 16 && E.DRUM_LANES[0][0] === 36 && E.DRUM_LANES[15][0] === 83 && E.LV_NAMES.join() === "NORM,GHOST,SOFT,HARD",
+    "v5: the 16 lanes (kick .. drop), 4 levels");
   const dc = readFileSync(join(HERE, "../firmware/src/drums.c"), "utf8");
   const lanes = ((/LANE_NOTE\[DRUM_LANES\] = \{([^}]*)\}/.exec(dc) || [])[1] || "").split(",").map((x) => +x);
   ok(lanes.join() === E.DRUM_LANES.map((x) => x[0]).join(), "v5: lane notes == drums.c LANE_NOTE");
@@ -872,8 +872,8 @@ await (async () => {
   const zs = E.kitZones(pads), b = E.buildSlot("KIT", zs);
   const hz = (j) => { const o = 32 + j * 28; return [b.hdr[o + 25], b.hdr[o + 26], new DataView(b.hdr.buffer).getInt16(o + 20, true) / 16]; };
   ok(zs.length === 3 && b.hdr[6] === 3 && [0, 1, 2].every((j) => { const [lo, hi, root] = hz(j); return lo === hi && hi === root; })
-    && [hz(0)[0], hz(1)[0], hz(2)[0]].join() === "36,38,46",
-    "drum kit: one zone per pad, lo = hi = root = the lane's note (drums.c LANE_NOTE: KICK 36, SNARE 38, OPEN HAT 46)");
+    && [hz(0)[0], hz(1)[0], hz(2)[0]].join() === "36,40,44",
+    "drum kit: one zone per pad, lo = hi = root = the lane's note (drums.c LANE_NOTE: KICK 36, GHOST 40, PEDAL 44)");
   const big = Array(16).fill(null).map((_, l) => ({ s: s(30000), fname: l + ".wav", tune: 0, gain: 0, len: 0 }));
   ok(E.kitBytes(big) > 81408 && E.kitFit(big, 81408 - 64) && E.kitBytes(big) <= 81408 - 64 && E.kitBytes(big) > 81408 - 64 - 64,
     "drum kit: FIT shortens the longest pads to fill the slot, no more");
@@ -999,8 +999,8 @@ sys.stdout.buffer.write(hd+t1+b'MTrk'+struct.pack('>I',len(tr))+tr)`);
   const ds = Array.from({ length: 64 }, E.emptyDrum);
   ds[0].on = 1 | (1 << 4); ds[0].lvl[4] = 1; ds[4].on = 1 << 2; ds[4].lvl[2] = 3; ds[6].on = 1 << 15; ds[6].lvl[15] = 2;
   const dn = SMF.fromDrums(ds, 16, 2), dp = SMF.toSteps(SMF.read(SMF.write(dn, { ch: 9 })).tracks[0].notes, 96, 2, 64, true);
-  ok(dn.map((n) => n.key).join() === "36,42,38,55" && dp.len === 7 && [0, 4, 6].every((i) => dp.dsteps[i].on === ds[i].on && js(dp.dsteps[i].lvl) === js(ds[i].lvl))
-    && SMF.laneOf(36) === 0 && SMF.laneOf(35) === 1 && SMF.laneOf(57) === 13 && SMF.laneOf(20) === 0 && SMF.laneOf(90) === 13,
+  ok(dn.map((n) => n.key).join() === "36,46,40,83" && dp.len === 7 && [0, 4, 6].every((i) => dp.dsteps[i].on === ds[i].on && js(dp.dsteps[i].lvl) === js(ds[i].lvl))
+    && SMF.laneOf(36) === 0 && SMF.laneOf(35) === 0 && SMF.laneOf(57) === 11 && SMF.laneOf(20) === 0 && SMF.laneOf(90) === 11 && SMF.laneOf(82) === 14,
     "midi: the drum track: lanes as GM notes and back, levels ghost..hard kept (drums.c LANE_OF_GM)");
   const dc = readFileSync(join(HERE, "../firmware/src/drums.c"), "utf8");
   const tbl = (/LANE_OF_GM\[81 - 35 \+ 1\] = \{([^}]*)\}/.exec(dc) || [, ""])[1].replace(/\/\*[^*]*\*\//g, "").split(",").map((x) => +x.trim());

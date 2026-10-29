@@ -146,6 +146,8 @@ static void release(uint32_t b) { fm1_in.buttons &= ~BT(b); frame(); }
 static void tap(uint32_t b) { press(b); release(b); }
 static void key(uint32_t k) { fm1_in.notes |= 1u << k; frame(); fm1_in.notes &= ~(1u << k); frame(); }
 static int fails;
+/* M-PYRE: the FX family opens on the AMP (the rig first): the FX page (DIST CHO DLY REV) is the fourth */
+static void open_fx(void) { uint32_t i; open_family(FAM_FX); for (i = 0; i < NPAGES; i++) if (PAGES[i].fam == FAM_FX && !strcmp(PAGES[i].title, "FX")) ui.page = (uint8_t)i; ui.force = 1; }
 static void check(int ok, const char *what) { printf("ui: %-74s %s\n", what, ok ? "ok" : "FAIL"); fails += !ok; }
 static const char *sub_line(void) { return layer_sub_shown; }   /* the layer's sub line as last drawn (ui_layers.c) */
 
@@ -198,7 +200,7 @@ int main(int argc, char **argv)
         TDRUM->p[P_TFLT] = f0; song.sel = (uint8_t)sel; ui.lock_par = lp; go_home(); frame();
     }
     open_family(FAM_EDIT); ui.force = 1; frame(); ppm("page-edit");
-    open_family(FAM_FX); ui.force = 1; frame(); ppm("page-fx");
+    open_fx(); ui.force = 1; frame(); ppm("page-fx");
     open_family(FAM_SEQ); ui.force = 1; frame(); ppm("page-step");
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-global");
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-master");
@@ -439,7 +441,7 @@ int main(int argc, char **argv)
      * KNOB 1 still edits the note, OCT- clears nudge and locks; PRESETS / ALGORITHM browse nothing meanwhile */
     check(ui.lock_par == P_ED_FLT, "the lock parameter starts as ENV > FLT");
     song.sel = 0; go_home(); frames(16);              /* (KNOB 1..4 quiet ~250 ms after a layer: #39) */
-    open_family(FAM_FX); frame();                     /* the FX page: KNOB 1 = DIST */
+    open_fx(); frame();                               /* the FX page: KNOB 1 = DIST */
     encs[panel.enc[EN_K1]] = 2; frame();
     check(ui.lock_par == P_DIST && trk[0].p[P_DIST] > 0, "a sound knob turned (FX > DIST): the lock parameter");
     open_family(FAM_SEQ); frame();                    /* PATTERN page knobs (LEN, DIV..) do not lock */
@@ -1187,7 +1189,7 @@ int main(int argc, char **argv)
         check(!strcmp(PT(), "LFO 2"), "SELECT left: the page before");
         SEL(-1);
         check(!strcmp(PT(), "LFO"), "SELECT left: LFO");
-        tap(B_FX); SEL(1);
+        tap(B_FX); SEL(4);                                /* (M-PYRE: AMP, AMP 2, PEDAL, FX, then FILTER) */
         check(!strcmp(PT(), "FILTER"), "SELECT on FX: next page, the track FILTER");
         TSEL->p[P_TFLT] = -32; ui.force = 1; frames(2); ppm("page-filter");
         check(!strcmp(ui.big_l[0], "FILT") && !strcmp(ui.big_v[0], "LP50") && !ui.big_l[1][0],
@@ -1200,8 +1202,8 @@ int main(int argc, char **argv)
             check(lit > 300u, "FILTER page: the graph strip shows it");
         }
         TSEL->p[P_TFLT] = 0;
-        SEL(13);
-        check(!strcmp(PT(), "OCTAVER"), "SELECT on FX: on to the last page, OCTAVER (M-PYRE: AMP, AMP 2, PEDAL, OCTAVER after REV/CHO)");
+        SEL(9);
+        check(!strcmp(PT(), "REV/CHO"), "SELECT on FX: on to the last page, REV/CHO");
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
         SEL(9);
@@ -1618,8 +1620,7 @@ int main(int argc, char **argv)
         key(1);                                           /* F#3 */
         release(B_GLO); frames(16);
         check(mlu.on == 1u && !mlu.pick, "GLO + F#3: MIDI LEARN on");
-        open_family(FAM_FX); frame();
-        for (j = 0; j < 12u; j++) { encs[panel.enc[EN_SELECT]] = -1; frame(); }   /* the FX page: KNOB 1 = DIST */
+        open_fx(); frame();                               /* the FX page: KNOB 1 = DIST */
         frames(16);
         ui.force = 1; frame(); ppm("header-learn");
         K(EN_K1, 1);

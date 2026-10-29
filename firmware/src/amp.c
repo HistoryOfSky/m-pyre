@@ -193,9 +193,6 @@ static void track_bass(track_t *t, amp_st_t *a, int32_t type, int32_t *b, uint32
     }
     for (i = 0; i < (int32_t)n; i++) {
         int32_t x = (b[i] * 21) >> 5, lo, d, y;     /* (the bass samples come in hotter than the guitar: to ~0.5) */
-#ifdef AMP_DEBUG
-        { static int32_t mx; static uint32_t cnt; int32_t ax = x < 0 ? -x : x; if (ax > mx) mx = ax; if (++cnt % 22050u == 0u) { fprintf(stderr, "bass in max %d\n", mx); mx = 0; } }
-#endif
         if (type == 5) {                            /* B-CLEAN */
             y = x;
         } else if (type == 6) {                     /* B-DRIVE */
@@ -276,9 +273,6 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
             a->gg += a->genv > 330 ? (32767 - a->gg) >> 5 : -(a->gg >> 11);
             x = (int32_t)(((int64_t)x * a->gg) >> 15);
         }
-#ifdef AMP_DEBUG
-        { static int32_t mx; static uint32_t cnt; int32_t ax = x < 0 ? -x : x; if (ax > mx) mx = ax; if (++cnt % 22050u == 0u) { fprintf(stderr, "amp in max %d\n", mx); mx = 0; } }
-#endif
         for (j = 0; j < 3u; j++)
             if (bq_used(&m->pre[j]))
                 x = bq(&m->pre[j], &a->pre[j], x);
@@ -298,8 +292,5 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
         if (h)
             y = bq(&CAB_AA, &a->up, cab_run(a, h, y));   /* (the half-rate cabinet back to 44.1 kHz: its images cut) */
         b[i] = amp_dc(a, (int32_t)(((int64_t)y * mk) >> (13 - AMP_IN_SHIFT)));
-#ifdef AMP_DEBUG
-        { static int32_t mo; static uint32_t c2; int32_t ao = b[i] < 0 ? -b[i] : b[i]; if (ao > mo) mo = ao; if (++c2 % 22050u == 0u) { fprintf(stderr, "amp out max %d (y %d)\n", mo, y); mo = 0; } }
-#endif
     }
 }
