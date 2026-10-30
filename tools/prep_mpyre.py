@@ -72,12 +72,15 @@ def segments(x, sr, n_expect):
     return out
 
 
-def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True, pitch_at=(0.2, 1.0)):
+def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True, pitch_at=(0.2, 1.0), onset=0.10):
     """one recorded note -> (float samples at TR, loop start, loop end)"""
     a = max(0, s - int(0.05 * sr))
     sub = x[a:e]
     sp = np.abs(sub).max()
-    o = max(0, a + int(np.argmax(np.abs(sub) > sp * (0.12 if not flatten else 0.02))) - int(0.002 * sr))   # (palm: tight)
+    # the note starts where it is heard: a tenth of its peak (M-PYRE: was 2 %: the bass's slow pick took ~10 ms to come
+    # up from there - played in unison it lagged the driven guitars, whose amps lift that quiet start at once), 1.5 ms
+    # before it, faded in over 0.8 ms
+    o = max(0, a + int(np.argmax(np.abs(sub) > sp * (0.12 if not flatten else onset))) - int(0.0015 * sr))
     target = 440 * 2 ** ((root - 69) / 12)
     hz = yin(x[o + int(pitch_at[0] * sr):o + int(pitch_at[1] * sr):2].tolist(), sr // 2, fmax=1500, fmin=25)
     if not hz or abs(1200 * np.log2(hz / target)) > 150:   # (a palm mute rings briefly: no pitch, or an octave off)
@@ -105,6 +108,9 @@ def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True, pitch_at=(0.2,
             i0 = pos.astype(int)
             f = pos - i0
             y = y[i0] * (1 - f) + y[i0 + 1] * f
+    fi = int(0.0008 * TR)
+    y = y.copy()
+    y[:fi] *= np.linspace(0, 1, fi)
     L = int(keep * TR)
     if loop_lo is None:                               # a one-shot (the palm mutes): its own decay, then a fade
         z = y[:L].copy()
@@ -129,10 +135,20 @@ def note(x, sr, s, e, root, keep, loop_lo, loop_hi, flatten=True, pitch_at=(0.2,
     z = y[:L].copy()
     r = np.linspace(0, 1, xf)
     z[L - xf:L] = y[L - xf:L] * (1 - r) + y[ls - xf:ls] * r          # linear: the two sides are alike
+    # M-PYRE: the loop level: a decaying note's loop would drop each time round and its partials beat - played over
+    # and over that pulses ("wabert"). The level from a little before the loop on is held at the loop start's (an RMS
+    # over two periods); the dying away comes from the preset's envelope (DEC, SUS) instead
+    w = max(int(2 * per), int(0.03 * TR))
+    env = np.sqrt(np.convolve(z ** 2, np.ones(w) / w, "same")) + 1e-9
+    a0 = max(0, ls - int(0.1 * TR))
+    g = np.ones(L)
+    g[a0:] = env[ls] / env[a0:]
+    g[a0:ls] = 1 + (g[a0:ls] - 1) * np.linspace(0, 1, ls - a0)        # (eased in)
+    z *= g
     return z, ls, L - 1
 
 
-def melodic(path, roots, keep, loop_lo, loop_hi, skip=(), flatten=True, pitch_at=(0.2, 1.0)):
+def melodic(path, roots, keep, loop_lo, loop_hi, skip=(), flatten=True, pitch_at=(0.2, 1.0), onset=0.10):
     x = load(path)
     sr = 48000
     segs = [s for s in segments(x, sr, len(roots) + len(skip))]
@@ -140,7 +156,7 @@ def melodic(path, roots, keep, loop_lo, loop_hi, skip=(), flatten=True, pitch_at
     zones = []
     for k, (name, root) in enumerate(roots):
         e = segs[k + 1] if k + 1 < len(segs) else len(x)
-        z, ls, le = note(x, sr, segs[k], e, root, keep, loop_lo, loop_hi, flatten, pitch_at)
+        z, ls, le = note(x, sr, segs[k], e, root, keep, loop_lo, loop_hi, flatten, pitch_at, onset)
         zones.append(dict(name=name, root=root, x=z, loop=None if ls is None else [ls, le]))
     ref = np.mean([k_loud(z["x"], TR) for z in zones])            # the same loudness, note to note
     for z in zones:
@@ -156,11 +172,12 @@ def melodic(path, roots, keep, loop_lo, loop_hi, skip=(), flatten=True, pitch_at
 
 
 # the drum track's 16 lanes (firmware/src/drums.c LANE_NOTE): GM note, file, length (s), level vs the kick (dB)
+# (M-PYRE: the cymbals a little shorter - their tails fade out - for the flash the new look takes)
 KIT = [(36, "Kick", 0.6, 0), (38, "Snare", 0.9, -1), (40, "Snare Ghost", 0.6, -9),
        (42, "Hihat Closed", 0.3, -11), (46, "Hihat Open", 1.5, -9), (44, "Hihat Foot", 0.35, -12),
-       (51, "Ride", 1.5, -13), (53, "Bell", 1.2, -12), (48, "Tom High", 1.0, -3.5), (47, "Tom Middle", 1.0, -3),
-       (43, "Tom Floor", 1.1, -3), (49, "Crash 1", 1.6, -10), (57, "Crash 2", 1.6, -10),
-       (52, "China", 1.5, -10), (84, "REV:Crash 1", 0.9, -10), (83, "FX:drop", 1.2, -3)]
+       (51, "Ride", 1.35, -13), (53, "Bell", 1.2, -12), (48, "Tom High", 1.0, -3.5), (47, "Tom Middle", 1.0, -3),
+       (43, "Tom Floor", 1.1, -3), (49, "Crash 1", 1.4, -10), (57, "Crash 2", 1.4, -10),
+       (52, "China", 1.35, -10), (84, "REV:Crash 1", 0.9, -10), (83, "FX:drop", 1.2, -3)]
 KICK_LUFS, PEAK, KICK_PEAK = -14.5, -4.0, -1.5
 
 
@@ -230,7 +247,8 @@ def main():
     sets = {
         "PERC": drums(),
         "BASS": melodic(ASSETS / "bass.aif", [("B0", 23), ("E1", 28), ("A1", 33), ("D2", 38), ("G2", 43),
-                                              ("C3", 48), ("G3", 55), ("C4", 60)], 0.9, 0.3, 0.45),
+                                              ("C3", 48), ("G3", 55), ("C4", 60)], 0.9, 0.3, 0.45,
+                        onset=0.25),   # (the low strings swing up slowly: from a quarter of the peak, in time with a pick)
         "GUITAR": melodic(ASSETS / "guitar_di.aif", [("A1", 33), ("C2", 36), ("E2", 40), ("A2", 45), ("D3", 50),
                                                       ("G3", 55), ("B3", 59), ("E4", 64), ("A4", 69), ("E5", 76),
                                                       ("A5", 81)], 1.2, 0.4, 0.55),

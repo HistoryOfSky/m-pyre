@@ -66,20 +66,17 @@ static void t_font(void)
     static uint16_t a[CV_MAX];
     uint32_t c, i, bad = 0, n = 0;
     char s[48];
-    font_ref_build();
-    scheck(FONT_L.data == FONT_S.data && FONT_L.sh == 1u && FONT_L.h == 2u * FONT_S.h && FONT_L.first == FONT_S.first,
-           "font: FONT_L draws FONT_S's bitmaps at 2x");
-    for (c = 32; c < 128u; c++) {                     /* every character, lower case folding to capitals */
+    (void)font_ref_build;                             /* (M-PYRE: L is its own font, Barlow Condensed Bold) */
+    for (c = 32; c < 128u; c++) {                     /* every character, lower case drawn as its capital */
+        char u[2] = {(char)(c >= 'a' && c <= 'z' ? c - 32u : c), 0};
         s[0] = (char)c; s[1] = 0;
-        cv_begin(40, 40, C_BLACK); cv_text(6, 3, &FONT_L2X, s, C_HI);
+        cv_begin(40, 40, C_BLACK); cv_text(6, 3, &FONT_L, u, C_HI);
         memcpy(a, cv_px, sizeof(uint16_t) * 40u * 40u);
         cv_begin(40, 40, C_BLACK); cv_text(6, 3, &FONT_L, s, C_HI);
         for (i = 0; i < 40u * 40u; i++) { n++; bad += a[i] != cv_px[i]; }
-        scheck(text_w(&FONT_L, s) == text_w(&FONT_L2X, s) && text_w(&FONT_L, s) == 2 * text_w(&FONT_S, c < 'a' || c > 'z' ? s : "A"),
-               "font: L advance = 2 x S");
     }
     printf("font: %u characters, %u pixels compared, %u different\n", 96u, n, bad);
-    scheck(bad == 0, "font: FONT_L from S at 2x = the stored 2x font, pixel for pixel");
+    scheck(bad == 0 && FONT_L.h == 2u * FONT_S.h, "font: FONT_L: lower case as its capitals; twice S's height");
     for (i = 0; i < 20000u; i++) {                    /* random text anywhere, partly or wholly off the canvas */
         uint32_t len = rn(40), k, w = 1u + rn(240), h = 1u + rn(124);
         const felucca_font_t *f = rn(2) ? &FONT_L : &FONT_S;
@@ -359,7 +356,8 @@ static void t_bench(void)
     printf("bench: draw a frame: TRACKS screen %.1f us;", home / 1000);
     for (s = 0; s < VIS_N; s++) printf(" %s %.1f%s", VIS_NAME[s], v[s] / 1000, s + 1u < VIS_N ? "," : " us\n");
     vis_on = 0; go_home(); frames(4);
-    for (i = 0; i < 3000u; i++) {                     /* FONT_L from S (shifts) against the stored 2x copy */
+    FONT_L2X = FONT_S;                                /* (M-PYRE: L against S, both their own bitmaps) */
+    for (i = 0; i < 3000u; i++) {                     /* FONT_L against FONT_S */
         double t0 = st_ns();
         cv_begin(240, 32, C_BLACK); cv_text(2, 0, &FONT_L, TXT[i % 6u], C_HI);
         a += st_ns() - t0;
@@ -367,7 +365,7 @@ static void t_bench(void)
         cv_begin(240, 32, C_BLACK); cv_text(2, 0, &FONT_L2X, TXT[i % 6u], C_HI);
         b += st_ns() - t0;
     }
-    printf("bench: a large value drawn: %.2f us from S at 2x, %.2f us from a stored 2x copy (%+.0f %%)\n",
+    printf("bench: a value drawn: %.2f us in FONT_L, %.2f us in FONT_S (%+.0f %%)\n",
            a / 3000 / 1000, b / 3000 / 1000, (a / b - 1) * 100);
     transport_req = 2; frames(4);
 }

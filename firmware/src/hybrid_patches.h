@@ -14,15 +14,16 @@
 #define HNOOSC {HO_OFF, 0, 0, 0, 0, 0}
 
 static const hy_patch_t HY_FACTORY[] = {
-    /* 0 the signature: two supersaws an octave apart and a sine sub, a 24 dB sweep; M1 opens, M2 spreads */
-    {.osc = {HOSC(SUPER, 0, 0, 110, 70, 0), HOSC(SUPER, 12, 4, 70, 60, 0), HOSC(SINE, -12, 0, 80, 0, HOF_RESET)},
-     .drift = 30, .route = HR_SER,
-     .flt = {HFLT(LP24, 58, 40, 40, 32, 30), HFLT(OFF, 0, 0, 0, 0, 0)},
-     .env2 = {2, 90, 50, 80}, .env3 = {0, 70, 0, 60},
-     .lfo = {HLFO(TRI, 30, 0, 0), HLFO(SINE, 87, HL_KEY, 70)},
-     .mod = {HMOD(M1, NONE, CUT, 50), HMOD(M2, NONE, SH1, 50), HMOD(M2, NONE, SH2, 50), HMOD(LFO2, MW, PITCH, 7),
-             HMOD(LFO2, NONE, CUT, 4), HMOD(VEL, NONE, CUT, 12), HMOD(AT, NONE, CUT, 20)},
-     .bend = 2, .level = 96, .name = "CLIPPER"},
+    /* 0 M-PYRE: a fat, distorted Moog - three saws (two a few cents apart, one an octave down) driven hard into the
+     * ladder, its envelope a short push; M1 opens it, M2 drives harder */
+    {.osc = {HOSC(SAW, 0, -5, 110, 0, 0), HOSC(SAW, 0, 5, 110, 0, 0), HOSC(SAW, -12, 0, 90, 0, 0)},
+     .drift = 25, .drive = 110, .route = HR_SER,
+     .flt = {HFLT(MOOG, 64, 46, 34, 32, 20), HFLT(OFF, 0, 0, 0, 0, 0)},
+     .env2 = {0, 78, 70, 40}, .env3 = {0, 0, 0, 0},
+     .lfo = {HLFO(SINE, 40, 0, 0), HLFO(SINE, 87, HL_KEY, 70)},
+     .mod = {HMOD(M1, NONE, CUT, 50), HMOD(M2, NONE, DRIVE, 60), HMOD(LFO2, MW, PITCH, 7), HMOD(VEL, NONE, CUT, 12),
+             HMOD(AT, NONE, CUT, 20)},
+     .bend = 2, .level = 96, .name = "MOOG FUZZ"},
     /* 1 a warm 80s poly pad: two saws a few cents apart, slow filter, LFO 2 on the width of a pulse */
     {.osc = {HOSC(SAW, 0, -6, 100, 0, 0), HOSC(PULSE, 0, 6, 90, 30, 0), HOSC(SAW, -12, 0, 50, 0, 0)},
      .drift = 50, .route = HR_SER,
@@ -240,7 +241,7 @@ static const hy_patch_t HY_FACTORY[] = {
 };
 #define HY_INIT 23u              /* the INIT patch (a start for your own) */
 #define HY_NFACTORY ((uint32_t)NELEM(HY_FACTORY))
-static const char *const N_HY_PATCH[] = {"CLIPPER", "POLY PAD", "STRINGS", "ACID", "SYNC LEAD", "FM BELL", "FM KEYS",
+static const char *const N_HY_PATCH[] = {"MOOG FUZZ", "POLY PAD", "STRINGS", "ACID", "SYNC LEAD", "FM BELL", "FM KEYS",
                                          "WOBBLE", "REESE", "HOOVER", "BRASS", "VOX", "PLUCK", "RISER", "METAL",
                                          "FOLD BASS", "CHIP LEAD", "GLASS PAD", "DRONE", "808 SUB", "TRANCE",
                                          "SAW PLUCK", "SPACE BEL", "INIT", "MOOG BASS", "MOOG LEAD", "LADDER PAD"};
@@ -250,7 +251,7 @@ _Static_assert(NELEM(N_HY_PATCH) == NELEM(HY_FACTORY), "a name per factory patch
 #define HYP(name, i, m1, m2, a, d, s, r, mono, ...) \
     {name, {0, 0, 0, i, m1, m2, 0, 0}, {a, d, s, r}, 0, mono, __VA_ARGS__}
 static const preset_t HY_PRESETS[] = {
-    HYP("CLIPPER", 0, 70, 50, 2, 90, 110, 70, 0, FX(0, 20, 18, 30)),
+    HYP("MOOG FUZZ", 0, 64, 64, 0, 76, 110, 40, 1, FX(0, 10, 20, 18), XP(P_GLIDE + 1, 20)),
     HYP("POLY PAD", 1, 64, 0, 70, 100, 110, 92, 0, FX(0, 40, 10, 50)),
     HYP("STRINGS", 2, 64, 0, 80, 100, 120, 90, 0, FX(0, 60, 0, 55)),
     HYP("ACID", 3, 60, 30, 0, 70, 90, 30, 1, FX(10, 0, 24, 8), XP(P_GLIDE + 1, 30, P_GLMODE + 1, 1, P_TRANS + 1, -12)),

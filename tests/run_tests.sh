@@ -61,7 +61,7 @@ run "user drum kits (KIT USR1..USR3): a user slot's sounds on the drum lanes" "$
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/dsyn_test" tests/dsyn_test.c -lm
 run "SYN1..SYN4 drum kits and the editor's DRUM SYNTH commands (v10)" "$OUT/dsyn_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/font_test" tests/font_test.c
-run "the screen font at 1 bit a pixel: every glyph, the same pixels as 2.5" "$OUT/font_test"
+run "the screen fonts (Barlow Condensed): every glyph, pinned" "$OUT/font_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/punch_test" tests/punch_test.c -lm
 run "punch-in FX: 27 effects (11 on the black keys), bounded, dry after release, FX-held keys" "$OUT/punch_test" "$OUT/punch-fx.wav"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fx251_test" tests/fx251_test.c -lm
@@ -95,7 +95,7 @@ fi
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/soak_test" tests/soak_test.c -lm
 run "soak: ${SOAK_MIN:-10} minutes of random live use (bounded, no hanging voices, idle after stop)" "$OUT/soak_test" "${SOAK_MIN:-10}"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/stress_test" tests/stress_test.c -lm
-run "stress (2.4): FONT_L = FONT_S at 2x, hard random use of every 2.4 addition, clean stop" "$OUT/stress_test" "${STRESS_FRAMES:-40000}"
+run "stress (2.4): the fonts, hard random use of every 2.4 addition, clean stop" "$OUT/stress_test" "${STRESS_FRAMES:-40000}"
 # the same under AddressSanitizer + UBSan: any read or write out of bounds stops it (left shifts of negative values
 # and the FM6 phase's wrap-around are left out: the DSP's two's complement idioms, as every compiler builds them)
 ASAN="${CC_UB:-cc} -O1 -g -w -fsanitize=address,undefined -fno-sanitize=shift-base,signed-integer-overflow -fno-sanitize-recover=all -Ibuild/gen -Ifirmware/src -Ifirmware/hal"

@@ -146,7 +146,7 @@ UI_SMALL static void settings_init(void)
 {
     if (settings.magic != SETTINGS_MAGIC || settings.palette >= NPALETTES) {
         settings.magic = SETTINGS_MAGIC;
-        settings.palette = 2;                  /* MONO (default; M-PYRE: AMBER RED MONO BEIGE) */
+        settings.palette = PAL_GLUT;           /* M-PYRE: GLUT (AMBER RED MONO BEIGE GLUT) */
         settings.lowcut = 0;
         settings.zoom = 0;                     /* large readout of the touched value: off */
     }

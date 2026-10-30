@@ -121,6 +121,7 @@ UI_SMALL static void draw_frame(void)
         lcd_fill(i * 60u - 1u, H_HEAD + 4, 1, Y_SEP_END - H_HEAD - 4, C_LINE);
 }
 
+static uint8_t mp_on;                                    /* M-PYRE: this frame in the mockup's layout (ui_draw) */
 /* one column: [icon] LABEL / value unit / gauge, redrawn only when it changed.
  * ratio: 0..1000 for the gauge, -1 = no gauge. icon: ICON_* (icons.c), ICON_AUTO = by label */
 #define LABEL_X (FELUCCA_ICONS ? ICON_CELL + ICON_GAP : 0)
@@ -151,13 +152,14 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
         fit(ui.big_v[c], val, &FONT_L, 112 - (unit[0] ? 4 : 0));
         str_cpy(ui.big_u[c], unit, 8);
         ui.big_c[c] = vc;
+        ui.big_r[c] = (int16_t)ratio;
     }
     if (c == ui.hot_col) {
         str_cpy(ui.focus_l, l, 8);
         str_cpy(ui.focus_v, v, 8);
         str_cpy(ui.focus_u, u, 8);
     }
-    if (!ui.force && str_eq(key, ui.col[c]))
+    if (mp_on || (!ui.force && str_eq(key, ui.col[c])))   /* (M-PYRE layout: mp_cols / mp_grid draw them) */
         return;
     str_cpy(ui.col[c], key, sizeof ui.col[c]);
     cv_begin(55, Y_SEP_END - Y_LABEL, C_BLACK);         /* x 4..58: the rule at 59 stays */
@@ -169,8 +171,7 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
     if (ratio >= 0) {                                   /* gauge: track, fill, 1 px end line */
         int32_t gy = Y_GAUGE - Y_LABEL;
         fx = ratio * gw / 1000;
-        cv_rect(0, gy + 1, gw, 1, C_LINE);
-        cv_rect(0, gy, fx, 3, vc == C_DIM ? C_DIM : TE_DIM[c & 3u]);
+        cv_ember(0, gy, gw, 3, ratio, vc == C_DIM);
         cv_rect(fx, gy - 1, 1, 5, vc == C_DIM ? C_HI : vc);
     }
     cv_blit(c * 60u + 4u, Y_LABEL);
@@ -430,7 +431,7 @@ UI_SMALL static uint32_t graph_signature(void)
         h = str_hash(str_hash(str_hash(h ^ 0x5555u, ui.focus_v), ui.focus_l), ui.focus_u);
     if (!ui.home && big_page(pg))                    /* the big values: as the columns show them */
         for (i = 0; i < 4u; i++)
-            h = str_hash(str_hash(str_hash(h ^ ui.big_c[i] * 31u, ui.big_v[i]), ui.big_l[i]), ui.big_u[i]);
+            h = str_hash(str_hash(str_hash(h ^ ui.big_c[i] * 31u ^ (uint32_t)ui.big_r[i] * 7919u, ui.big_v[i]), ui.big_l[i]), ui.big_u[i]);
     if (ui.home)
         return h ^ (ui.frame / 2u);                  /* scope: redraw every other frame */
     h ^= (uint32_t)pg->graph * 131u + TSEL->eng_req + song.sel * 7777u;
@@ -708,38 +709,116 @@ UI_SMALL static void graph_scope(uint16_t c)
     }
 }
 
-/* SLOOP 2.4: a page without a graph (EDIT, VOICE, the DEST pages, GLOBAL, MASTER, SYSTEM...): its values
- * large in the empty space, 2 x 2 as the knobs (KNOB 1 2 / KNOB 3 4), the one turned in white; one value
- * alone (FILTER) across the width. The columns (draw_columns, drawn first) fill ui.big_* */
-UI_SMALL static void graph_big(void)
+/* M-PYRE: the pages without a graph (EDIT, FX, VOICE, GLOBAL ...) as the mockup: their four values large, 2 x 2 as the
+ * knobs (KNOB 1 2 / KNOB 3 4) under the header, each its label, value, unit and an ember gauge; the one turned in the
+ * accent. One value alone (FILTER) in the middle. Two strips of 240 x 78 (the canvas holds 124 rows) */
+UI_SMALL static void mp_grid(void)
 {
-    uint32_t c, n = 0;
-    for (c = 0; c < 4u; c++)
-        n += ui.big_l[c][0] != 0;
-    if (n > 1u) {
-        cv_rect(119, 6, 1, 112, C_LINE);
-        cv_rect(6, 62, 228, 1, C_LINE);
-    }
+    static uint32_t sig;
+    uint32_t c, n = 0, h = 2166136261u, half;
     for (c = 0; c < 4u; c++) {
-        int32_t x0 = c & 1u ? 126 : 6, y0 = c & 2u ? 64 : 2, x;
-        if (!ui.big_l[c][0])
-            continue;
-        if (n == 1u) {                                  /* one value: in the middle */
-            x0 = (240 - text_w(&FONT_L, ui.big_v[c]) - (ui.big_u[c][0] ? text_w(&FONT_S, ui.big_u[c]) + 4 : 0)) / 2;
-            y0 = 30;
-        }
-        cv_text(x0, y0 + 2, &FONT_S, ui.big_l[c], TE_COL[c & 3u]);
-        x = cv_text(x0, y0 + 20, &FONT_L, ui.big_v[c], ui.big_c[c] == C_DIM ? C_DIM : ui.big_c[c] == C_WHITE ? C_WHITE : C_HI);
-        if (ui.big_u[c][0])
-            cv_text(x + 4, y0 + 34, &FONT_S, ui.big_u[c], C_GRAY);
+        n += ui.big_l[c][0] != 0;
+        h = str_hash(str_hash(str_hash(h ^ ui.big_c[c] * 31u ^ (uint32_t)ui.big_r[c] * 7919u, ui.big_v[c]), ui.big_l[c]), ui.big_u[c]);
     }
+    if (!ui.force && h == sig)
+        return;
+    sig = h;
+    for (half = 0; half < 2u; half++) {
+        cv_begin(240, 78, C_BLACK);
+        if (n > 1u) {
+            cv_rect(119, 2, 1, 74, C_LINE);
+            if (!half)
+                cv_rect(4, 77, 232, 1, C_LINE);
+        }
+        for (c = half * 2u; c < half * 2u + 2u; c++) {
+            int32_t x0 = c & 1u ? 126 : 8, x, y0 = 4;
+            uint16_t hot = ui.big_c[c] == C_WHITE, dim = ui.big_c[c] == C_DIM;
+            if (!ui.big_l[c][0])
+                continue;
+            if (n == 1u) {                              /* one value: in the middle (of both strips: the top one) */
+                if (half)
+                    continue;
+                x0 = (240 - text_w(&FONT_L, ui.big_v[c]) - (ui.big_u[c][0] ? text_w(&FONT_S, ui.big_u[c]) + 4 : 0)) / 2;
+                y0 = 30;
+            }
+            cv_text(x0, y0, &FONT_S, ui.big_l[c], hot ? C_WHITE : C_GRAY);
+            x = cv_text(x0, y0 + 16, &FONT_L, ui.big_v[c], dim ? C_DIM : hot || c == 0u ? C_WHITE : C_HI);
+            if (ui.big_u[c][0])
+                cv_text(x + 3, y0 + 30, &FONT_S, ui.big_u[c], C_GRAY);
+            if (ui.big_r[c] >= 0 && n > 1u)
+                cv_ember(x0, y0 + 52, 102, 4, ui.big_r[c], dim);
+        }
+        cv_blit(0, 42u + half * 78u);
+    }
+}
+
+/* M-PYRE: the LIVE view's four knobs as the mockup: label and value centred, an ember gauge, rules between */
+UI_SMALL static void mp_cols(void)
+{
+    static uint32_t sig;
+    uint32_t c, h = 2166136261u;
+    for (c = 0; c < 4u; c++)
+        h = str_hash(str_hash(str_hash(h ^ ui.big_c[c] * 31u ^ (uint32_t)ui.big_r[c] * 7919u, ui.big_v[c]), ui.big_l[c]), ui.big_u[c]);
+    if (!ui.force && h == sig)
+        return;
+    sig = h;
+    cv_begin(240, 54, C_BLACK);
+    for (c = 0; c < 4u; c++) {
+        int32_t x0 = (int32_t)c * 60, w;
+        char v[14];
+        uint16_t hot = ui.big_c[c] == C_WHITE, dim = ui.big_c[c] == C_DIM;
+        if (c)
+            cv_rect(x0, 6, 1, 42, C_LINE);
+        fit(v, ui.big_l[c], &FONT_S, 56);
+        cv_text(x0 + 30 - text_w(&FONT_S, v) / 2, 4, &FONT_S, v, hot ? C_WHITE : C_GRAY);
+        fit(v, ui.big_v[c], &FONT_S, 56 - (ui.big_u[c][0] ? text_w(&FONT_S, ui.big_u[c]) + 2 : 0));
+        w = text_w(&FONT_S, v) + (ui.big_u[c][0] ? text_w(&FONT_S, ui.big_u[c]) + 2 : 0);
+        w = cv_text(x0 + 30 - w / 2, 22, &FONT_S, v, dim ? C_DIM : hot ? C_WHITE : c == 0u ? TE_COL[song.sel & 3u] : C_HI);
+        if (ui.big_u[c][0])
+            cv_text(w + 2, 22, &FONT_S, ui.big_u[c], C_GRAY);
+        if (ui.big_r[c] >= 0)
+            cv_ember(x0 + 8, 44, 44, 4, ui.big_r[c], dim);
+    }
+    cv_blit(0, 42);
+}
+
+/* M-PYRE: the header of these pages: the live screens' (BPM, LOOP, the beats), the page's title in the accent and
+ * its place under it */
+UI_SMALL static uint32_t page_pos(uint32_t *n);
+UI_SMALL static void mp_head(void)
+{
+    static uint32_t cache;
+    static const char *const FAM[FAM_COUNT] = {"HOME", "ENV", "LFO", "FX", "SCALE", "EDIT", "GLO", "SAVE", "ARP", "SEQ", "TRK"};
+    const page_t *pg = cur_page();
+    const engine_t *e = ENGINES[TSEL->eng_req % NENGINES];
+    char ti[12], sub[16];
+    uint32_t n, k;
+    if (ui.home) {
+        str_cpy(ti, LIVE[live_idx()].title, sizeof ti);
+        k = live_grp % live_cnt() + 1u;
+        n = live_cnt();
+        sub[0] = 0;
+    } else {
+        const char *pt = pg->scope == SC_ENGINE ? e->page_title[pg->id[0] != P_E0] : 0;
+        str_cpy(ti, pt ? pt : pg->title, sizeof ti);
+        k = page_pos(&n);
+        str_cpy(sub, FAM[pg->fam % FAM_COUNT], 8);
+        str_cpy(sub + str_len(sub), " ", 2);
+    }
+    fmt_int(sub + str_len(sub), (int32_t)k);
+    str_cpy(sub + str_len(sub), "/", 2);
+    fmt_int(sub + str_len(sub), (int32_t)n);
+    te_sub = sub;
+    te_header(ti, C_WHITE, &cache, -1);
+    te_sub = 0;
 }
 
 UI_SMALL static void draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
-    uint16_t c = TE_COL[song.sel & 3u];               /* LIVE: the curves in the track's colour */
+    uint16_t c = settings.palette == PAL_GLUT && !theme_on ? C_WHITE : TE_COL[song.sel & 3u];   /* LIVE: the curves in the
+                                                     * track's colour (GLUT: the accent, embers) */
     uint32_t sig, top, drum_note = !ui.home && is_drum(t) && !page_for_drum(pg);
     if (!ui.home && pg->graph == GR_TRK) {
         draw_tracks();
@@ -798,17 +877,13 @@ UI_SMALL static void draw_graph(void)
             graph_user();
             break;
         default:
-            if (big_page(pg)) {
-                cv_oy = 0;
-                graph_big();
-            }
             break;
         }
     }
     top = (ui.home && is_drum(t)) || (!ui.home && !drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
                                      pg->graph == GR_ROLL || big_page(pg)));   /* these draw from the top */
     cv_oy = 0;
-    if (ui.hot_t && settings.zoom && !(top && (big_page(pg) || pg->graph == GR_ROLL) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
+    if (!mp_on && ui.hot_t && settings.zoom && !(top && (big_page(pg) || pg->graph == GR_ROLL) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
         int32_t x;
         top = 1;
         cv_rect(0, 0, 150, 50, C_BLACK);
@@ -856,12 +931,12 @@ UI_SMALL static void draw_foot(void)
     else if (e->npresets)
         str_cpy(pn, e->presets[TSEL->preset % e->npresets].name, sizeof pn);
     if (ui.home) {                                     /* M-PYRE: the LIVE view's group, "AMP 3/7" */
-        str_cpy(ti, is_drum(TSEL) ? "LIVE" : LIVE[live_grp % NLIVE].title, 10);
+        str_cpy(ti, is_drum(TSEL) ? "LIVE" : LIVE[live_idx()].title, 10);
         if (!is_drum(TSEL)) {
             str_cpy(ti + str_len(ti), " ", 4);
-            fmt_int(ti + str_len(ti), (int32_t)(live_grp % NLIVE) + 1);
+            fmt_int(ti + str_len(ti), (int32_t)(live_grp % live_cnt()) + 1);
             str_cpy(ti + str_len(ti), "/", 4);
-            fmt_int(ti + str_len(ti), (int32_t)NLIVE);
+            fmt_int(ti + str_len(ti), (int32_t)live_cnt());
         }
     } else {                                           /* page title + number in its family: "ENV DEST 2/2" */
         uint32_t n, k = page_pos(&n);
@@ -904,11 +979,7 @@ UI_SMALL static void draw_foot(void)
                 cv_rect(sx - 1, 13, 3, 3, C_WHITE);
         }
     }
-    x = 4;
-    if (FELUCCA_ICONS) {                              /* row 2: engine icon + name, preset, page */
-        cv_icon(x, 21, engine_icon(ename), C_GRAY);
-        x += 14;
-    }
+    x = 6;                                            /* row 2: engine name, preset, page (M-PYRE: no icon) */
     fit(en, ename, &FONT_S, 90 - (x - 4));
     x = cv_text(x, 20, &FONT_S, en, C_HI);
     {
@@ -1012,7 +1083,7 @@ UI_SMALL static void draw_columns(void)
         else
             str_cpy(ln, "--", 8);
         draw_column(2, "LEN", ln, on ? "STEP" : "", on ? VAL(2u) : C_DIM, -1, ICON_AUTO);
-        draw_column(3, "FORCE", on ? FORCE_N[note_force(st, k)] : "--", "", on ? VAL(3u) : C_DIM, -1, ICON_AUTO);
+        draw_column(3, "FORCE", on ? FORCE_N[note_art(TSEL, ui.cursor) == 1u ? 5u : note_force(st, k)] : "--", "", on ? VAL(3u) : C_DIM, -1, ICON_AUTO);
         return;
     }
     for (c = 0; c < 4u; c++) {
@@ -1157,6 +1228,23 @@ UI_SMALL static void ui_draw(void)
             lcd_fill(0, H_HEAD, 240, 240 - H_HEAD, C_BLACK);
         draw_head();
         amp_view_draw();
+        ui_timers();
+        draw_foot();
+        ui.force = 0;
+        return;
+    }
+    mp_on = (uint8_t)(ui.home ? !is_drum(TSEL) : big_page(cur_page()) && (!is_drum(TSEL) || page_for_drum(cur_page())));
+    if (mp_on) {                                        /* M-PYRE: the mockup's layout (LIVE, the 2 x 2 pages) */
+        if (ui.force)
+            lcd_fill(0, 0, 240, Y_FOOT, C_BLACK);
+        mp_head();
+        draw_columns();                                 /* (the values: ui.big_*) */
+        if (ui.home) {
+            draw_graph();                               /* the scope, then the knobs over its top rows */
+            mp_cols();
+        } else {
+            mp_grid();
+        }
         ui_timers();
         draw_foot();
         ui.force = 0;

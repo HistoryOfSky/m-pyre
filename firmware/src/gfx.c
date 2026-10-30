@@ -42,7 +42,8 @@ static uint16_t pal_hi = 0xFFFFu;        /* the accent: white unless a theme say
 typedef struct {
     const char *name;
     uint16_t c[5];
-    uint16_t bg, hi;                             /* M-PYRE: the background and the accent (0 / 0: black and white) */
+    uint16_t bg, hi;                             /* M-PYRE: the background and the accent (0 / 0: black and white;
+                                                  * hi 1: black, any other: that colour) */
 } palette_t;
 /* M-PYRE: AMBER RED MONO, and BEIGE - a light screen, dark text (the accent black), the tracks' colours darker */
 static const palette_t PALETTES[] = {
@@ -51,7 +52,12 @@ static const palette_t PALETTES[] = {
     {"MONO", {RGB(40, 40, 40), RGB(80, 80, 80), RGB(130, 130, 130), RGB(186, 186, 186), RGB(226, 226, 226)}, 0, 0},
     {"BEIGE", {RGB(208, 196, 172), RGB(168, 154, 130), RGB(118, 106, 88), RGB(70, 60, 48), RGB(24, 18, 12)},
      RGB(238, 228, 206), 1},
+    /* GLUT (the M-PYRE look, the default): a warm black, the text a warm white, the rules and the dim ones embers,
+     * the accent orange */
+    {"GLUT", {RGB(70, 30, 18), RGB(112, 62, 42), RGB(150, 96, 70), RGB(214, 170, 136), RGB(255, 236, 214)},
+     RGB(26, 10, 6), RGB(255, 140, 30)},
 };
+#define PAL_GLUT 4u                              /* (the default: panel.c) */
 #define PAL_LIGHT 3u                             /* (BEIGE: its own tracks' colours, palette_set) */
 #define NPALETTES (sizeof(PALETTES) / sizeof(PALETTES[0]))
 static uint16_t pal[5];
@@ -175,9 +181,11 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
     for (k = 0; k < 5u; k++)
         pal[k] = cu ? theme.c[k] : pp->c[k];
     pal_bg = cu ? theme.bg : pp->bg;
-    pal_hi = cu ? theme.hi : pp->hi ? 0u : 0xFFFFu;
-    for (k = 0; k < 4u; k++)
-        te_g[k] = te_gray(TE_G_DEF[k]);
+    pal_hi = cu ? theme.hi : pp->hi == 1u ? 0u : pp->hi ? pp->hi : 0xFFFFu;
+    for (k = 0; k < 4u; k++) {                   /* (GLUT: the greys warm too - embers, ash) */
+        static const uint16_t GLUT_G[4] = {RGB(44, 20, 12), RGB(74, 32, 20), RGB(150, 96, 70), RGB(214, 170, 136)};
+        te_g[k] = !cu && i % NPALETTES == PAL_GLUT ? GLUT_G[k] : te_gray(TE_G_DEF[k]);
+    }
     for (k = 0; k < 4u; k++) {
         TE_COL[k] = cu ? theme.trk[k] : light ? LIGHT_TRK[k] : TE_COL_DEF[k];
         TE_MID[k] = cu ? rgb565_scale(theme.trk[k], 2u, 3u) : light ? rgb565_over(LIGHT_TRK[k], 2u, 3u) : TE_MID_DEF[k];
@@ -262,9 +270,22 @@ static uint32_t glyph(const felucca_font_t *f, uint32_t ch)
 {
     if ((ch >= 'a' && ch <= 'z') || (ch >= 0xE0u && ch <= 0xFEu && ch != 0xF7u))
         ch -= 32u;
+    if (ch == 0xC4u || ch == 0xD6u || ch == 0xDCu)     /* M-PYRE: the umlauts, their letters (the font: 32 .. 95) */
+        ch = ch == 0xC4u ? 'A' : ch == 0xD6u ? 'O' : 'U';
     if (ch < f->first || ch > f->last || (ch >= 127u && ch < 160u))
         ch = '?';
     return ch - f->first;
+}
+
+/* M-PYRE (GLUT): a gauge as embers - the fill runs from red to yellow along the whole width, the rest a dark rule */
+static void cv_ember(int32_t x, int32_t y, int32_t w, int32_t h, int32_t ratio, int dim)
+{
+    int32_t i, f = ratio * w / 1000;
+    cv_rect(x + f, y + h / 2, w - f, h - h / 2 > 1 ? 2 : 1, C_LINE);
+    for (i = 0; i < f; i++) {
+        int32_t g = 40 + 190 * i / (w > 1 ? w - 1 : 1);
+        cv_rect(x + i, y, 1, h, dim ? C_DIM : RGB(255, g, 20));
+    }
 }
 
 /* text, alpha-blended onto the background with colour c; returns the end x */

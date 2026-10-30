@@ -12,8 +12,8 @@ int main(int argc, char **argv)
     outdir = argc > 1 ? argv[1] : "build/host";
     panel = PANEL_DEFAULT;
     layers_init();
-    settings.palette = 2;                            /* MONO */
-    palette_set(2);
+    settings.palette = 4;                            /* GLUT */
+    palette_set(4);
     { FILE *f = fopen(argc > 2 ? argv[2] : "build/mpyre/soundpack.bin", "rb"); if (f) { fread(host_slots, 1, sizeof host_slots, f); fclose(f); } }
     host_tracks_init();
     for (i = 0; i < SMP_USER_SLOTS; i++) smp_user_scan(i);
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
             if (PAGES[i].fam == FAM_EDIT && !strcmp(PAGES[i].title, "AMP 2")) pb = i;
             if (PAGES[i].fam == FAM_FX && !strcmp(PAGES[i].title, "PEDAL")) pp = i;
         }
-        for (g = 0; g <= 7u; g++) {
+        for (g = 0; g <= 5u; g++) {
             TSEL->p[P_AMP] = (int16_t)g;
             ui.home = 0; ui.page = (uint8_t)(g & 1u ? pa : pb); ui.force = 1; frames(3);
             snprintf(nm, sizeof nm, "mp-amp-%u", g); ppm(nm);

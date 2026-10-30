@@ -842,7 +842,7 @@ int main(int argc, char **argv)
                       "printable name); a first-beta THM1 taken with an accent");
             ui.menu = 1; ui.menu_sel = MI_COLOR; ui.force = 1; frame();
             settings.palette = NPALETTES - 1u; theme_on = 0; palette_set(NPALETTES - 1u);
-            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: the last (BEIGE) -> the first (AMBER) */
+            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: the last (GLUT) -> the first (AMBER) */
             ok = settings.palette == 0u && !theme_on;
             settings.palette = NPALETTES - 1u; palette_set(NPALETTES - 1u);
             theme = th; theme_valid = 1;
@@ -1928,10 +1928,16 @@ int main(int argc, char **argv)
         ok = note_force(&t->step[4], 1) == 3u && ((t->step[4].lvl >> 2) & 3u) == LV_HARD && !(t->step[4].flags & SF_ACCENT);
         encs[panel.enc[EN_K4]] = 1; frame();
         ok &= note_force(&t->step[4], 1) == 4u && (t->step[4].flags & SF_ACCENT);
+        encs[panel.enc[EN_K4]] = 1; frame();          /* M-PYRE: past ACC, PALM (the step's palm-mute lock) */
+        ok &= note_art(t, 4) == 1u;
+        encs[panel.enc[EN_K4]] = 1; frame();
+        ok &= note_art(t, 4) == 1u;                     /* (the end) */
+        encs[panel.enc[EN_K4]] = -1; frame();
+        ok &= note_art(t, 4) == 0u && note_force(&t->step[4], 1) == 4u;
         encs[panel.enc[EN_K4]] = -4; frame();
         encs[panel.enc[EN_K4]] = -1; frame(); encs[panel.enc[EN_K4]] = -1; frame(); encs[panel.enc[EN_K4]] = -1; frame();
         ok &= note_force(&t->step[4], 1) == 0u && ((t->step[4].lvl >> 2) & 3u) == LV_GHOST && !(t->step[4].flags & SF_ACCENT);
-        check(ok, "NOTES: KNOB 4 its FORCE: HARD, ACC (the step's accent), down to GHOST");
+        check(ok, "NOTES: KNOB 4 its FORCE: HARD, ACC (the step's accent), PALM (a palm mute), back, down to GHOST");
         encs[panel.enc[EN_PRESET]] = 1; frame();
         ok = (int8_t)ui.zoom == 1;
         encs[panel.enc[EN_PRESET]] = -1; frame(); encs[panel.enc[EN_PRESET]] = -1; frame();

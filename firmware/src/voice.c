@@ -345,6 +345,25 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
 
 /* MONO / LEGATO / UNISON: one note on one voice (eight for UNISON, or the
  * engine's voice cap, spread by DETUNE over the same width) */
+/* M-PYRE: a sampled MONO part played again while it sounds: the sample would jump back to its start mid-wave (a
+ * click, louder or softer with the tempo - where in the wave the next note lands). The old note goes to a free voice
+ * of the part and fades out over ~6 ms there, the new one starts clean */
+static void mono_handover(track_t *t, voice_t *v)
+{
+    uint32_t j;
+    if (!eng_sampled(ENGINES[t->engine]) || !v->active || !v->stage || v->stage == 4u)
+        return;
+    for (j = 2; j < NVOICE && t->v[j].active; j++)
+        ;
+    if (j == NVOICE || !voice_room(t, 1))
+        return;
+    t->v[j] = *v;
+    t->v[j].gate = 0;
+    t->v[j].stage = 4;
+    t->v[j].kill = 8;
+    v->active = 0;
+}
+
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
     uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i, vel0 = vel;
@@ -360,7 +379,10 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             k = k * (NVOICE - 1) / (int32_t)(nv - 1u);      /* fewer voices: the outer ones as wide */
         v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±40 cents */
         if (retrig || !v->active || !v->gate) {
-            int was_sounding = v->active && v->stage != 0;
+            int was_sounding;
+            if (nv == 1u && retrig)
+                mono_handover(t, v);
+            was_sounding = v->active && v->stage != 0;
             if ((!v->active || v->stage == 4u) && !voice_room(t, i > 0))
                 continue;                                   /* no room for this extra UNISON voice */
             /* level: about the same sum for 8 or 4 voices at random phases */
@@ -383,6 +405,8 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
         voice_t *v2 = &t->v[1];
         uint32_t ov = vel0 * (uint32_t)(om > 64 ? 64 : om) / (o < 0 ? 40u : 55u) + 1u;
         if (retrig || !v2->active || !v2->gate) {
+            if (retrig)
+                mono_handover(t, v2);
             v2->fine = 0;
             voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, glide);
         } else {

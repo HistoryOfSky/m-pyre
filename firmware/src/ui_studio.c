@@ -192,7 +192,9 @@ UI_SMALL static void loop_pos(const track_t *t, char *b)
     b[k + 2] = 0;
 }
 
-/* the header of the live screens: BPM, transport, the loop position, the beat lights, REC */
+/* the header of the live screens: BPM, transport, the loop position, the beat lights, REC (M-PYRE: te_sub, a second
+ * line under the title - the page's place, "FX 6/9") */
+static const char *te_sub;
 UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, int32_t sect)
 {
     char b[12];
@@ -202,6 +204,7 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
                                arrangement_enabled * 5u + (ui.bpm_t != 0) * 104729u + song.solo * 37u, title);
     sig = sig * 31u + tc;
     sig = sig * 31u + (uint32_t)(sect + 1) * 211u;    /* (2.7.2) the section A..D badge */
+    sig = studio_hash(sig * 31u + (uint32_t)song.octave * 13u, te_sub ? te_sub : "");
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
@@ -234,6 +237,13 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
         }
         if (song.solo)
             cv_text(236 - text_w(&FONT_S, "solo"), 22, &FONT_S, "solo", C_WHITE);
+        else if (te_sub)
+            cv_text(236 - text_w(&FONT_S, te_sub), 22, &FONT_S, te_sub, TE_G3);
+    }
+    if (song.octave) {                                 /* M-PYRE: the octave buttons' shift, by the beat lights */
+        char ob[6] = {'O', 'C', 'T', song.octave > 0 ? '+' : '-', 0, 0};
+        ob[4] = (char)('0' + (song.octave < 0 ? -song.octave : song.octave));
+        cv_text(144, 22, &FONT_S, ob, C_AMB);
     }
     cv_rect(0, 39, 240, 1, TE_G1);
     cv_blit(0, 0);
@@ -251,7 +261,7 @@ UI_SMALL static void studio_tracks_draw(void)
     static uint32_t head, rows[NTRK], footer;
     uint32_t i, j;
     int32_t sect = song.playing && live_sec >= 0 ? live_sec : (int32_t)song.g[G_SLOT] - 1;   /* (2.7.2) the section playing */
-    te_header("tracks", TE_G3, &head, sect);
+    te_header("tracks", C_WHITE, &head, sect);
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         char b[24], e[16];
@@ -274,12 +284,16 @@ UI_SMALL static void studio_tracks_draw(void)
         if (!ui.force && h == rows[i]) continue;
         rows[i] = h;
         cv_begin(240, 36, C_BLACK);
-        cv_rect(2, 3, 26, 30, selected ? col : dim);   /* the track tile */
+        {   /* the track tile, cut slanted (M-PYRE: as lettering on a steel plate) */
+            int32_t r;
+            for (r = 0; r < 30; r++)
+                cv_rect(2 + (29 - r) / 6, 3 + r, 25, 1, selected ? col : dim);
+        }
         {
             char n[2] = {(char)('1' + i), 0};
-            cv_text(11, 10, &FONT_S, n, selected ? C_BLACK : col);
+            cv_text(11, 10, &FONT_S, n, RGB(0, 0, 0));
         }
-        cv_text(34, 1, &FONT_S, b, selected ? C_WHITE : TE_G4);
+        cv_text(34, 1, &FONT_S, b, selected ? C_WHITE : C_HI);
         if (34 + text_w(&FONT_S, b) + 6 + text_w(&FONT_S, e) < 196)
             cv_text(34 + text_w(&FONT_S, b) + 6, 1, &FONT_S, e, selected ? col : TE_G3);
         if (rec) {
@@ -304,16 +318,13 @@ UI_SMALL static void studio_tracks_draw(void)
                     for (k = a; k < z; k++) if (trk_step_on(t, k)) on = 2;
                 }
             }
-            cv_rect(34 + (int32_t)j * 10, 21, 8, 9,
-                    !on ? C_BLACK : on == 2u ? (silent ? TE_G3 : selected ? col : dim) : TE_G1);
-            if (on == 2u && !selected && !silent)
-                cv_rect(34 + (int32_t)j * 10, 21, 8, 2, col);
+            cv_rect(34 + (int32_t)j * 10, 22, 8, 7,     /* (M-PYRE: off a dark ember, on lit: the selected track's
+                                                         * colour, the others' ash) */
+                    !on ? C_BLACK : on == 2u ? (silent ? TE_G2 : selected ? col : TE_G3) : TE_G2);
             if (song.playing && p == pos)
                 cv_rect(34 + (int32_t)j * 10, 31, 8, 2, C_WHITE);
         }
-        cv_rect(198, 23, 38, 5, TE_G1);                /* the level */
-        if (!silent)
-            cv_rect(198, 23, (int32_t)level * 38 / 127, 5, selected ? col : TE_G3);
+        cv_ember(198, 23, 38, 5, silent ? 0 : (int32_t)level * 1000 / 127, !selected);   /* the level, as embers */
         cv_blit(0, 40 + i * 36);
     }
     {   /* KNOB 1 swing (the global groove), 2 level, 3 steps, 4 pan of the selected track */

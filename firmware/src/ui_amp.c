@@ -8,7 +8,7 @@
  *   CRNCH  black levant, a black basketweave with a gold thread, a brushed gold panel, a white script
  *   HIGH   black, a diamond-plate front with its screws, a black panel, chrome block letters on a plate
  *   LEAD   oxblood, a wine grille, a mirror-chrome panel, italic letters in gold and fire
- *   B-CLN B-DRV DJENT  the bass amps: black, a ribbed grille, a blue-grey panel
+ *   BASS               the bass amp: black, a ribbed grille, a blue-grey panel
  * The wordmarks: tools/gen_mpyre_amplogo.py (fonts under the SIL OFL, assets/mpyre/fonts) */
 #include "mpyre_amplogo.h"
 

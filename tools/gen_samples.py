@@ -71,24 +71,26 @@ EXTRA_PRESETS = [
     ("STRGS", "MELLOTRON", [0, 0, 30, 0, 96, 0, 18, 0], (12, 127, 120, 34), 0, (0, 16, 0, 36),
      ("P_LD_PIT", 2, "P_LRATE", 52, "P_LFADE", 30)),
     # M-PYRE: the sound pack (the user slots, SLOT_SETS): the guitar through its amps, the palm mutes, the bass (dry:
-    # no reverb, no delay - the player adds them)
-    ("GUITAR", "CLEAN GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 0, (0, 22, 0, 0), ("P_AMP", 1, "P_AGAIN", 64)),
-    ("GUITAR", "CRUNCH GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 22), 0, (0, 0, 0, 0), ("P_AMP", 2, "P_AGAIN", 80)),
-    ("GUITAR", "HI-GAIN", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80)),
+    # no reverb, no delay - the player adds them). The rhythm guitar an octave down (the keys F3 .. F5 play F2 .. F4:
+    # the low strings), the lead where the keys are, the bass an octave under the guitar (TRN -24)
+    ("GUITAR", "CLEAN GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 0, (0, 22, 0, 0), ("P_AMP", 1, "P_AGAIN", 64, "P_TRANS", -12)),
+    ("GUITAR", "CRUNCH GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 22), 0, (0, 0, 0, 0), ("P_AMP", 2, "P_AGAIN", 80, "P_TRANS", -12)),
+    ("GUITAR", "HI-GAIN", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80, "P_TRANS", -12)),
     ("GUITAR", "DJENT GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 12), 0, (0, 0, 0, 0),
-     ("P_AMP", 3, "P_AGAIN", 108, "P_AMID", 50, "P_APRES", 80)),
+     ("P_AMP", 3, "P_AGAIN", 108, "P_AMID", 50, "P_APRES", 80, "P_TRANS", -12)),
     ("GUITAR", "LEAD GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 1, (0, 0, 0, 0),
      ("P_AMP", 4, "P_AGAIN", 80, "P_LEG", 30, "P_VIB", 40)),
-    ("GUITAR", "DI GUITAR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 26), 0, (0, 0, 0, 0), ()),
-    ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80)),
+    ("GUITAR", "DI GUITAR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 26), 0, (0, 0, 0, 0), ("P_TRANS", -12)),
+    ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80, "P_TRANS", -12)),
     # (the bass an octave and a half under the keys: C4 on the keyboard is the bass's C2; a softer pick, a longer
-    # release - a held line under the guitars, not a row of plucks; the highs of the click a little down)
-    ("BASSL", "PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (3, 127, 127, 40), 1, (0, 0, 0, 0),
-     ("P_AMP", 5, "P_TRANS", -24, "P_ATREB", 52)),
-    ("BASSL", "DRIVE BASS", [0, 0, 0, 1, 127, 0, 0, 0], (3, 127, 127, 40), 1, (0, 0, 0, 0),
-     ("P_AMP", 6, "P_TRANS", -24, "P_ATREB", 56)),
-    ("BASSL", "DJENT BASS", [0, 0, 0, 1, 127, 0, 0, 0], (2, 127, 127, 34), 1, (0, 0, 0, 0),
-     ("P_AMP", 7, "P_TRANS", -24)),
+    # release - a held line under the guitars, not a row of plucks (no attack ramp: on the beat with the guitars); the highs of the click a little down; the note dying
+    # away as a played one does, DEC ~5 s down to SUS: the loops hold their level, prep_mpyre.py)
+    ("BASSL", "PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 118, 20, 40), 1, (0, 0, 0, 0),
+     ("P_AMP", 5, "P_TRANS", -24, "P_AGAIN", 16, "P_ATREB", 52)),
+    ("BASSL", "DRIVE BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 118, 24, 40), 1, (0, 0, 0, 0),
+     ("P_AMP", 5, "P_TRANS", -24, "P_AGAIN", 72, "P_ATREB", 72)),
+    ("BASSL", "HEAVY BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 120, 30, 34), 1, (0, 0, 0, 0),
+     ("P_AMP", 5, "P_TRANS", -24, "P_AGAIN", 104, "P_ATREB", 88)),
 ]
 
 KIT_BASE = 53                     # F3, the lowest FM-1 key

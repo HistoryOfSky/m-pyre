@@ -90,6 +90,7 @@ static struct {
     char focus_l[8], focus_v[8], focus_u[8];   /* the touched column, shown large */
     char big_l[4][8], big_v[4][10], big_u[4][8];   /* the four columns, for the big values (2.4: pages without a graph) */
     uint16_t big_c[4];
+    int16_t big_r[4];                                /* M-PYRE: their gauges, 0..1000 (-1: none) */
     uint32_t graph_sig, head_sig, foot_sig, frame;
     uint8_t graph_top;           /* the graph strip's top G_OY rows hold something */
 } ui;
@@ -289,7 +290,8 @@ UI_SMALL static void cursor_fix(void)                           /* LEN got short
  * pitch, KNOB 3 its length (note_set_len), KNOB 4 its FORCE, PRESETS the zoom; OCT+ held its sheet (SLIDE, NUDGE,
  * FILL, MOVE, COPY, DELETE). The drum grid (ui_studio.c) has the same sheet for a hit */
 static const uint8_t NV_ZOOM[4] = {8, 16, 32, 64};
-static const char *const FORCE_N[5] = {"GHOST", "SOFT", "NORM", "HARD", "ACC"};
+static const char *const FORCE_N[6] = {"GHOST", "SOFT", "NORM", "HARD", "ACC", "PALM"};   /* (M-PYRE: PALM, the step's
+                                                                                         * palm mute, past ACC) */
 static const uint8_t F_LVL[4] = {LV_GHOST, LV_SOFT, LV_NORM, LV_HARD};
 /* M-PYRE: ART, the note's articulation - NORM, PALM (a lock of P_PALM on the step), SLIDE (glides into the next), HAMMR
  * (legato: a hammer-on / pull-off into the next, no new attack) */
@@ -686,7 +688,7 @@ static const char *const BANK_KIND[] = {"GTR", "BASS", "KEYS", "STR", "SYN", "HY
 static const struct { uint8_t kind, e; const char *name; } BANK[] = {
     {BK_GTR, 4, "CLEAN GTR"}, {BK_GTR, 4, "CRUNCH GTR"}, {BK_GTR, 4, "HI-GAIN"}, {BK_GTR, 4, "DJENT GTR"},
     {BK_GTR, 4, "LEAD GTR"}, {BK_GTR, 4, "PALM MUTE"}, {BK_GTR, 4, "DI GUITAR"}, {BK_BASS, 4, "PICK BASS"},
-    {BK_BASS, 4, "DRIVE BASS"}, {BK_BASS, 4, "DJENT BASS"}, {BK_BASS, 0, "MONO BASS"}, {BK_BASS, 0, "SUB BASS"},
+    {BK_BASS, 4, "DRIVE BASS"}, {BK_BASS, 4, "HEAVY BASS"}, {BK_BASS, 0, "MONO BASS"}, {BK_BASS, 0, "SUB BASS"},
     {BK_BASS, 6, "FAT BASS"}, {BK_BASS, 0, "REESE"}, {BK_BASS, 0, "SAW BASS"}, {BK_BASS, 0, "ACID 303"},
     {BK_BASS, ENGI_FM6, "ROUND BASS"}, {BK_BASS, 1, "BASS GTR"}, {BK_BASS, 2, "CZ BASS"}, {BK_BASS, 1, "FM BASS"},
     {BK_KEYS, 4, "GRAND PNO"}, {BK_KEYS, 4, "DUSTY PNO"}, {BK_KEYS, 1, "RHODES"}, {BK_KEYS, 1, "DX RHODES"},
@@ -700,7 +702,7 @@ static const struct { uint8_t kind, e; const char *name; } BANK[] = {
     {BK_SYN, ENGI_FM6, "BRASS SECT"}, {BK_SYN, 6, "80S POLY"}, {BK_SYN, 6, "POWER STAB"}, {BK_SYN, 2, "CZ LEAD"},
     {BK_SYN, 2, "CZ BRASS"},
     /* M-PYRE: HYBRID, the Clipper voice (eng_hybrid.c; in NOISE's engine slot) */
-    {BK_HYB, ENGI_NOISE, "CLIPPER"}, {BK_HYB, ENGI_NOISE, "POLY PAD"}, {BK_HYB, ENGI_NOISE, "STRINGS"},
+    {BK_HYB, ENGI_NOISE, "MOOG FUZZ"}, {BK_HYB, ENGI_NOISE, "POLY PAD"}, {BK_HYB, ENGI_NOISE, "STRINGS"},
     {BK_HYB, ENGI_NOISE, "ACID"}, {BK_HYB, ENGI_NOISE, "SYNC LEAD"}, {BK_HYB, ENGI_NOISE, "FM BELL"},
     {BK_HYB, ENGI_NOISE, "FM KEYS"}, {BK_HYB, ENGI_NOISE, "WOBBLE"}, {BK_HYB, ENGI_NOISE, "REESE"},
     {BK_HYB, ENGI_NOISE, "HOOVER"}, {BK_HYB, ENGI_NOISE, "BRASS"}, {BK_HYB, ENGI_NOISE, "VOX"},
@@ -965,13 +967,35 @@ UI_SMALL static void preset_go(uint32_t n)                    /* load list index
 /* M-PYRE: the LIVE view (HOME): the scope and four knobs of the selected track; HOME tapped turns to the next group,
  * HOME held goes to the TRACKS screen (and held there: the menu) */
 static const struct { const char *title; uint8_t id[4]; } LIVE[] = {
+    {"SOUND", {0xF0, 0xF1, P_ATK, P_REL}},           /* a synth's: its filter (or what brightens it), the envelope */
     {"PLAY", {P_CHORD, P_BEND, P_VIB, P_PALM}},     /* the guitar: chords, bend, vibrato, palm mutes */
     {"PLAY 2", {P_LEG, P_WHAM, P_WAH, P_PVOL}},     /* legato (hammer-on .. slide), whammy, the wah, the volume (fades);
                                                      * the amp, pedals, octaver and the rest: the FX section */
 };
 #define NLIVE (sizeof LIVE / sizeof LIVE[0])
 static uint8_t live_grp;
-static uint32_t home_id(uint32_t k) { return LIVE[live_grp % NLIVE].id[k & 3u]; }
+/* the samples (guitar, bass, keys): PLAY, PLAY 2; a synth SOUND first */
+static uint32_t live_first(void) { return ENGINES[TSEL->engine] == &ENG_SAMPLE ? 1u : 0u; }
+static uint32_t live_cnt(void) { return NLIVE - live_first(); }
+static uint32_t live_idx(void) { return live_first() + live_grp % live_cnt(); }
+/* SOUND's CUT and RES: the engine's own by name, else what does the most like it (FM: the index, the feedback ..) */
+static uint32_t live_eparam(uint32_t r)
+{
+    static const char *const W[2][6] = {{"CUT", "IDX", "DCW", "TONE", "TOP", "MLVL"}, {"RES", "FB", "ENV", "CRSH", "DRV", "MEG"}};
+    uint32_t j, k;
+    for (j = 0; j < 6u; j++)
+        for (k = 0; k < 8u; k++) {
+            const param_desc_t *d = track_desc(TSEL, P_E0 + k);
+            if (d && d->label && str_eq(d->label, W[r][j]))
+                return P_E0 + k;
+        }
+    return r ? P_REL : P_ATK;
+}
+static uint32_t home_id(uint32_t k)
+{
+    uint32_t id = LIVE[live_idx()].id[k & 3u];
+    return id >= 0xF0u ? live_eparam(id - 0xF0u) : id;
+}
 UI_SMALL static void go_live(void)
 {
     ui.home = 1;

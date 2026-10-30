@@ -44,6 +44,7 @@ typedef struct {
     uint32_t fw;                                    /* its write position */
     int32_t c0, c1;                                 /* the cabinet's last two outputs (22.05 kHz) */
     int32_t dcx, dcy;                               /* the DC blocker after the amp (asymmetric stages leave an offset) */
+    int32_t tl0, tl1;                               /* the bass amp's tone knob (two one-poles) */
     int32_t genv, gg;                               /* the gate before the driven amps: the input's envelope, its gain (Q15) */
     uint8_t ph, model, on;                         /* ph: the cabinet's half-rate phase */
 } amp_st_t;
@@ -186,53 +187,46 @@ static inline int32_t amp_stages(amp_st_t *a, const amp_model_t *m, int32_t g1, 
     return bq(&AMP_DEC[1], &a->dec[1], bq(&AMP_DEC[0], &a->dec[0], y));   /* (88.2 -> 44.1 kHz: no fold-back fizz) */
 }
 
-/* the bass amps: the low end clean, the mids and highs driven, in parallel (B-CLEAN: the bands only). BLEND is
- * the PRESENCE knob (64: as voiced) */
-static void track_bass(track_t *t, amp_st_t *a, int32_t type, int32_t *b, uint32_t n)
+/* the bass amp: the low end clean, the mids and highs driven, in parallel. GAIN 0: the bass clean (the split faded
+ * out over the first quarter), up from there the drive band 2^(g / 18) harder (x3 .. x400: a growl, then a fuzz).
+ * TREBLE: under 64 a passive tone knob closing (a two-pole low-pass at ~250 Hz faded in: at 0 only the bass left),
+ * over 64 the clank (+ up to ~x4 at 1.8 kHz, ~x2.5 over 2.2 kHz). PRES is the drive's BLEND (64: as voiced) */
+static void track_bass(track_t *t, amp_st_t *a, int32_t *b, uint32_t n)
 {
     const int16_t *h = t->p[P_CAB] == 0 ? CAB_IR[4] : t->p[P_CAB] <= CAB_N ? CAB_IR[t->p[P_CAB] - 1] : 0;
-    int32_t g = (int32_t)((pow2_q16((t->p[P_AGAIN] - 64) * 6)) >> 4);   /* GAIN: Q12, 4096 = as voiced */
-    int32_t bl = t->p[P_APRES] * 280, kb[3], i, j;   /* BLEND, Q15: 64 -> 0.55 */
-    for (j = 0; j < 3; j++) {
+    int32_t gn = t->p[P_AGAIN], g = (int32_t)(pow2_q16(gn * 32 / 3) >> 6);   /* the drive 2^(g / 18), Q10 (x3 at 0 .. ~x400) */
+    int32_t sp = gn >= 32 ? 32 : gn;                 /* the split, /32 */
+    int32_t bl = t->p[P_APRES] * 280, kb[2], tv = t->p[P_ATREB] - 64, i, j;   /* BLEND, Q15: 64 -> 0.55 */
+    for (j = 0; j < 2; j++) {
         int32_t v = t->p[P_ABASS + j] - 64;
         kb[j] = v > 0 ? v * 260 : v * 128;
     }
     for (i = 0; i < (int32_t)n; i++) {
         int32_t x = (b[i] * 21) >> 5, lo, d, y;     /* (the bass samples come in hotter than the guitar: to ~0.5) */
-        if (type == 5) {                            /* B-CLEAN */
-            y = x;
-        } else if (type == 6) {                     /* B-DRIVE */
-            lo = bq(&BD_LO, &a->bs[1], bq(&BD_LO, &a->bs[0], x));
-            d = bq(&BD_HI, &a->bs[3], bq(&BD_HI, &a->bs[2], x));
-            d = bq(&BD_PK1, &a->bs[4], d);
-            d = amp_tanh((int32_t)(((int64_t)d * 30 * g) >> 12));
-            d = bq(&BD_PK2, &a->bs[5], d);
-            d = bq(&BD_LP2, &a->bs[7], bq(&BD_LP1, &a->bs[6], d));
-            y = lo + ((((d * 15) >> 5) * bl) >> 14);   /* (the drive at about the low end's level) x BLEND x 2 */
-        } else {                                    /* DJENT */
-            lo = bq(&DJ_LO, &a->bs[1], bq(&DJ_LO, &a->bs[0], x));
-            lo = amp_tanh(lo * 5);                  /* squeezed: every note as fat (as loud as the reference's) */
-            d = bq(&DJ_HI, &a->bs[3], bq(&DJ_HI, &a->bs[2], x));
-            d = bq(&DJ_PK1, &a->bs[4], d);
-            d = amp_tanh((int32_t)(((int64_t)d * 120 * g) >> 12));
-            d = bq(&DJ_HP, &a->bs[5], d);
-            d = amp_tanh(d * 4);
-            d = bq(&DJ_PK2, &a->bs[6], d);
-            d = bq(&DJ_PK3, &a->bs[7], d);
-            d = bq(&DJ_PK4, &a->bs[8], d);
-            d = bq(&DJ_LP2, &a->bs[10], bq(&DJ_LP1, &a->bs[9], d));
-            y = lo + ((((d * 15) >> 5) * bl * 3 / 2) >> 14);
-        }
+        lo = bq(&BD_LO, &a->bs[1], bq(&BD_LO, &a->bs[0], x));
+        d = bq(&BD_HI, &a->bs[3], bq(&BD_HI, &a->bs[2], x));
+        d = bq(&BD_PK1, &a->bs[4], d);
+        d = amp_tanh((int32_t)(((int64_t)d * 3 * g) >> 10));
+        d = bq(&BD_PK2, &a->bs[5], d);
+        d = bq(&BD_LP2, &a->bs[7], bq(&BD_LP1, &a->bs[6], d));
+        y = lo + ((((d * 15) >> 5) * bl) >> 14);     /* (the drive at about the low end's level) x BLEND x 2 */
+        y = x + (((y - x) * sp) >> 5);
         {
             int32_t yb = y;
-            for (j = 0; j < 3; j++)                 /* BASS MID TREBLE */
+            for (j = 0; j < 2; j++)                 /* BASS MID */
                 if (kb[j])
                     y += (bq(&AMP_BANDS[j], &a->band[j], yb) * kb[j]) >> 14;
+            if (tv > 0)                             /* TREBLE up: the clank (the string on the frets, ~1.8 kHz) */
+                y += ((bq(&AMP_BANDS[2], &a->band[2], yb) * tv * 390) >> 14) + ((bq(&TN_BITE, &a->band[3], yb) * tv * 1040) >> 14);
         }
+        a->tl0 += ((y - a->tl0) * 1147) >> 15;      /* (the tone knob: ~250 Hz, two poles) */
+        a->tl1 += ((a->tl0 - a->tl1) * 1147) >> 15;
+        if (tv < 0)
+            y += ((a->tl1 - y) * -tv) >> 6;
         y = bq(&B_HP30, &a->bs[11], y);
         if (h)
             y = cab_run(a, h, y);
-        b[i] = amp_dc(a, type == 5 ? (y * 3) >> 1 : (y * 9) >> 3);   /* (back to the part's level; the driven ones as B-CLEAN) */
+        b[i] = amp_dc(a, (y * 9) >> 3);
     }
 }
 
@@ -253,8 +247,8 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
         a->on = 1;
         a->model = (uint8_t)type;
     }
-    if (type > AMP_NMODELS) {                        /* B-CLEAN B-DRIVE DJENT */
-        track_bass(t, a, type, b, n);
+    if (type > AMP_NMODELS) {                        /* BASS (6, 7: the old bass amps, the same) */
+        track_bass(t, a, b, n);
         return;
     }
     m = &AMP_MODELS[type - 1];

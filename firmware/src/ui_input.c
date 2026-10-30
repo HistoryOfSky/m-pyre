@@ -462,10 +462,19 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
                 ui_message(ui.cursor + n < (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP) ? "NOTE AHEAD" : "END OF PATTERN");
         }
         break;
-    default:                                              /* FORCE: GHOST SOFT NORM HARD, ACC (the step's accent) */
+    default:                                              /* FORCE: GHOST SOFT NORM HARD, ACC (the step's accent), PALM
+                                                           * (M-PYRE: the step palm-muted, ART PALM) */
         if (step_on(st)) {
+            uint32_t was = note_art(t, ui.cursor) == 1u ? 5u : note_force(st, k);
+            int32_t to = clamp((int32_t)was + (steps > 0 ? 1 : -1), 0, 5);
             note_mark();
-            note_force_set(st, k, (uint32_t)clamp((int32_t)note_force(st, k) + (steps > 0 ? 1 : -1), 0, 4));
+            if (to == 5)
+                note_art_set(t, ui.cursor, 1u);
+            else {
+                if (was == 5u)
+                    note_art_set(t, ui.cursor, 0u);
+                note_force_set(st, k, (uint32_t)to);
+            }
         }
         break;
     }
@@ -1219,7 +1228,7 @@ UI_SMALL static void ui_input(void)
 #endif
     if (home == BT_TAP) {                               /* M-PYRE: HOME tapped - the LIVE view, there its other page */
         if (ui.home) {
-            live_grp = (uint8_t)((live_grp + 1u) % NLIVE);
+            live_grp = (uint8_t)((live_grp % live_cnt() + 1u) % live_cnt());
             ui.force = 1;
         } else
             go_live();

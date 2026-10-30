@@ -2959,7 +2959,7 @@ function makeMockDevice(opt = {}) {
     E("SYNC", ["OFF", "4BAR", "2BAR", "1BAR", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0),
     E("TRIG", ["NOTE", "FREE"], 0), E("POL", ["BI", "UNI"], 0),
     /* M-PYRE (amp.c, voice.c): the amp, its cabinet, the pedals, the octaver, the live controls (P_AMP 63 .. P_WAH 82) */
-    E("AMP", ["OFF", "CLEAN", "CRNCH", "HIGH", "LEAD", "B-CLN", "B-DRV", "DJENT"], 0), D("GAIN", F.PCT, 0, 127, 64),
+    E("AMP", ["OFF", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS"], 0), D("GAIN", F.PCT, 0, 127, 64),
     D("BASS", F.CTR, 0, 127, 64), D("MID", F.CTR, 0, 127, 64), D("TREB", F.CTR, 0, 127, 64), D("PRES", F.CTR, 0, 127, 64),
     E("CAB", ["AUTO", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS", "OFF"], 0), E("PEDAL", ["OFF", "BOOST", "OD", "DIST", "FUZZ"], 0),
     D("DRIVE", F.PCT, 0, 127, 64), D("COMP", F.OFFPCT, 0, 127, 0), D("OCT", F.OCTST, 0, 48, 24), D("O MIX", F.PCT, 0, 127, 64),
@@ -3124,10 +3124,10 @@ function makeMockDevice(opt = {}) {
         P("CONGA", [2, 90, 60, 50, 40, 100, 8, 40], [0, 100, 127, 40], 0),
         P("TIMPANI", [2, 10, 50, 100, 20, 110, 6, 10], [0, 100, 127, 90], 0)] },
     { name: "HYBRID", titles: ["FILT", "MACRO"], edit: [D("CUT", F.BIPCT, -64, 63, 0), D("RES", F.BIPCT, -64, 63, 0),
-        D("FENV", F.BIPCT, -64, 63, 0), E("PTCH", ["CLIPPER", "POLY PAD", "STRINGS", "ACID", "SYNC LEAD", "FM BELL", "FM KEYS", "WOBBLE", "REESE", "HOOVER", "BRASS", "VOX", "PLUCK", "RISER", "METAL", "FOLD BASS", "CHIP LEAD", "GLASS PAD", "DRONE", "808 SUB", "TRANCE", "SAW PLUCK", "SPACE BEL", "INIT", "MOOG BASS", "MOOG LEAD", "LADDER PAD"], 0), D("M1", F.PCT, 0, 127, 0), D("M2", F.PCT, 0, 127, 0),
+        D("FENV", F.BIPCT, -64, 63, 0), E("PTCH", ["MOOG FUZZ", "POLY PAD", "STRINGS", "ACID", "SYNC LEAD", "FM BELL", "FM KEYS", "WOBBLE", "REESE", "HOOVER", "BRASS", "VOX", "PLUCK", "RISER", "METAL", "FOLD BASS", "CHIP LEAD", "GLASS PAD", "DRONE", "808 SUB", "TRANCE", "SAW PLUCK", "SPACE BEL", "INIT", "MOOG BASS", "MOOG LEAD", "LADDER PAD"], 0), D("M1", F.PCT, 0, 127, 0), D("M2", F.PCT, 0, 127, 0),
         D("M3", F.PCT, 0, 127, 0), D("M4", F.PCT, 0, 127, 0)],
       presets: [
-        P("CLIPPER", [0, 0, 0, 0, 0, 0, 0, 0], [0, 80, 110, 50], 0),
+        P("MOOG FUZZ", [0, 0, 0, 0, 64, 64, 0, 0], [0, 76, 110, 40], 1),
         P("POLY PAD", [0, 0, 0, 1, 0, 0, 0, 0], [0, 80, 110, 50], 0),
         P("STRINGS", [0, 0, 0, 2, 0, 0, 0, 0], [0, 80, 110, 50], 0),
         P("ACID", [0, 0, 0, 3, 0, 0, 0, 0], [0, 80, 110, 50], 0),
@@ -4452,11 +4452,12 @@ const THEME = {
   ID: 11, SIZE: 40, MAGIC: 0x324D4854, MAGIC1: 0x314D4854, PREFIX: "SLOOP-THEME-1:",
   WHITE: [255, 255, 255], BLACK: [0, 0, 0],
   /* the FM-1's own palettes (gfx.c PALETTES) and the tracks' colours (TE_COL_DEF), as RGB 0..255 */
-  BUILTIN: [   /* (M-PYRE: AMBER RED MONO, and BEIGE - a light screen, black text and accent) */
+  BUILTIN: [   /* (M-PYRE: AMBER RED MONO, BEIGE - a light screen, black text and accent - and GLUT, the default) */
     ["AMBER", [[60, 26, 0], [110, 50, 0], [170, 82, 0], [225, 120, 8], [255, 166, 40]]],
     ["RED", [[52, 8, 8], [100, 18, 14], [170, 36, 26], [226, 64, 48], [255, 112, 92]]],
     ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]],
-    ["BEIGE", [[208, 196, 172], [168, 154, 130], [118, 106, 88], [70, 60, 48], [24, 18, 12]], [238, 228, 206], [0, 0, 0]]],
+    ["BEIGE", [[208, 196, 172], [168, 154, 130], [118, 106, 88], [70, 60, 48], [24, 18, 12]], [238, 228, 206], [0, 0, 0]],
+    ["GLUT", [[70, 30, 18], [112, 62, 42], [150, 96, 70], [214, 170, 136], [255, 236, 214]], [26, 10, 6], [255, 140, 30]]],
   TRACKS: [[235, 40, 25], [255, 120, 20], [255, 205, 40], [240, 236, 226]],   /* M-PYRE: fire, the drums white */
   to565: ([r, g, b]) => ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3),
   from565: (v) => [Math.round((((v >> 11) & 31) * 255) / 31), Math.round((((v >> 5) & 63) * 255) / 63), Math.round(((v & 31) * 255) / 31)],
