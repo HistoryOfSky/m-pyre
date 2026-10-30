@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GEN = ROOT / "build/gen"
 OUT = ROOT / "build/emu"
 EXPORTS = ["init", "buffer", "screen", "block_frames", "rate", "slot", "reset_tracks", "volume", "keys", "button",
-           "knob", "led_keys", "led_buttons", "ui", "render"]
+           "knob", "led_keys", "led_buttons", "ui", "render", "proj_get", "proj_put", "proj_changed"]
 
 
 def main():

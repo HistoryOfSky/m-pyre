@@ -347,7 +347,12 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
  * engine's voice cap, spread by DETUNE over the same width) */
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
-    uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i;
+    uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i, vel0 = vel;
+    /* M-PYRE: the OCTAVER in MONO / LEGATO too - the octave voice is v[1], played as v[0] is (O MIX: the crossfade) */
+    int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o, om = t->p[P_OMIX];
+    int oct = nv == 1u && o && om && n2 >= 0 && n2 < 128 && !is_drum(t);
+    if (oct && om > 64)
+        vel = vel * (uint32_t)(127 - om) / 63u;
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
@@ -372,6 +377,19 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             if (vel > v->vel && nv == 1u)
                 v->vel = (uint8_t)vel;
             glide_set(t, v, glide);
+        }
+    }
+    if (oct) {                                          /* M-PYRE: the octave voice, as the note goes */
+        voice_t *v2 = &t->v[1];
+        uint32_t ov = vel0 * (uint32_t)(om > 64 ? 64 : om) / (o < 0 ? 40u : 55u) + 1u;
+        if (retrig || !v2->active || !v2->gate) {
+            v2->fine = 0;
+            voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, glide);
+        } else {
+            v2->note = (uint8_t)n2;
+            v2->pitch16 = n2 * 16;
+            v2->vt = 0;
+            glide_set(t, v2, glide);
         }
     }
     t->mono_note = (uint8_t)note;
@@ -520,7 +538,7 @@ static void trk_note_off1(track_t *t, uint32_t note)
             if (next) {                                 /* fall back to a held note, legato */
                 mono_play(t, next, t->v[0].vel, 0, t->p[P_GLIDE] != 0);
             } else {
-                for (i = 0; i < nv; i++)
+                for (i = 0; i < (nv == 1u ? 2u : nv); i++)   /* (M-PYRE: and the octave voice, v[1]) */
                     if (t->v[i].gate) {
                         t->v[i].gate = 0;
                         t->v[i].stage = 3;

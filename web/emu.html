@@ -84,6 +84,15 @@
   <div class="vol">Lautstärke <input type="range" id="vol" min="0" max="4096" value="2048"></div>
 </div>
 <div class="foot"><div id="kb2"></div></div>
+<div class="foot songs">
+  <div>Dein Song bleibt im Browser gespeichert (auch SAVE-Slots 1–4). Zum Weitergeben:</div>
+  <div class="row">
+    <button class="btn" id="exp" disabled>SONG EXPORTIEREN</button>
+    <button class="btn" id="imp" disabled>SONG LADEN</button>
+    <input type="file" id="impf" accept=".mpyre,application/octet-stream" hidden>
+    <span id="songmsg"></span>
+  </div>
+</div>
 <p class="note">iPhone: Ist kein Ton zu hören, den Stummschalter an der Seite ausschalten (Web-Audio folgt ihm). Quer gehalten sind die Tasten größer.</p>
 <script>
 const WASM_B64 = /*WASM_B64*/"";
@@ -99,7 +108,7 @@ const WORKLET = `
 class Emu extends AudioWorkletProcessor {
   constructor(opt) {
     super();
-    this.ok = false; this.acc = 0; this.q = []; this.pend = []; this.ledsLast = "";
+    this.ok = false; this.acc = 0; this.q = []; this.pend = []; this.ledsLast = ""; this.frames = 0; this.gen = 0;
     WebAssembly.instantiate(opt.processorOptions.module, {}).then((inst) => {
       const E = this.E = inst.exports;
       E.emu_init();
@@ -123,6 +132,21 @@ class Emu extends AudioWorkletProcessor {
     else if (m.t === "btn") E.emu_button(m.b, m.d ? 1 : 0);
     else if (m.t === "knob") E.emu_knob(m.r, m.s);
     else if (m.t === "vol") E.emu_volume(m.v);
+    else if (m.t === "projPut") {                     // a project from the page: slot 0..3, 4 the working one
+      new Uint8Array(E.memory.buffer, E.emu_buffer(), m.bytes.length).set(m.bytes);
+      const ok = E.emu_proj_put(m.i, m.bytes.length);
+      if (m.report) this.port.postMessage({ loaded: !!ok });
+    } else if (m.t === "projGet") this.sendProj(m.i, true);
+  }
+  sendProj(i, ask) {                                  // the project bytes of slot i (4: the working one) to the page
+    const E = this.E, n = E.emu_proj_get(i);
+    const b = n ? new Uint8Array(E.memory.buffer, E.emu_buffer(), n).slice() : null;
+    this.port.postMessage({ proj: b, i, ask: !!ask });
+  }
+  keep() {                                            // every ~5 s: the slots when changed, the working project
+    const E = this.E, g = E.emu_proj_changed();
+    if (g !== this.gen) { this.gen = g; for (let i = 0; i < 4; i++) this.sendProj(i, false); }
+    this.sendProj(4, false);
   }
   frame() {
     const E = this.E;
@@ -140,6 +164,7 @@ class Emu extends AudioWorkletProcessor {
     const l = [E.emu_led_keys(0), E.emu_led_keys(1), E.emu_led_keys(2), E.emu_led_buttons()];
     const k = l.join();
     if (k !== this.ledsLast) { this.ledsLast = k; this.port.postMessage({ leds: l }); }
+    if (++this.frames % 300 === 0) this.keep();
   }
   process(_in, out) {
     if (!this.ok) return true;
@@ -281,6 +306,36 @@ function leds([lit, dim, bg, btn]) {
   for (const [n, b] of Object.entries(B)) btnEls[n].el.classList.toggle("lit", !!(btn >>> b & 1));
 }
 
+/* ---- songs: kept in this browser (localStorage), exported / imported as a file (project.c's bytes) */
+const LS = "mpyre-emu-proj-";
+const toB64 = (b) => { let s = ""; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
+const lsGet = (k) => { try { return localStorage.getItem(LS + k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(LS + k) : localStorage.setItem(LS + k, v); } catch (e) { /* (no storage: only this visit) */ } };
+const songMsg = (t) => { const el = document.getElementById("songmsg"); el.textContent = t; setTimeout(() => { if (el.textContent === t) el.textContent = ""; }, 4000); };
+function restoreSongs() {
+  for (let i = 0; i < 5; i++) {
+    const v = lsGet(i === 4 ? "work" : "slot" + i);
+    if (v) send({ t: "projPut", i, bytes: b64(v) });
+  }
+  document.getElementById("exp").disabled = document.getElementById("imp").disabled = false;
+}
+function gotProj({ proj, i, ask }) {
+  if (ask && proj) {                                  // the export: the working project as a file
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([proj], { type: "application/octet-stream" })),
+      download: "m-pyre-song.mpyre" });
+    document.body.appendChild(a); a.click(); a.remove();
+    songMsg("Exportiert: m-pyre-song.mpyre");
+    return;
+  }
+  lsSet(i === 4 ? "work" : "slot" + i, proj ? toB64(proj) : null);
+}
+document.getElementById("exp").addEventListener("click", () => send({ t: "projGet", i: 4 }));
+document.getElementById("imp").addEventListener("click", () => document.getElementById("impf").click());
+document.getElementById("impf").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (f) send({ t: "projPut", i: 4, bytes: new Uint8Array(await f.arrayBuffer()), report: true });
+});
+
 /* ---- power */
 function showError(msg) {
   const p = document.getElementById("power") || document.querySelector(".screen").appendChild(Object.assign(document.createElement("div"), { className: "power" }));
@@ -306,6 +361,9 @@ document.getElementById("power").addEventListener("click", async (e) => {
       if (data.screen) draw(data.screen);
       else if (data.leds) leds(data.leds);
       else if (data.error) showError(data.error);
+      else if (data.ready) restoreSongs();
+      else if ("proj" in data) gotProj(data);
+      else if ("loaded" in data) songMsg(data.loaded ? "Geladen." : "Keine M-PYRE-Song-Datei.");
     };
     node.connect(ctx.destination);
     p.remove();

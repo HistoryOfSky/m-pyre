@@ -3,7 +3,9 @@
  * hardware replaced by RAM: the screen a 240 x 240 RGB565 buffer, the keys / buttons / knobs set from
  * JavaScript, the user sample slots in RAM (the sound pack loaded into them). The audio runs in an
  * AudioWorklet; every 16 ms of audio a UI frame runs (ui_input, ui_leds, ui_draw), as the FM-1's main loop.
- * Projects and user presets are not kept (the emulator saves nothing). Built by tools/build_emu.py. */
+ * Projects: the four slots in RAM (SAVE / LOAD as on the FM-1), the page keeps them and the working project in the
+ * browser (emu_proj_get / emu_proj_put: the project bytes, project.c's format) and can export / import one as a file.
+ * User presets are not kept. Built by tools/build_emu.py. */
 #include <stdint.h>
 #include <string.h>
 #define memset felucca_memset
@@ -90,11 +92,42 @@ static int16_t scope_buf[SCOPE_N], scope_bufr[SCOPE_N];
 static uint32_t scope_w;
 #include "../src/panel.c"
 #include "../src/ui.c"
-/* ---- storage: none in the emulator (a message says so) */
-static int project_used(uint32_t i) { (void)i; return 0; }
-static void project_save(uint32_t i) { (void)i; ui_message("NOT IN EMULATOR"); }
-static void project_load(uint32_t i) { (void)i; }
-static void project_erase(uint32_t i) { (void)i; }
+/* ---- projects: four slots in RAM, the format of the FM-1's (project.c's host part) */
+#define PROJ_HOST 1
+#include "../src/project.c"
+static project_t emu_proj[5];                    /* the four slots, [4]: the working project for the page */
+static volatile uint32_t emu_proj_gen;            /* + 1 when a slot changed (the page stores it) */
+static int project_used(uint32_t i) { return proj_ok(&emu_proj[i & 3u]); }
+static void project_save(uint32_t i)
+{
+    if (song.playing || transport_req) { ui_message("STOP BEFORE SAVE"); return; }
+    proj_capture(&emu_proj[i & 3u]);
+    emu_proj_gen++;
+    ui_message("SAVED (BROWSER)");
+}
+static void emu_apply(const project_t *p)
+{
+    uint32_t k;
+    transport_req = 2;
+    panic_req = (1u << NTRK) - 1u;
+    proj_apply(p, 1);
+    song.sel = (uint8_t)(p->sel < NTRK ? p->sel : 0u);
+    for (k = 0; k < NPART; k++)
+        if (p->t[k].preset == 0xFFu) {
+            apply_preset_to(&trk[k], TRK_DEF[k][1]);
+            steps_clear(&trk[k]);
+        }
+    sync_reload = 1;
+    ui.force = 1;
+}
+static void project_load(uint32_t i)
+{
+    if (song.playing || transport_req) { ui_message("STOP BEFORE LOAD"); return; }
+    if (!proj_ok(&emu_proj[i & 3u])) { ui_message("EMPTY"); return; }
+    emu_apply(&emu_proj[i & 3u]);
+    ui_message("LOADED");
+}
+static void project_erase(uint32_t i) { memset(&emu_proj[i & 3u], 0, sizeof emu_proj[0]); emu_proj_gen++; }
 static void arrangement_save(void) {}
 static uint32_t arrangement_ready(void) { return 0; }
 static void arrangement_apply(uint32_t s) { (void)s; }
@@ -137,6 +170,28 @@ static float output[CTL * 2];
 static uint32_t blocks_since_ui, booted_ms;
 
 uint8_t *emu_buffer(void) { return transfer; }
+/* the project bytes for the page: slot 0..3, 4 the working one (captured now); into transfer, its size (0: empty) */
+uint32_t emu_proj_get(uint32_t i)
+{
+    project_t *p = &emu_proj[i > 4u ? 4u : i];
+    if (i >= 4u)
+        proj_capture(p);
+    if (!proj_ok(p))
+        return 0;
+    memcpy(transfer, p, sizeof *p);
+    return sizeof *p;
+}
+/* a project from the page (transfer, n bytes) into slot 0..3, or (4) applied as the working one; 0: refused */
+uint32_t emu_proj_put(uint32_t i, uint32_t n)
+{
+    project_t *p = &emu_proj[i > 4u ? 4u : i];
+    if (n > sizeof transfer || !proj_import(p, transfer, (int)n))
+        return 0;
+    if (i >= 4u)
+        emu_apply(p);
+    return 1;
+}
+uint32_t emu_proj_changed(void) { return emu_proj_gen; }
 uint16_t *emu_screen(void) { return screen; }
 uint32_t emu_block_frames(void) { return CTL; }
 uint32_t emu_rate(void) { return FS; }

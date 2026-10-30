@@ -81,9 +81,14 @@ EXTRA_PRESETS = [
      ("P_AMP", 4, "P_AGAIN", 80, "P_LEG", 30, "P_VIB", 40)),
     ("GUITAR", "DI GUITAR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 26), 0, (0, 0, 0, 0), ()),
     ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80)),
-    ("BASSL", "PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 16), 1, (0, 0, 0, 0), ("P_AMP", 5)),
-    ("BASSL", "DRIVE BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 16), 1, (0, 0, 0, 0), ("P_AMP", 6)),
-    ("BASSL", "DJENT BASS", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 14), 1, (0, 0, 0, 0), ("P_AMP", 7)),
+    # (the bass an octave and a half under the keys: C4 on the keyboard is the bass's C2; a softer pick, a longer
+    # release - a held line under the guitars, not a row of plucks; the highs of the click a little down)
+    ("BASSL", "PICK BASS", [0, 0, 0, 1, 127, 0, 0, 0], (3, 127, 127, 40), 1, (0, 0, 0, 0),
+     ("P_AMP", 5, "P_TRANS", -24, "P_ATREB", 52)),
+    ("BASSL", "DRIVE BASS", [0, 0, 0, 1, 127, 0, 0, 0], (3, 127, 127, 40), 1, (0, 0, 0, 0),
+     ("P_AMP", 6, "P_TRANS", -24, "P_ATREB", 56)),
+    ("BASSL", "DJENT BASS", [0, 0, 0, 1, 127, 0, 0, 0], (2, 127, 127, 34), 1, (0, 0, 0, 0),
+     ("P_AMP", 7, "P_TRANS", -24)),
 ]
 
 KIT_BASE = 53                     # F3, the lowest FM-1 key

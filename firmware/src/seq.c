@@ -185,7 +185,7 @@ static int kb_scaled(const track_t *t)
     if (is_drum(t))
         return 0;
     if (ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && drum_set() >= 0 &&   /* (the engine it switches to) */
-        (uint32_t)t->p[P_E0] % SMP_NSETS == (uint32_t)drum_set())
+        (uint32_t)t->p[P_E0] == (uint32_t)drum_set())
         return 0;
 #if FELUCCA_SLICE
     if (ENGINES[t->eng_req % NENGINES] == &ENG_SLICE)
@@ -244,7 +244,7 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
     if (is_drum(t))
         return LANE_NOTE[lane_of_key(k)];
     if (ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && drum_set() >= 0 &&   /* (the engine it switches to) */
-        (uint32_t)t->p[P_E0] % SMP_NSETS == (uint32_t)drum_set())   /* GM KIT: lowest key = kick (C2), no scale */
+        (uint32_t)t->p[P_E0] == (uint32_t)drum_set())   /* GM KIT: lowest key = kick (C2), no scale */
         return (uint32_t)clamp(36 + 12 * song.octave + (int32_t)k, 0, 127);
 #if FELUCCA_SLICE
     if (ENGINES[t->eng_req % NENGINES] == &ENG_SLICE)   /* SLICE: lowest key = slice 0 (C4 + ROOT), no scale */
