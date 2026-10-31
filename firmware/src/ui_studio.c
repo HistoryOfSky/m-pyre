@@ -211,7 +211,7 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
     cv_begin(240, 40, C_BLACK);
     fmt_int(b, song.g[G_BPM]);
     cv_text(4, 4, &FONT_L, b, ui.bpm_t ? C_WHITE : TE_G4);
-    cv_text(4 + text_w(&FONT_L, b) + 4, 20, &FONT_S, "bpm", TE_G3);
+    cv_text(4 + text_w(&FONT_L, b) + 4, 17, &FONT_S, "bpm", TE_G3);   /* (on the figures' baseline) */
     te_play_icon(104, 6, (int)playing);
     if (playing) {                                     /* bar.beat in the selected track's loop */
         loop_pos(TSEL, b);
@@ -229,11 +229,13 @@ UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache, 
     } else {
         int32_t tx = 240 - text_w(&FONT_S, title) - 4;
         cv_text(tx, 5, &FONT_S, title, tc);
-        if (sect >= 0) {                               /* (2.7.2) which section (A..D) is playing, SONG-layer colours */
+        if (sect >= 0 && !te_sub) {                    /* (2.7.2) which section (A..D) is playing (M-PYRE: under the
+                                                         * title, as the pages' place) */
             char sb[2] = {(char)('A' + (sect & 3)), 0};
-            int32_t bw = text_w(&FONT_S, sb) + 8, bx = tx - bw - 6;
-            cv_rect(bx, 3, bw, 14, playing ? TE_COL[sect & 3] : TE_DIM[sect & 3]);
-            cv_text(bx + 4, 5, &FONT_S, sb, C_BLACK);
+            te_sub = sb;
+            if (!song.solo)
+                cv_text(236 - text_w(&FONT_S, sb), 22, &FONT_S, sb, playing ? TE_COL[sect & 3] : TE_G3);
+            te_sub = 0;
         }
         if (song.solo)
             cv_text(236 - text_w(&FONT_S, "solo"), 22, &FONT_S, "solo", C_WHITE);

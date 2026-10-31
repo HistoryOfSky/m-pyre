@@ -44,6 +44,25 @@ int main(int argc, char **argv)
             snprintf(nm, sizeof nm, "mp-amp-%u", g); ppm(nm);
         }
         ui.page = (uint8_t)pp; ui.force = 1; frames(3); ppm("mp-pedal");
+        for (g = 0; g <= 5u; g++) {                    /* the pedals: OFF BOOST OD DIST FUZZ OCT */
+            TSEL->p[P_PEDAL] = (int16_t)g; TSEL->p[P_PDRV] = (int16_t)(30 + g * 15);
+            ui.page = (uint8_t)pp; ui.force = 1; frames(3);
+            snprintf(nm, sizeof nm, "mp-ped-%u", g); ppm(nm);
+        }
+        TSEL->p[P_PEDAL] = 0;
+        for (i = 0; i < NPAGES; i++)                   /* MOD (each kind), DELAY, REVERB */
+            if (PAGES[i].fam == FAM_FX && !strcmp(PAGES[i].title, "MOD")) {
+                for (g = 1; g <= 4u; g++) {
+                    TSEL->p[P_ITYPE] = (int16_t)g;
+                    ui.page = (uint8_t)i; ui.force = 1; frames(3);
+                    snprintf(nm, sizeof nm, "mp-mod-%u", g); ppm(nm);
+                }
+                TSEL->p[P_ITYPE] = 0;
+            } else if (PAGES[i].fam == FAM_FX && (!strcmp(PAGES[i].title, "DELAY") || !strcmp(PAGES[i].title, "REVERB") ||
+                                                   !strcmp(PAGES[i].title, "FX"))) {
+                ui.page = (uint8_t)i; ui.force = 1; frames(3);
+                snprintf(nm, sizeof nm, "mp-fxp-%s", PAGES[i].title); ppm(nm);
+            }
         TSEL->p[P_AMP] = 2;
         settings.palette = 3; palette_set(3);
         ui.page = (uint8_t)pa; ui.force = 1; frames(3); ppm("mp-amp-beige");

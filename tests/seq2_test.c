@@ -849,8 +849,8 @@ static void t_longdiv(void)
     song.g[G_BPM] = 120;
     check(dly_samples(6) == (uint32_t)FS * 60u / 120u * 3u / 4u && dly_samples(7) == (uint32_t)FS * 60u / 120u * 3u / 8u,
           "2.4: delay TIME 1/8D = 3/4 beat, 1/16D = 3/8 beat");
-    check(dly_samples(8) == (uint32_t)FS * 60u / 120u * 3u / 2u && GP[G_DTIME].max == 8 && !strcmp(GP[G_DTIME].names[8], "1/4D"),
-          "2.6: delay TIME 1/4D = 1.5 beats, after 1/16D (older projects keep their value)");
+    check(dly_samples(8) == (uint32_t)FS * 60u / 120u * 3u / 2u && GP[G_DTIME].max == 9 && !strcmp(GP[G_DTIME].names[9], "1/4D") &&
+          !strcmp(GP[G_DTIME].names[0], "OFF"), "2.6: delay TIME 1/4D = 1.5 beats, after 1/16D (M-PYRE: the menu has OFF first)");
     check(div_units(7) == BEAT_U * 4u && div_units(8) == BEAT_U * 8u && div_units(2) == BEAT_U / 4u,
           "2.4: div_units: 1BAR = 4 beats, 2BAR = 8, 1/16 = a quarter beat");
 }
@@ -2107,6 +2107,7 @@ static double drdly_echo(int32_t dly, int32_t flt)
     song.g[G_DRREV] = 0;
     song.g[G_DRDLY] = (int16_t)dly;
     song.g[G_DMIX] = 90;                                 /* (as SLOOP's default: M-PYRE's is 48) */
+    song.g[G_DTIME] = 2;                                 /* (M-PYRE: the delay on - OFF at power-on - at 1/4) */
     TDRUM->p[P_TFLT] = (int16_t)flt;
     tf_measure(40);
     trk_note_on(TDRUM, 38u, 120);

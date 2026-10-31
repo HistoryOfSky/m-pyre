@@ -26,35 +26,7 @@ static struct {
 static volatile uint8_t rev_frz;         /* punch-in FREEZE (punch.c): the reverb holds, no loss, no damping */
 static int32_t rev_l[CTL], rev_r[CTL];   /* the reverb's own return of this block (FREEZE plays it) */
 
-/* DIST: low cut -> drive (1x..8x, exponential) -> asymmetric soft clip
- * (a little bias = even harmonics) -> tone low-pass that closes with drive ->
- * make-up gain. State per part (track_t dist_*). */
-static void track_dist(track_t *t, int32_t *b, uint32_t n)
-{
-    int32_t d = t->p[P_DIST], i, g, k, mk, bias = 2400, b0;
-    if (!d) {
-        t->dist_on = 0;
-        return;
-    }
-    if (!t->dist_on) {                                  /* coming on: no stale high-pass state (a thump) */
-        t->dist_on = 1;
-        t->dist_hp = b[0];
-        t->dist_lp1 = t->dist_lp2 = 0;
-    }
-    g = 4096 + d * d * 2;                                /* Q12: 1x .. ~9x, gentle at first */
-    k = 32000 - d * 95;                                  /* tone: transparent at low drive .. ~3 kHz, Q15 */
-    mk = 30000 - d * 120;                                /* make-up */
-    b0 = softclip(bias);
-    for (i = 0; i < (int32_t)n; i++) {
-        int32_t x = b[i], y;
-        t->dist_hp += (x - t->dist_hp + 64) >> 7;           /* ~55 Hz low cut: keep the bass out of the clipper */
-        x = clamp(x - t->dist_hp, -230000, 230000);         /* (x >> 2) * g fits 32 bits; the clip is flat out there */
-        y = softclip((((x >> 2) * g) >> 10) + bias) - b0;   /* >> 2 first: no overflow for loud poly */
-        t->dist_lp1 += mulq15(y - t->dist_lp1, k);         /* two poles: tames the fizz */
-        t->dist_lp2 += mulq15(t->dist_lp1 - t->dist_lp2, k);
-        b[i] = mulq15(t->dist_lp2, mk);
-    }
-}
+/* (M-PYRE: SLOOP's DIST went - P_DIST is the drive pedal's MIX now, amp.c track_pre) */
 
 #include "amp.c"                 /* M-PYRE: the amp and its cabinet, after the drive (track_amp) */
 
@@ -198,7 +170,7 @@ static inline void master_pre(int32_t *l, int32_t *r)
 
 static uint32_t delay_samples(void)
 {
-    uint32_t s = dly_samples((uint32_t)song.g[G_DTIME]);
+    uint32_t s = dly_samples(song.g[G_DTIME] > 0 ? (uint32_t)song.g[G_DTIME] - 1u : 0u);   /* (M-PYRE: 0 is OFF) */
     return s < 16u ? 16u : s >= DLY_LEN ? DLY_LEN - 1u : s;
 }
 
@@ -212,20 +184,25 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
     if (thr_dly && fb < 89 * 230)                       /* ECHO THROW: FDBK at least 70 %, gliding with it (2.6) */
         fb += ((89 * 230 - fb) * thr_dly) >> 15;
-    int32_t dmix = song.g[G_DMIX] * 258;
+    int32_t dmix = song.g[G_DTIME] ? 32767 : 0;          /* M-PYRE: the return at unity (each track's MIX sets the
+                                                         * wet), nothing while the delay is OFF */
     /* M-PYRE: the reverb's TYPE - the lines' length (of the full ones), the loop gain over SIZE, the damping over DAMP:
      *   ROOM   lines at 45 %, shorter and darker: a small live room, ~0.2 .. 1.2 s
      *   HALL   as ever: the full lines, RT60 ~0.4 .. 4 s
      *   PLATE  lines at 70 %, a dense bright metal sheet: little damping, long
-     *   SPRING lines at 30 %, a band-passed input (~250 Hz .. 4 kHz), nearly undamped: the twang */
-    static const uint16_t RT_SC[4] = {115, 256, 180, 77};
-    static const int16_t RT_G0[4] = {13000, 17000, 18500, 20500}, RT_GK[4] = {110, 104, 100, 85}, RT_DK[4] = {230, 200, 90, 60};
-    uint32_t rt = (uint32_t)song.g[G_RTYPE] & 3u;
-    int32_t g = RT_G0[rt] + song.g[G_RSIZE] * RT_GK[rt], lpk = 32767 - song.g[G_RDAMP] * RT_DK[rt];   /* loop gain, damping */
+     *   SPRING lines at 30 %, a band-passed input (~250 Hz .. 4 kHz), nearly undamped: the twang
+     *   CLOUD  the full lines, the loop gain near 1 and a slow swirl on line 0: a wash that hangs (an ambient pad) */
+    static const uint16_t RT_SC[5] = {115, 256, 180, 77, 256};
+    static const int16_t RT_G0[5] = {13000, 17000, 18500, 20500, 22500}, RT_GK[5] = {110, 104, 100, 85, 78},
+                         RT_DK[5] = {230, 200, 90, 60, 170};
+    uint32_t rt = song.g[G_RTYPE] >= 1 && song.g[G_RTYPE] <= 5 ? (uint32_t)song.g[G_RTYPE] - 1u : 1u;   /* (M-PYRE: 0 OFF) */
+    /* loop gain, damping (M-PYRE: TONE is the damping turned round: 127 bright), LEVEL the return (100: as before) */
+    int32_t g = RT_G0[rt] + song.g[G_RSIZE] * RT_GK[rt], lpk = 32767 - (127 - song.g[G_RDAMP]) * RT_DK[rt];
+    int32_t rlv = song.g[G_RTYPE] ? 32767 : 0;          /* (the return at unity; OFF: nothing) */
     uint32_t len1 = (REV_LINE[1] * RT_SC[rt]) >> 8, len2 = (REV_LINE[2] * RT_SC[rt]) >> 8, len3 = (REV_LINE[3] * RT_SC[rt]) >> 8;
     int32_t frnd = rev_frz ? 128 : 0;                  /* FREEZE: what is in the lines stays there (below: no
                                                          * loss, rounded to nearest; 0: as always, bit for bit) */
-    int32_t cdepth = song.g[G_CDEPTH] * 6;
+    int32_t cdepth = 60 * 6;                           /* (M-PYRE: the chorus' DEPTH and RATE fixed, its page gone) */
     int32_t ca0, ca1, cb0, cb1, ma, mb, dca, dcb;
     const uint32_t L0 = ((REV_LINE[0] * RT_SC[rt]) >> 8) + REV_MOD + 2u, B1 = REV_LINE[0] + REV_MOD + 2u,
                    B2 = B1 + REV_LINE[1], B3 = B2 + REV_LINE[2];
@@ -237,8 +214,8 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     }
     {   /* the chorus' two read points (Q8 samples back) and line 0's extra length, at both ends of the block */
         int32_t s0 = osc_sine(fx.cho_ph), s1, m0 = osc_sine(fx.rev_ph), m1;
-        fx.cho_ph += LFO_INC[song.g[G_CRATE] & 127];
-        fx.rev_ph += LFO_INC[30];
+        fx.cho_ph += LFO_INC[40];
+        fx.rev_ph += LFO_INC[rt == 4u ? 50 : 30];
         s1 = osc_sine(fx.cho_ph);
         m1 = osc_sine(fx.rev_ph);
         ca0 = (400 << 8) + ((s0 + 32768) * cdepth >> 8), ca1 = (400 << 8) + ((s1 + 32768) * cdepth >> 8);
@@ -323,10 +300,10 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             if (++fx.line_i[2] >= len2) fx.line_i[2] = 0;
             if (++fx.line_i[3] >= len3) fx.line_i[3] = 0;
         }
-        wet_l[i] = yl + o0 + o2;
-        wet_r[i] = yr + o1 - o3;
-        rev_l[i] = o0 + o2;
-        rev_r[i] = o1 - o3;
+        rev_l[i] = mulq15(o0 + o2, rlv);
+        rev_r[i] = mulq15(o1 - o3, rlv);
+        wet_l[i] = yl + rev_l[i];
+        wet_r[i] = yr + rev_r[i];
     }
 }
 
@@ -635,7 +612,7 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
     if (track_render(t, b, n))
         t->tail = t->p[P_ITYPE] | t->p[P_AMP] ? 64 : 16, t->ins_xt = 0;   /* (M-PYRE: the cabinet's 23 ms too) */              /* blocks of DIST / INSERT state to run out after the last
                                                          * voice (the INSERT's: 46 ms, a flanger's feedback) */
-    else if ((!t->tail || !(t->p[P_DIST] | t->p[P_ITYPE] | t->p[P_AMP]) || !--t->tail) && !slicer_busy(t) &&
+    else if ((!t->tail || !(t->p[P_PEDAL] | t->p[P_ITYPE] | t->p[P_AMP]) || !--t->tail) && !slicer_busy(t) &&
              !(t->ins_run && t->ins_res > 16u && t->ins_xt < 255u && ++t->ins_xt)) {   /* (2.6: the INSERT's DC
                                                          * blocker run out first, up to 255 blocks more: no step) */
         slicer_track(t, 0, n);                          /* (the SLICER's step clock runs on) */
@@ -650,14 +627,19 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
     {
         int32_t lvl = expr_gain(LEVEL_Q12[t->p[P_LEVEL] ? clamp(t->p[P_LEVEL] + t->p[P_ED_FX], 1, 127) : 0], (uint32_t)(t - trk)), pan = t->p[P_PAN];   /* (+ the sound's trim: 1/2 dB steps, as LEVEL's) */
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
-        int32_t c = t->p[P_CHOR] * 258, d = send_thr(t->p[P_DLY] * 258, thr_dly), r = send_thr(t->p[P_REV] * 258, thr_rev);
+        /* M-PYRE: DLY and REV are each effect's MIX - the send min(1, 2 m), the dry min(1, 2 (1 - m)): at 50 % the
+         * effect as loud as the dry, at 100 % only the effect; an effect OFF neither sends nor takes the dry */
+        int32_t md = song.g[G_DTIME] ? t->p[P_DLY] : 0, mr = song.g[G_RTYPE] ? t->p[P_REV] : 0;
+        int32_t c = t->p[P_CHOR] * 258, d = send_thr(md * 516 > 32767 ? 32767 : md * 516, thr_dly),
+                r = send_thr(mr * 516 > 32767 ? 32767 : mr * 516, thr_rev);
+        int32_t dry = mulq15((127 - md) * 516 > 32767 ? 32767 : (127 - md) * 516, (127 - mr) * 516 > 32767 ? 32767 : (127 - mr) * 516);
         int32_t pk = t->peak;
         int32_t xmax = c > d ? c : d;
         int32_t ga = mulq15(g0, duck.g0), gb = mulq15(g1, duck.g1);   /* mute x duck, ramped over the block */
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
         track_pre(t, b, n);                             /* M-PYRE: VOL, TONE, COMP, the PEDAL (amp.c) */
-        track_dist(t, b, n);
         track_amp(t, b, n);                             /* M-PYRE: the amp, its cabinet (amp.c) */
+        track_ptone(t, b, n);                           /* M-PYRE: the drive pedal's TONE, after the amp too */
         if (t->p[P_ITYPE] | t->ins_run) {
             track_insert(t, b, n);                      /* the INSERT (2.6): off, nothing */
             t->ins_res = (uint16_t)(b[n - 1u] < 0 ? (-b[n - 1u] > 65535 ? 65535 : -b[n - 1u])
@@ -693,6 +675,8 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
             if (r)
                 mx->sr[i] += mulq15(xs, r);
             gl = gl0 + ((dgl * (int32_t)i) >> CTL_LOG2), gr = gr0 + ((dgr * (int32_t)i) >> CTL_LOG2);   /* (2.7) */
+            if (dry < 32767)                            /* (M-PYRE: the effects' MIX past 50 %: less of the dry) */
+                x = (int32_t)(((int64_t)x * dry) >> 15);
             mx->l[i] += ((x >> 4) * gl) >> 8;           /* (x may pass 2^19: >> 4 first) */
             mx->r[i] += ((x >> 4) * gr) >> 8;
         }

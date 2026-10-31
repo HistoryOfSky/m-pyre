@@ -78,8 +78,10 @@ EXTRA_PRESETS = [
     ("GUITAR", "HI-GAIN", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 18), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80, "P_TRANS", -12)),
     ("GUITAR", "DJENT GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 12), 0, (0, 0, 0, 0),
      ("P_AMP", 3, "P_AGAIN", 108, "P_AMID", 50, "P_APRES", 80, "P_TRANS", -12)),
-    ("GUITAR", "LEAD GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 30), 1, (0, 0, 0, 0),
-     ("P_AMP", 4, "P_AGAIN", 80, "P_LEG", 30, "P_VIB", 40)),
+    # (the lead: a delay and a little room on it - a lead is never dry -, the mids up and the fizz down, the vibrato
+    # lighter, and the note let go of as a finger lifts, ~40 ms)
+    ("GUITAR", "LEAD GTR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 52), 1, (0, 0, 34, 26),
+     ("P_AMP", 4, "P_AGAIN", 84, "P_AMID", 74, "P_ATREB", 56, "P_LEG", 30, "P_VIB", 28)),
     ("GUITAR", "DI GUITAR", [0, 0, 0, 1, 127, 0, 0, 0], (0, 127, 127, 26), 0, (0, 0, 0, 0), ("P_TRANS", -12)),
     ("PALM", "PALM MUTE", [0, 0, 0, 0, 127, 0, 0, 0], (0, 127, 127, 10), 0, (0, 0, 0, 0), ("P_AMP", 3, "P_AGAIN", 80, "P_TRANS", -12)),
     # (the bass an octave and a half under the keys: C4 on the keyboard is the bass's C2; a softer pick, a longer

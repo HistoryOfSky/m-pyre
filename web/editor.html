@@ -2933,7 +2933,7 @@ function mockSettings() {
 const mlDefault = (b) => b.every((x, i) => i < 32 ? !x : i === 32 ? x === 1 : i === 33 ? x === 2 : i === 34 ? x === 3 : i === 35 ? x === 10 : i === 36 ? x === 2 : !x);
 function makeMockDevice(opt = {}) {
   const NONOFF = ["OFF", "ON"], NDIV = ["1/4", "1/8", "1/16", "1/32", "8T", "16T"], NGO = ["--", "GO"], NDASH = ["--"];
-  const NSDIV = [...NDIV, "1/2", "1BAR", "2BAR"], NDLY = [...NDIV, "1/8D", "1/16D", "1/4D"];   /* SLOOP 2.4: long steps, dotted delays */
+  const NSDIV = [...NDIV, "1/2", "1BAR", "2BAR"], NDLY = ["OFF", ...NDIV, "1/8D", "1/16D", "1/4D"];   /* (M-PYRE: OFF first) */   /* SLOOP 2.4: long steps, dotted delays */
   const D = (label, fmt, min, max, def, names = null, unit = "") => ({ label, fmt, min, max, def, names, unit });
   const E = (label, names, def) => D(label, F.ENUM, 0, names.length - 1, def, names);
   const TP = [
@@ -2946,14 +2946,14 @@ function makeMockDevice(opt = {}) {
     D("SWG", F.SWING, 0, 100, 0), D("PROB", F.PCT, 0, 127, 127), E("HOLD", NONOFF, 0), E("ORD", ["NOTE", "PLAY"], 0),
     D("ROOT", F.NOTE, 0, 11, 0), E("SCL", ["CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM", "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"], 0), E("QNT", ["OFF", "SNAP", "WHITE"], 0), D("TRN", F.SEMI, -24, 24, 0),
     D("LEN", F.STEPS, 1, 64, 16), E("DIV", NSDIV, 2), D("SWG", F.SWING, 0, 100, 0), D("GATE", F.PCT, 1, 127, 127),
-    D("DST", F.PCT, 0, 127, 0), D("CHO", F.PCT, 0, 127, 0), D("DLY", F.PCT, 0, 127, 0), D("REV", F.PCT, 0, 127, 0),
+    D("DST", F.PCT, 0, 127, 127), D("CHO", F.PCT, 0, 127, 0), D("DLY", F.PCT, 0, 127, 0), D("REV", F.PCT, 0, 127, 0),
     E("VCE", ["POLY", "MONO", "LEG", "UNI"], 0), D("GLD", F.TIME, 0, 127, 0), D("PAN", F.BIPCT, -64, 63, 0), E("MUTE", NONOFF, 0),
     E("GLMOD", ["RATE", "TIME"], 0), E("PRIO", ["LAST", "LOW", "HIGH"], 0), E("ALLOC", ["ROT", "REUSE"], 0), D("DTUNE", F.INT, 0, 127, 40),
     E("SLCR", ["OFF", "GATE", "STUT"], 0), D("PAT", F.INT, 1, 16, 1), E("RATE", ["1/8", "1/16", "1/32", "8T", "16T", "32T"], 1), D("DEPTH", F.PCT, 0, 127, 127),
     E("CHORD", ["OFF", "PW", "PW+", "OCT", "TERZ", "TRIAD", "7TH", "9TH", "SUS4"], 0),
     D("FILT", F.FILT, -64, 63, 0), D("STRUM", F.INT, -60, 60, 0), E("VLEAD", NONOFF, 0),
     /* SLOOP 2.6 (after Felucca 1.4 / 1.5): INSERT, ANALOG's filter TYPE, ENV SYNC, LFO 2 */
-    E("INSRT", ["OFF", "PHASR", "FLANG", "CHOR", "TREM"], 0),   /* (M-PYRE: modulation only) */
+    E("MOD", ["OFF", "PHASR", "FLANG", "CHOR", "TREM"], 0),   /* (M-PYRE: modulation only) */
     D("INS A", F.PCT, 0, 127, 64), D("INS B", F.PCT, 0, 127, 96), D("INS C", F.PCT, 0, 127, 96), D("MIX", F.PCT, 0, 127, 127),
     E("TYPE", ["LP", "BP", "HP"], 0), E("ESYNC", NONOFF, 0),
     E("SYNC", ["OFF", "4BAR", "2BAR", "1BAR", "1/2", "1/4", "1/8", "8T", "1/16", "16T", "1/32"], 0),
@@ -2961,15 +2961,15 @@ function makeMockDevice(opt = {}) {
     /* M-PYRE (amp.c, voice.c): the amp, its cabinet, the pedals, the octaver, the live controls (P_AMP 63 .. P_WAH 82) */
     E("AMP", ["OFF", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS"], 0), D("GAIN", F.PCT, 0, 127, 64),
     D("BASS", F.CTR, 0, 127, 64), D("MID", F.CTR, 0, 127, 64), D("TREB", F.CTR, 0, 127, 64), D("PRES", F.CTR, 0, 127, 64),
-    E("CAB", ["AUTO", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS", "OFF"], 0), E("PEDAL", ["OFF", "BOOST", "OD", "DIST", "FUZZ"], 0),
-    D("DRIVE", F.PCT, 0, 127, 64), D("COMP", F.OFFPCT, 0, 127, 0), D("OCT", F.OCTST, 0, 48, 24), D("O MIX", F.PCT, 0, 127, 64),
+    E("CAB", ["AUTO", "CLEAN", "CRNCH", "HIGH", "LEAD", "BASS", "OFF"], 0), E("PEDAL", ["OFF", "BOOST", "OD", "DIST", "FUZZ", "OCT"], 0),
+    D("DRIVE", F.PCT, 0, 127, 64), D("COMP", F.OFFPCT, 0, 127, 0), D("OCT", F.OCTST, 0, 48, 24), D("LEVEL", F.CTR, 0, 127, 64),
     E("PALM", NONOFF, 0), D("BEND", F.BEND, 0, 127, 0), D("VIB", F.OFFPCT, 0, 127, 0), D("LEGATO", F.OFFPCT, 0, 127, 0),
     D("WHAMMY", F.WHAM, 0, 127, 64), D("TONE", F.CTR, 0, 127, 64), D("VOL", F.PCT, 0, 127, 127), D("WAH", F.OFFPCT, 0, 127, 0),
   ];
   const GP = [
     D("BPM", F.BPM, 40, 240, 90), D("SWING", F.SWING, 0, 100, 0), E("CLICK", ["OFF", "REC", "ON"], 0), D("TUNE", F.INT, -50, 50, 0),
-    E("TIME", NDLY, 1), D("FDBK", F.PCT, 0, 120, 60), D("COLR", F.PCT, 0, 127, 70), D("MIX", F.PCT, 0, 127, 48),
-    D("SIZE", F.PCT, 0, 127, 90), D("DAMP", F.PCT, 0, 127, 60), D("CRT", F.LFOHZ, 0, 127, 40), D("CDP", F.PCT, 0, 127, 60),
+    E("TIME", NDLY, 0), D("FDBK", F.PCT, 0, 120, 60), D("TONE", F.PCT, 0, 127, 70), D("MIX", F.PCT, 0, 127, 48),
+    D("SIZE", F.PCT, 0, 127, 90), D("TONE", F.PCT, 0, 127, 67), D("CRT", F.LFOHZ, 0, 127, 40), D("CDP", F.PCT, 0, 127, 60),
     E("OUT", ["KEYS", "SEQ"], 0), E("SYNC", ["INT", "USB", "TRS"], 0), E("IN", ["NOTES", "CLOCK", ...Array.from({ length: 16 }, (_, k) => `CH ${k + 1}`)], 0), D("CPU", F.INT, 0, 0, 0),
     D("SECT", F.INT, 1, 4, 1), E("NAME", NDASH, 0), E("LOAD", NGO, 0), E("SAVE", NGO, 0),
     E("ENG", ["ANALOG", "DIGITAL", "PHASE", "LOFI", "SAMPLE", "VOICE", "TRIO", "WHEEL",
@@ -2990,7 +2990,8 @@ function makeMockDevice(opt = {}) {
     E("REMOTE", ["OFF", ...Array.from({ length: 16 }, (_, i) => String(i + 1))], 0),   /* GLO > MIDI 3 (2.7): the buttons */
     E("CLOCK", ["OFF", "OUT"], 0),                   /* GLO > MIDI 3 (2.7): MIDI clock, START / STOP out on USB */
     D("FADE", F.INT, 0, 15, 0),                      /* GLO > MASTER 2 (2.7.2): the punch-in FX fade (punch.c) */
-    E("TYPE", ["ROOM", "HALL", "PLATE", "SPRING"], 1),   /* M-PYRE: the reverb's type (fx.c) */
+    E("TYPE", ["OFF", "ROOM", "HALL", "PLATE", "SPRIN", "CLOUD"], 0),   /* M-PYRE: the reverb's type (fx.c), OFF first */
+    D("LEVEL", F.PCT, 0, 127, 100),                  /* M-PYRE: the reverb's level */
   ];
   /* the drum track's P_E0: its kit (drums.c DRUM_KIT_NAMES; 5 = 808, the power-on kit) */
   const KIT = E("KIT", ["HEAVY KIT", "DEEP", "TIGHT", "BRIGHT", "DUST", "808", "909", "606", "80S", "VINTAGE", "TRAP", "INDUSTR", "USR1", "USR2", "USR3", "USR4", "USR3+4", "SYN1", "SYN2", "SYN3", "SYN4"], 0);   /* (M-PYRE: the synthesised kits trimmed) */
@@ -4452,12 +4453,12 @@ const THEME = {
   ID: 11, SIZE: 40, MAGIC: 0x324D4854, MAGIC1: 0x314D4854, PREFIX: "SLOOP-THEME-1:",
   WHITE: [255, 255, 255], BLACK: [0, 0, 0],
   /* the FM-1's own palettes (gfx.c PALETTES) and the tracks' colours (TE_COL_DEF), as RGB 0..255 */
-  BUILTIN: [   /* (M-PYRE: AMBER RED MONO, BEIGE - a light screen, black text and accent - and GLUT, the default) */
+  BUILTIN: [   /* (M-PYRE: AMBER RED MONO, LIGHT - a light screen, black text and accent - and EMBER, the default) */
     ["AMBER", [[60, 26, 0], [110, 50, 0], [170, 82, 0], [225, 120, 8], [255, 166, 40]]],
     ["RED", [[52, 8, 8], [100, 18, 14], [170, 36, 26], [226, 64, 48], [255, 112, 92]]],
     ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]],
-    ["BEIGE", [[208, 196, 172], [168, 154, 130], [118, 106, 88], [70, 60, 48], [24, 18, 12]], [238, 228, 206], [0, 0, 0]],
-    ["GLUT", [[70, 30, 18], [112, 62, 42], [150, 96, 70], [214, 170, 136], [255, 236, 214]], [26, 10, 6], [255, 140, 30]]],
+    ["LIGHT", [[208, 196, 172], [168, 154, 130], [118, 106, 88], [70, 60, 48], [24, 18, 12]], [238, 228, 206], [0, 0, 0]],
+    ["EMBER", [[70, 30, 18], [112, 62, 42], [150, 96, 70], [214, 170, 136], [255, 236, 214]], [8, 0, 0], [255, 140, 30]]],
   TRACKS: [[235, 40, 25], [255, 120, 20], [255, 205, 40], [240, 236, 226]],   /* M-PYRE: fire, the drums white */
   to565: ([r, g, b]) => ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3),
   from565: (v) => [Math.round((((v >> 11) & 31) * 255) / 31), Math.round((((v >> 5) & 63) * 255) / 63), Math.round(((v & 31) * 255) / 31)],
@@ -5969,7 +5970,7 @@ const stepEdit = new Map(); /* index -> time of the last edit */
 
 /* parameter ids (firmware/src/core.h); used only when P_COUNT / G_COUNT match */
 /* pcount 71 / pe0 63: 2.6's INSERT, filter TYPE, ENV SYNC, LFO 2 (P_ITYPE 53 .. P_LPOL 62, after Felucca 1.4 / 1.5) */
-const EXPECT = { pcount: [61, 71], gcount: [32, 33, 45, 46, 47, 48, 49, 50], pe0: [53, 63] };   /* gcount 33: 2.5's drum DLY (G_DRDLY); 45: 2.6's GLO > MIDI, TEXTURE, BEND; 46: 2.7's FX CH; 47: DR MAP; 48: REMOTE; 49: CLK OUT; 50: 2.7.2's FX FADE */
+const EXPECT = { pcount: [61, 71], gcount: [32, 33, 45, 46, 47, 48, 49, 50, 51, 52], pe0: [53, 63] };   /* gcount 33: 2.5's drum DLY (G_DRDLY); 45: 2.6's GLO > MIDI, TEXTURE, BEND; 46: 2.7's FX CH; 47: DR MAP; 48: REMOTE; 49: CLK OUT; 50: 2.7.2's FX FADE */
 const P = { LEVEL: 0, SLEN: 29, CHORD: 49 };
 const LAYOUT = (pe0) => {
   const v251 = pe0 >= 63;                         /* (2.6: the pages the device has for the new parameters) */
@@ -5980,8 +5981,8 @@ const LAYOUT = (pe0) => {
     { t: "EDIT", engine: true, pages: [["EDIT 1", 0, [pe0, pe0 + 1, pe0 + 2, pe0 + 3]], ["EDIT 2", 0, [pe0 + 4, pe0 + 5, pe0 + 6, pe0 + 7]],
       ...opt(v251, ["FILTER", 0, [58], 0])] },     /* (4th: the engine it is shown with: ANALOG's filter TYPE) */
     { t: "VOICE", pages: [["LEVEL", 0, [0]], ["VOICE", 0, [37, 38, 41, 42]], ["VOICE 2", 0, [43, 44, 39, 40]]] },
-    { t: "FX", pages: [["FX", 0, [33, 34, 35, 36]], ["FILTER", 0, [50]], ["SLICER", 0, [45, 46, 47, 48]],
-      ...opt(v251, ["INSERT", 0, [53, 54, 55, 56]], ["INSERT 2", 0, [57]]), ["DLY", 1, [4, 5, 6, 7]], ["REVERB", 1, [50, 8, 9]], ["CHORUS", 1, [10, 11]]] },
+    { t: "FX", pages: [["FX", 0, [33, 57, 35, 36]], ...opt(v251, ["PEDAL", 0, [70, 71, 80, 74]], ["MOD", 0, [53, 54, 55, 57]]),
+      ["DELAY", 1, [4, 5, 6, 7]], ["REVERB", 1, [50, 8, 9, 51]], ["FILTER", 0, [50]], ["SLICER", 0, [45, 46, 47, 48]]] },   /* (M-PYRE: the pedalboard) */
     { t: "SEL", pages: [["SEL", 0, [25, 26, 27, 49]], ["SEL 2", 0, [28, 51, 52]]] },
     { t: "ARP", pages: [["ARP", 0, [17, 18, 19, 20]], ["ARP 2", 0, [21, 22, 23, 24]]] },
     { t: "SEQ PATTERN", tab: "seqgroups", pages: [["PATTERN", 0, [29, 30, 31, 32]]] },

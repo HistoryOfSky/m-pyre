@@ -113,7 +113,9 @@ enum {                          /* global parameters */
     G_FXFADE,                   /* SLOOP 2.7.2, the FX layer (FX held), SELECT: how fast a punch-in FX fades in and out, 0 (instant, as
                                  * before) .. 15 (punch.c; a setting of the FM-1, kept in BEND's byte) */
     G_RTYPE,                    /* M-PYRE: the reverb's type, ROOM HALL PLATE SPRING (fx.c fx_buses; a project keeps it in
-                                 * g[G_DRCH]'s top two bits, project.c proj_tx_put) */
+                                 * g[G_DRCH]'s top two bits, project.c proj_tx_put; CLOUD: g[G_CRATE]) */
+    G_RLEVEL,                   /* M-PYRE: the reverb's LEVEL (fx.c; a project keeps it in g[G_CDEPTH]: the chorus' RATE
+                                 * and DEPTH are fixed since its page went) */
     G_COUNT
 };
 
@@ -156,7 +158,7 @@ typedef struct {
     uint8_t fx[4];               /* DIST, CHORUS, DELAY, REVERB sends */
     uint8_t arp[4];              /* MODE, RATE, OCT, GATE */
     uint8_t pat;                 /* sequence pattern (PATTERNS[pat - 1]), loaded only into an empty sequencer */
-    int8_t x[8];                 /* more of the patch: up to 4 (track parameter id + 1, value) pairs, 0 = none
+    int8_t x[12];                /* more of the patch: up to 6 (track parameter id + 1, value) pairs, 0 = none
                                   * (glide, pitch / LFO modulation, voice mode...: preset_extras) */
 } preset_t;
 #define FX(d, c, dl, r) .fx = {(d) + 1, (c) + 1, (dl) + 1, (r) + 1}

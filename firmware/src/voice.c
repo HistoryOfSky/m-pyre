@@ -345,6 +345,23 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
 
 /* MONO / LEGATO / UNISON: one note on one voice (eight for UNISON, or the
  * engine's voice cap, spread by DETUNE over the same width) */
+/* M-PYRE: the OCT pedal (P_PEDAL 5, as a BOSS OC-5): a voice an octave up at OCT+ (P_PDRV), one an octave down at
+ * OCT- (P_TONE), the note itself at LEVEL (P_OMIX: full from the middle up). Velocities; 0 = that voice off */
+#define PED_OCT 5
+static uint32_t oct_vel(const track_t *t, uint32_t k, uint32_t vel)   /* k: 0 up, 1 down, 2 the note */
+{
+    uint32_t v;
+    if (is_drum(t) || t->p[P_PEDAL] != PED_OCT)
+        return k == 2u ? vel : 0u;
+    /* LEVEL (P_OMIX) the note's: 0 none, 64 full; past 64 the octaves go down instead (the note stays on top); the
+     * pedal's MIX (P_DIST, the FX overview's DST) the octaves' */
+    v = k == 2u ? vel * (uint32_t)(t->p[P_OMIX] > 64 ? 64 : t->p[P_OMIX]) / 64u
+                : vel * (uint32_t)t->p[k ? P_TONE : P_PDRV] / (k ? 80u : 100u) * (uint32_t)t->p[P_DIST] / 127u *
+                      (uint32_t)(t->p[P_OMIX] > 64 ? 191 - t->p[P_OMIX] : 127) / 127u;   /* (the octave below a little
+                                                         * fuller: under an amp's tight low cut it thins) */
+    return v > 127u ? 127u : v;
+}
+
 /* M-PYRE: a sampled MONO part played again while it sounds: the sample would jump back to its start mid-wave (a
  * click, louder or softer with the tempo - where in the wave the next note lands). The old note goes to a free voice
  * of the part and fades out over ~6 ms there, the new one starts clean */
@@ -353,7 +370,7 @@ static void mono_handover(track_t *t, voice_t *v)
     uint32_t j;
     if (!eng_sampled(ENGINES[t->engine]) || !v->active || !v->stage || v->stage == 4u)
         return;
-    for (j = 2; j < NVOICE && t->v[j].active; j++)
+    for (j = 3; j < NVOICE && t->v[j].active; j++)   /* (v[1], v[2]: the OCT pedal's) */
         ;
     if (j == NVOICE || !voice_room(t, 1))
         return;
@@ -366,18 +383,21 @@ static void mono_handover(track_t *t, voice_t *v)
 
 static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int glide)
 {
-    uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i, vel0 = vel;
-    /* M-PYRE: the OCTAVER in MONO / LEGATO too - the octave voice is v[1], played as v[0] is (O MIX: the crossfade) */
-    int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o, om = t->p[P_OMIX];
-    int oct = nv == 1u && o && om && n2 >= 0 && n2 < 128 && !is_drum(t);
-    if (oct && om > 64)
-        vel = vel * (uint32_t)(127 - om) / 63u;
+    uint32_t mode = voice_mode(t), nv = mode == V_UNISON ? trk_nvoice(t) : 1u, i, vel0 = vel, k;
+    /* M-PYRE: the OCT pedal in MONO / LEGATO too - its voices are v[1] (up) and v[2] (down), played as v[0] is */
+    if (nv == 1u)
+        vel = oct_vel(t, 2, vel);
     for (i = 0; i < nv; i++) {
         voice_t *v = &t->v[i];
         int32_t k = 2 * (int32_t)i - (int32_t)(nv - 1u);   /* -7 .. 7 */
         if (nv > 1u && nv < NVOICE)
             k = k * (NVOICE - 1) / (int32_t)(nv - 1u);      /* fewer voices: the outer ones as wide */
         v->fine = nv > 1u ? k * t->p[P_DETUNE] * 56 / 889 : 0;   /* up to ~±40 cents */
+        if (!vel && nv == 1u) {                          /* (OCT pedal, LEVEL 0: only the octaves) */
+            if (v->gate)
+                v->gate = 0, v->stage = 3;
+            continue;
+        }
         if (retrig || !v->active || !v->gate) {
             int was_sounding;
             if (nv == 1u && retrig)
@@ -401,14 +421,20 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
             glide_set(t, v, glide);
         }
     }
-    if (oct) {                                          /* M-PYRE: the octave voice, as the note goes */
-        voice_t *v2 = &t->v[1];
-        uint32_t ov = vel0 * (uint32_t)(om > 64 ? 64 : om) / (o < 0 ? 40u : 55u) + 1u;
+    for (k = 0; nv == 1u && k < 2u; k++) {               /* M-PYRE: the OCT pedal's voices, as the note goes */
+        voice_t *v2 = &t->v[1u + k];
+        int32_t n2 = (int32_t)note + (k ? -12 : 12);
+        uint32_t ov = oct_vel(t, k, vel0);
+        if (!ov || n2 < 0 || n2 > 127) {
+            if (v2->gate)
+                v2->gate = 0, v2->stage = 3;
+            continue;
+        }
         if (retrig || !v2->active || !v2->gate) {
             if (retrig)
                 mono_handover(t, v2);
             v2->fine = 0;
-            voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, glide);
+            voice_start(t, v2, (uint32_t)n2, ov, glide);
         } else {
             v2->note = (uint8_t)n2;
             v2->pitch16 = n2 * 16;
@@ -484,11 +510,7 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
         t->lfo_fade = 0;
     }
     if (mode == V_POLY) {
-        int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o, om = t->p[P_OMIX];
-        int oct = o && om && n2 >= 0 && n2 < 128;
-        /* M-PYRE OCTAVER, O MIX a crossfade: up to 50 % the octave voice comes in (the note stays), from 50 % on the
-         * note goes out - at 100 % only the octave voice sounds */
-        uint32_t dv = (oct && om > 64) ? vel * (uint32_t)(127 - om) / 63u : vel;
+        uint32_t dv = oct_vel(t, 2, vel), k;             /* M-PYRE: the OCT pedal - the note at its LEVEL, */
         t->nmono = 0;                                   /* no stale mono stack after a mode change */
         t->mono_note = 0;
         if (dv) {
@@ -496,12 +518,14 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
             v->fine = 0;
             voice_start(t, v, note, dv, t->p[P_GLIDE] != 0);
         }
-        if (oct) {
-            voice_t *v2 = voice_alloc(t, (uint32_t)n2);
-            /* the octave below a little fuller (under an amp's tight low cut it thins) */
-            uint32_t ov = vel * (uint32_t)(om > 64 ? 64 : om) / (o < 0 ? 40u : 55u) + 1u;
-            v2->fine = 0;
-            voice_start(t, v2, (uint32_t)n2, ov > 127u ? 127u : ov, t->p[P_GLIDE] != 0);
+        for (k = 0; k < 2u; k++) {                      /* .. an octave up and one down at theirs */
+            int32_t n2 = (int32_t)note + (k ? -12 : 12);
+            uint32_t ov = oct_vel(t, k, vel);
+            if (ov && n2 >= 0 && n2 < 128) {
+                voice_t *v2 = voice_alloc(t, (uint32_t)n2);
+                v2->fine = 0;
+                voice_start(t, v2, (uint32_t)n2, ov, t->p[P_GLIDE] != 0);
+            }
         }
         return;
     }
@@ -534,12 +558,15 @@ static void strum_cancel(const track_t *t, uint32_t note, int all)
             stq[i].on = 0;
 }
 static void trk_note_off1(track_t *t, uint32_t note);
-static void trk_note_off(track_t *t, uint32_t note)   /* M-PYRE: and the OCTAVER's voice */
+static void trk_note_off(track_t *t, uint32_t note)   /* M-PYRE: and the OCT pedal's voices */
 {
-    int32_t o = t->p[P_OCT] - 24, n2 = (int32_t)note + o;
     trk_note_off1(t, note);
-    if (o && n2 >= 0 && n2 < 128 && voice_mode(t) == V_POLY && !is_drum(t))
-        trk_note_off1(t, (uint32_t)n2);
+    if (t->p[P_PEDAL] == PED_OCT && voice_mode(t) == V_POLY && !is_drum(t)) {
+        if (note + 12u < 128u)
+            trk_note_off1(t, note + 12u);
+        if (note >= 12u)
+            trk_note_off1(t, note - 12u);
+    }
 }
 static void trk_note_off1(track_t *t, uint32_t note)
 {
@@ -562,7 +589,7 @@ static void trk_note_off1(track_t *t, uint32_t note)
             if (next) {                                 /* fall back to a held note, legato */
                 mono_play(t, next, t->v[0].vel, 0, t->p[P_GLIDE] != 0);
             } else {
-                for (i = 0; i < (nv == 1u ? 2u : nv); i++)   /* (M-PYRE: and the octave voice, v[1]) */
+                for (i = 0; i < (nv == 1u ? 3u : nv); i++)   /* (M-PYRE: and the OCT pedal's, v[1] v[2]) */
                     if (t->v[i].gate) {
                         t->v[i].gate = 0;
                         t->v[i].stage = 3;

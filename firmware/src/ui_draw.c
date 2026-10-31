@@ -78,18 +78,7 @@ UI_SMALL static void draw_head(void)
         cv_text(x + 12, 1, &FONT_S, "OCT", C_GRAY);
         cv_text(x + 40, 1, &FONT_S, b, C_HI);
     }
-    if (FELUCCA_ICONS) {                              /* the selected track: tape + number */
-        cv_icon(156, 2, ICON_TAPE, C_GRAY);
-        b[0] = (char)('1' + song.sel);
-        b[1] = 0;
-        cv_rect(168, 2, 12, 16, TE_COL[song.sel & 3u]);
-        cv_text(170, 1, &FONT_S, b, C_BLACK);
-    } else {
-        b[0] = 'T';
-        b[1] = (char)('1' + song.sel);
-        b[2] = 0;
-        cv_text(158, 1, &FONT_S, b, C_HI);
-    }
+    /* (M-PYRE: no tape and track number here: the footer names the sound) */
     {   /* battery, 3 bars; USB when a host is there */
         int32_t lvl = batt_shown(), k;
         int32_t bx = 236 - 19;                          /* right edge (the CPU figure is in the console) */
@@ -369,7 +358,8 @@ UI_SMALL static void graph_fx(const track_t *t, uint16_t c)
 {
     uint32_t i;
     for (i = 0; i < 4u; i++) {
-        int32_t h = t->p[P_DIST + i] * 80 / 127, x = (int32_t)i * 60 + 28;
+        static const uint8_t ID[4] = {P_DIST, P_IMIX, P_DLY, P_REV};   /* (M-PYRE: each effect's MIX) */
+        int32_t h = t->p[ID[i]] * 80 / 127, x = (int32_t)i * 60 + 28;
         cv_rect(x, 10, 1, 80, C_LINE);
         cv_rect(x, 90 - h, 1, h, c);
         cv_rect(x - 3, 90 - h, 7, 1, c);
@@ -817,8 +807,8 @@ UI_SMALL static void draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
-    uint16_t c = settings.palette == PAL_GLUT && !theme_on ? C_WHITE : TE_COL[song.sel & 3u];   /* LIVE: the curves in the
-                                                     * track's colour (GLUT: the accent, embers) */
+    uint16_t c = settings.palette == PAL_EMBER && !theme_on ? C_WHITE : TE_COL[song.sel & 3u];   /* LIVE: the curves in the
+                                                     * track's colour (EMBER: the accent) */
     uint32_t sig, top, drum_note = !ui.home && is_drum(t) && !page_for_drum(pg);
     if (!ui.home && pg->graph == GR_TRK) {
         draw_tracks();
@@ -914,6 +904,7 @@ UI_SMALL static uint32_t page_pos(uint32_t *n)
 }
 
 #include "ui_amp.c"                                    /* M-PYRE: the AMP view (draw_foot asks) */
+#include "ui_pedal.c"                                  /* M-PYRE: the FX pages as pedals */
 UI_SMALL static void draw_foot(void)
 {
     char s[48], pn[16], en[10], ti[20];
@@ -1233,15 +1224,28 @@ UI_SMALL static void ui_draw(void)
         ui.force = 0;
         return;
     }
-    mp_on = (uint8_t)(ui.home ? !is_drum(TSEL) : big_page(cur_page()) && (!is_drum(TSEL) || page_for_drum(cur_page())));
+    mp_on = (uint8_t)(ui.home ? !is_drum(TSEL) : (big_page(cur_page()) || cur_page()->graph == GR_FX) &&
+                                     (!is_drum(TSEL) || page_for_drum(cur_page())));
     if (mp_on) {                                        /* M-PYRE: the mockup's layout (LIVE, the 2 x 2 pages) */
+        int on, pk = pedal_kind(&on);
         if (ui.force)
             lcd_fill(0, 0, 240, Y_FOOT, C_BLACK);
         mp_head();
         draw_columns();                                 /* (the values: ui.big_*) */
-        if (ui.home) {
-            draw_graph();                               /* the scope, then the knobs over its top rows */
+        if (ui.home || cur_page()->graph == GR_FX) {
+            draw_graph();                               /* the scope (FX: the sends), then the knobs over its top rows */
             mp_cols();
+        } else if (pk >= 0) {                           /* the values on top, the pedal under them */
+            static uint32_t psig;
+            uint32_t h = 2166136261u, c;
+            for (c = 0; c < 4u; c++)
+                h = str_hash(h ^ ui.big_c[c] * 31u ^ (uint32_t)ui.big_r[c] * 7919u, ui.big_v[c]);
+            h ^= (uint32_t)pk * 0x9E37u + (uint32_t)on * 0x3301u + (ui.hot_t ? ui.hot_col + 1u : 0u) * 0x51u + pal_bg;
+            mp_cols();
+            if (ui.force || h != psig) {
+                psig = h;
+                pedal_draw(pk, on);
+            }
         } else {
             mp_grid();
         }

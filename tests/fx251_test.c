@@ -544,16 +544,19 @@ static void t_throw(void)
     int16_t fb0 = song.g[G_DFDBK];
     setup();
     song.g[G_DFDBK] = 0;
+    song.g[G_DTIME] = 2, song.g[G_RTYPE] = 2;          /* (M-PYRE: the delay and the reverb on: OFF at power-on) */
     thr_req = 0, thr_rev = thr_dly = 0;
     trk_note_on(&trk[0], 45, 100), render(60), trk_note_off(&trk[0], 45), render(400);
     dry = rms(300u * CTL, 400u * CTL);                 /* (the release is 0: what rings after it is the sends') */
     setup();
     song.g[G_DFDBK] = 0;
+    song.g[G_DTIME] = 2, song.g[G_RTYPE] = 2;          /* (M-PYRE: the delay and the reverb on: OFF at power-on) */
     thr_req = 1;
     trk_note_on(&trk[0], 45, 100), render(60), trk_note_off(&trk[0], 45), render(400);
     rv = rms(300u * CTL, 400u * CTL);
     setup();
     song.g[G_DFDBK] = 0;
+    song.g[G_DTIME] = 2, song.g[G_RTYPE] = 2;          /* (M-PYRE: the delay and the reverb on: OFF at power-on) */
     thr_req = 2;
     trk_note_on(&trk[0], 45, 100), render(60), trk_note_off(&trk[0], 45), render(400);
     ec = rms(300u * CTL, 400u * CTL);

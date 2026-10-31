@@ -42,8 +42,8 @@
                                                 * so the format and its size do not change */
 _Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u,
                "the globals a project holds, then G_DRDLY (then 2.6's GLO > MIDI: settings of the FM-1)");
-_Static_assert(G_FXFADE == G_CLKOUT + 1u && G_RTYPE == G_FXFADE + 1u && G_COUNT == G_RTYPE + 1u,
-               "G_FXFADE (2.7.2) a setting of the FM-1, then M-PYRE's G_RTYPE, the last global");
+_Static_assert(G_FXFADE == G_CLKOUT + 1u && G_RTYPE == G_FXFADE + 1u && G_RLEVEL == G_RTYPE + 1u && G_COUNT == G_RLEVEL + 1u,
+               "G_FXFADE (2.7.2) a setting of the FM-1, then M-PYRE's G_RTYPE and G_RLEVEL, the last globals");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
 _Static_assert(PROJ_NC6 == PROJ_NP_V5 - 8u && PROJ_NX6 == 30u, "format 6 (M-PYRE): format 5's parameters, then 10 + 20 bytes");
@@ -403,6 +403,9 @@ UI_SMALL static void proj_tx_put(project_t *p)
     p->g[G_DRCH] = (int16_t)(uint16_t)((song.g[G_TXLVL] & 127) | ((song.g[G_TXTONE] + 64) & 127) << 7 |
                                        ((uint32_t)song.g[G_RTYPE] & 3u) << 14);   /* (M-PYRE: the reverb's type on top) */
     p->g[G_INFO] = song.g[G_TXMOVE];
+    p->g[G_CRATE] = (int16_t)(0x4000 | (song.g[G_RTYPE] & 7));   /* (M-PYRE: the reverb's TYPE whole, its LEVEL: the
+                                                      * chorus' slots, its RATE and DEPTH fixed now) */
+    p->g[G_CDEPTH] = (int16_t)(0x5000 | (song.g[G_RLEVEL] & 127));   /* (0x5000: TIME and TYPE with OFF first) */
 }
 static void proj_tx_get(const project_t *p)
 {
@@ -418,7 +421,16 @@ static void proj_tx_get(const project_t *p)
     }
     for (i = 0; i < 7u; i++)
         song.g[ID[i]] = (int16_t)clamp(v[i], GP[ID[i]].min, GP[ID[i]].max);
-    song.g[G_RTYPE] = (int16_t)(p->rsv[0] & 0x80u ? ((uint16_t)p->g[G_DRCH] >> 14) & 3u : (uint32_t)GP[G_RTYPE].def);
+    {   /* M-PYRE: the reverb's TYPE (OFF first now: a project from before, one up) and LEVEL */
+        int nw = (p->g[G_CDEPTH] & 0x7F80) == 0x5000;
+        int32_t rt = p->rsv[0] & 0x80u ? (((uint16_t)p->g[G_DRCH] >> 14) & 3u) + 1 : GP[G_RTYPE].def;
+        if ((p->g[G_CRATE] & 0x7FF8) == 0x4000)
+            rt = (p->g[G_CRATE] & 7) + !nw;
+        song.g[G_RTYPE] = (int16_t)clamp(rt, 0, 5);
+        song.g[G_RLEVEL] = (int16_t)((p->g[G_CDEPTH] & 0x7F80) == 0x4000 || nw ? p->g[G_CDEPTH] & 127 : GP[G_RLEVEL].def);
+    }
+    song.g[G_CRATE] = GP[G_CRATE].def;
+    song.g[G_CDEPTH] = GP[G_CDEPTH].def;
 }
 
 /* (2.7) the DRUMS screen's SOUND page in a project: each sound's TUNE (4 bits) and DECAY (3 bits), two's complement
@@ -526,6 +538,8 @@ static void proj_apply(const project_t *p, int all)
             song.g[i] = (int16_t)clamp(p->g[i], GP[i].min, GP[i].max);
     song.g[G_DRDLY] = (int16_t)clamp(p->drdly, GP[G_DRDLY].min, GP[G_DRDLY].max);   /* (a load and a section, as REV) */
     proj_tx_get(p);                                     /* GLO > TEXTURE (2.6): a load and a section */
+    if (all && (p->g[G_CDEPTH] & 0x7F80) != 0x5000)     /* (M-PYRE: the delay's TIME has OFF first now) */
+        song.g[G_DTIME] = (int16_t)clamp(song.g[G_DTIME] + 1, GP[G_DTIME].min, GP[G_DTIME].max);
     drum_tw_get(p);                                     /* (2.7) the drum sounds' TUNE and DECAY: a load and a section */
     drum_mx_get(p);                                     /* (M-PYRE) and their LEVEL, PUNCH */
     for (k = 0; k < NTRK; k++) {
@@ -540,6 +554,9 @@ static void proj_apply(const project_t *p, int all)
                                     i >= P_E0 && i <= P_E7 ? &ENGINES[e]->edit[i - P_E0] : &TP[i];
             t->p[i] = (int16_t)clamp(pt_get(s, i), d->min, d->max);
         }
+        if (k != TRK_DRUM && (p->g[G_CDEPTH] & 0x7F80) != 0x5000)
+            t->p[P_DIST] = 127;                         /* (M-PYRE: P_DIST is the drive pedal's MIX now; SLOOP's DIST of a
+                                                         * project from before is gone: all of the pedal) */
         if (k == TRK_DRUM)                              /* (M-PYRE: those bytes held the drum sounds' LEVEL, PUNCH) */
             for (i = P_AMP; i <= P_AMP + DRUM_LANES; i++)   /* (the drum bus' PUNCH, HI CUT after them: its own) */
                 t->p[i] = TP[i].def;

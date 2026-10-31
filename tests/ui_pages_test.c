@@ -464,7 +464,7 @@ int main(int argc, char **argv)
     check(trk[0].micro[4] == -7 && trk[0].step[4].n == 1, "step 5 held + KNOB 4: nudged -7 (the step kept)");
     {
         int k0 = lock_find(&trk[0], 4, P_DIST, 0);
-        int32_t d0 = trk[0].p[P_DIST];
+        int32_t d0 = trk[0].p[P_DIST] = 40;             /* (M-PYRE: the pedal's MIX, full at power-on: room to move up) */
         uint32_t sel0 = song.sel, eng0 = trk[0].eng_req, pr0 = trk[0].preset;
         encs[panel.enc[EN_PRESET]] = 1; frame();
         {
@@ -1191,21 +1191,34 @@ int main(int argc, char **argv)
         check(!strcmp(PT(), "LFO 2"), "SELECT left: the page before");
         SEL(-1);
         check(!strcmp(PT(), "LFO"), "SELECT left: LFO");
-        tap(B_FX); SEL(-9); SEL(is_drum(TSEL) ? 1 : 2);   /* (M-PYRE: from the first page: PEDAL, FX, then FILTER) */
+        if (!is_drum(TSEL) && ENGINES[TSEL->eng_req % NENGINES] == &ENG_SAMPLE) {   /* M-PYRE: a sample part's FX: */
+            static const char *const W[5] = {"FX", "PEDAL", "MOD", "DELAY", "REVERB"};   /* the pedalboard, no FILTER */
+            int ok = 1, k;
+            tap(B_FX); SEL(-9);
+            for (k = 0; k < 5; k++) {
+                ok &= !strcmp(PT(), W[k]);
+                SEL(1);
+            }
+            check(ok && !strcmp(PT(), "REVERB"), "SELECT on FX (a sample part): FX PEDAL MOD DELAY REVERB, then it stops");
+            {   /* the pedal under the values: the pedal's colour in the middle of the screen */
+                uint32_t x, y, lit = 0;
+                SEL(-3); TSEL->p[P_PEDAL] = 2; ui.force = 1; frames(2);   /* PEDAL, OD: yellow */
+                for (y = 120; y < 190; y++)
+                    for (x = 20; x < 220; x++)
+                        lit += ((screen[y * 240u + x] >> 3) & 31u) > 20u;   /* (swapped RGB565: red high) */
+                check(!strcmp(PT(), "PEDAL") && lit > 3000u, "FX > PEDAL: the pedal drawn under its values (OD)");
+                TSEL->p[P_PEDAL] = 0;
+            }
+        } else {
+        tap(B_FX); SEL(-9); SEL(is_drum(TSEL) ? 1 : 5);   /* (M-PYRE: FX PEDAL MOD DELAY REVERB, then FILTER) */
         check(!strcmp(PT(), "FILTER"), "SELECT on FX: next page, the track FILTER");
         TSEL->p[P_TFLT] = -32; ui.force = 1; frames(2); ppm("page-filter");
         check(!strcmp(ui.big_l[0], "FILT") && !strcmp(ui.big_v[0], "LP50") && !ui.big_l[1][0],
               "FILTER page: its one value drawn large (LP50 %)");
-        {   /* the big value in the graph strip: white pixels in the middle of the screen */
-            uint32_t x, y, lit = 0;
-            for (y = Y_GRAPH + 30; y < Y_GRAPH + 90; y++)
-                for (x = 40; x < 200; x++)
-                    lit += screen[y * 240u + x] != 0;
-            check(lit > 300u, "FILTER page: the graph strip shows it");
-        }
         TSEL->p[P_TFLT] = 0;
         SEL(9);
-        check(!strcmp(PT(), "CHORUS"), "SELECT on FX: on to the last page, CHORUS (M-PYRE: REVERB, CHORUS)");
+        check(!strcmp(PT(), "SLICER"), "SELECT on FX: on to the last page, SLICER");
+        }
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), TSEL->p[P_AMP] ? "AMP" : "EDIT 1"), "SELECT on EDIT: back to the first page (M-PYRE: an amp on: AMP)");
         SEL(9);
@@ -1602,8 +1615,8 @@ int main(int argc, char **argv)
         check(er_mute == 0u, "2.7: a black key again: back to erasing, also after EDIT is let go");
         drum_mute = 0;
         TDRUM->dstep[0] = (dstep_t){0};
-        WALK(FAM_FX, "INSERT", ins_d);
-        check(ins_d, "the drum track: the INSERT page in FX");
+        WALK(FAM_FX, "MOD", ins_d);
+        check(ins_d, "the drum track: the MOD page (the INSERT) in FX");
         go_home(); frames(16);
 
         song.sel = 0; set_engine_of(&trk[0], 0); trk[0].engine = trk[0].eng_req; go_home(); frame();

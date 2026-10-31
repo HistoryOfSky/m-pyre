@@ -59,8 +59,10 @@ static amp_st_t amp_st[NPART];
 
 /* ---- in front of the amp (track_pre), on every synth part: VOL, TONE, COMP, the PEDAL */
 typedef struct {
-    bq_st_t tn[2], pd[3], wah;
+    bq_st_t pd[3], wah;
     int32_t vol, env, cg;                           /* VOL as it glides (Q15); COMP's envelope and gain (Q15) */
+    int32_t tl, tl2;                                /* the pedal's TONE (two one-pole low-passes, ~600 Hz) */
+    int32_t pt;                                     /* .. and its share after the amp (a one-pole, ~1.5 kHz) */
     uint8_t ped;
 } pre_st_t;
 static pre_st_t pre_st[NPART];
@@ -69,13 +71,17 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
     pre_st_t *s = &pre_st[(uint32_t)(t - trk) % NPART];
     /* VOL as a guitar's volume pot (audio taper: half way about -20 dB, 10^(2 (v / 127 - 1)) = 2^((v - 127) * 10 / 192)) */
     int32_t vt = t->p[P_PVOL] >= 127 ? 32767 : t->p[P_PVOL] <= 0 ? 0 : (int32_t)(pow2_q16((t->p[P_PVOL] - 127) * 10) >> 1);
-    int32_t tone = t->p[P_TONE] - 64;
-    int32_t comp = t->p[P_COMP], ped = t->p[P_PEDAL], wah = t->p[P_WAH], i;
+    int32_t comp = t->p[P_COMP], ped = t->p[P_PEDAL] < 5 ? t->p[P_PEDAL] : 0, wah = t->p[P_WAH], i;   /* (5: OCT, voice.c) */
+    /* M-PYRE: a drive pedal's TONE (0 dark .. 64 as voiced .. 127 bright: the highs over ~1.2 kHz x0 .. x1 .. x2) and
+     * LEVEL (P_OMIX: 64 as voiced, 2^((v - 64) / 16): -12 .. +12 dB). TONE after the clipping, as a stomp box's: the
+     * highs over ~600 Hz x0 (only the lows: dark, woolly) .. x1 .. x5 (cutting) */
+    int32_t tk = t->p[P_TONE] * 1290, lv = (int32_t)(pow2_q16((t->p[P_OMIX] - 64) * 12) >> 4);
+    int32_t pm = t->p[P_DIST] * 258;                /* the pedal's MIX (the FX overview's DST): dry .. the pedal, Q15 */
     const bq_coef_t *wc = wah ? &WAH_BQ[(wah - 1) * 63 / 126] : 0;
     int32_t pg = (int32_t)(pow2_q16((t->p[P_PDRV] - 64) * 6) >> 4);   /* DRIVE: Q12, 4096 = as voiced */
     if (vt == 32767 && s->vol == 0)
         s->vol = 32767;
-    if (s->vol == 32767 && vt == 32767 && !tone && !comp && !ped && !wah)
+    if (s->vol == 32767 && vt == 32767 && !comp && !ped && !wah)
         return;                                     /* nothing turned: as before */
     if (ped != s->ped) {                            /* another pedal: no stale state */
         memset(s->pd, 0, sizeof s->pd);
@@ -97,17 +103,14 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
     } else
         s->cg = 32767;
     for (i = 0; i < (int32_t)n; i++) {
-        int32_t x = b[i], y;
+        int32_t x = b[i], y, x0;
         s->vol += (vt - s->vol) >> 8;               /* VOL glides (~6 ms): fades without steps */
         x = (int32_t)(((int64_t)x * s->vol) >> 15);
-        if (tone < 0)                               /* left: bite, up to +8 dB at 1.8 kHz */
-            x += (int32_t)(((int64_t)bq(&TN_BITE, &s->tn[0], x) * -tone * 300) >> 14);
-        else if (tone > 0)                          /* right: treble, up to +9 dB from 3 kHz */
-            x += (int32_t)(((int64_t)bq(&TN_TREB, &s->tn[1], x) * tone * 300) >> 14);
         if (comp) {
             x = (int32_t)(((int64_t)x * s->cg) >> 15);
             x += (int32_t)(((int64_t)x * comp) >> 7);   /* make-up, up to 2x */
         }
+        x0 = x;
         switch (ped) {
         case 1:                                     /* BOOST: louder, the highs up */
             y = x + ((bq(&PD_BOOST, &s->pd[0], x) * 3) >> 1);
@@ -135,12 +138,35 @@ static void track_pre(track_t *t, int32_t *b, uint32_t n)
         default:
             break;
         }
+        if (ped) {                                  /* the pedal's TONE, LEVEL and MIX */
+            s->tl += (int32_t)(((int64_t)(x - s->tl) * 2800) >> 15);   /* (two poles, ~600 Hz) */
+            s->tl2 += (int32_t)(((int64_t)(s->tl - s->tl2) * 2800) >> 15);
+            x = s->tl2 + (int32_t)(((int64_t)(x - s->tl2) * tk) >> 15);
+            x = (int32_t)(((int64_t)x * lv) >> 12);
+            if (pm < 32766)
+                x = x0 + (int32_t)(((int64_t)(x - x0) * pm) >> 15);
+        }
         if (wc)                                     /* WAH: the band (resonant), with a little of the dry under it; the
                                                      * higher the band the less of a guitar it finds: made up (as loud
                                                      * all the way, toe to heel) */
             x = (int32_t)(((int64_t)(bq(wc, &s->wah, x) * 4 + (x >> 3)) * (384 + wah * 9)) >> 9);   /* (the band
                                                      * stronger, less dry: a direct, vocal wah) */
         b[i] = x;
+    }
+}
+
+/* M-PYRE: a drive pedal's TONE after the amp too - in front of a high-gain amp a pedal's tone is mostly squeezed out
+ * again; here the highs over ~1.5 kHz follow it as well, x0.4 (-8 dB) .. x1 (64) .. x2 (+6 dB) */
+static void track_ptone(track_t *t, int32_t *b, uint32_t n)
+{
+    pre_st_t *s = &pre_st[(uint32_t)(t - trk) % NPART];
+    int32_t g, i;
+    if (t->p[P_PEDAL] < 1 || t->p[P_PEDAL] > 4 || t->p[P_TONE] == 64 || !t->p[P_AMP])
+        return;
+    g = t->p[P_TONE] < 64 ? 13107 + t->p[P_TONE] * 307 : 32767 + (t->p[P_TONE] - 64) * 520;
+    for (i = 0; i < (int32_t)n; i++) {
+        s->pt += (int32_t)(((int64_t)(b[i] - s->pt) * 6700) >> 15);
+        b[i] = s->pt + (int32_t)(((int64_t)(b[i] - s->pt) * g) >> 15);
     }
 }
 

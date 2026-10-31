@@ -630,7 +630,8 @@ UI_SMALL static void apply_preset_to(track_t *t, uint32_t pi)
         static const uint8_t FX_DEF[4] = {0, 24, 28, 36};
         const preset_t *pr = &e->presets[pi];
         for (i = 0; i < 4u; i++) {
-            t->p[P_DIST + i] = (int16_t)(pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);
+            t->p[P_DIST + i] = (int16_t)(i == 0u ? 127 : pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);   /* (M-PYRE: P_DIST
+                                                         * the drive pedal's MIX: all of the pedal) */
             if (!keep_arp)
                 t->p[P_AMODE + i] = (int16_t)(pr->arp[i] ? pr->arp[i] - 1 : TP[P_AMODE + i].def);
         }

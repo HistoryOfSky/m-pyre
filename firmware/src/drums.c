@@ -48,6 +48,9 @@ static struct {
     uint8_t synth[NDRUM];        /* the voice plays a synthesised kit (ds[]) */
     int16_t lg[NDRUM];           /* M-PYRE: its sound's LEVEL (drum_lvl), Q12 */
     int32_t pu[NDRUM];           /* M-PYRE: its PUNCH: the attack's extra gain, Q12, falling ~6 ms */
+    int16_t dg[NDRUM], dn[NDRUM];   /* M-PYRE: PUNCH up - the drive into a soft clip (Q12, 4096 none) and its make-up */
+    int32_t sg[NDRUM];           /* M-PYRE: DECAY up - the tail's gain, Q20, rising from 1 to sgt (Q12) */
+    int16_t sgt[NDRUM];
     int32_t fl[NDRUM][2], fh[NDRUM][2];   /* M-PYRE: its HI CUT (two one-pole low-passes), LO CUT (two high-passes) */
     int32_t klp, khp;            /* their coefficients this block, Q15 (0: off) */
     dsv_t ds[NDRUM];
@@ -131,7 +134,20 @@ static void drum_vgain(uint32_t vi, uint32_t note)   /* a voice starting: its so
     uint32_t ln = lane_of_note(note);
     int tw = note != 76u && note != 77u;
     drums.lg[vi] = tw ? DRUM_LVL_Q12[(drum_lvl[ln] - DRUM_LVL_MIN) & 15] : 4096;
-    drums.pu[vi] = tw ? clamp(drum_punch[ln] * 1200 + (trk[TRK_DRUM].p[P_DPUNCH] - 64) * 70, -3900, 12000) : 0;
+    /* PUNCH (the sound's -8 .. +7 and the kit's, 64 none), together -1 .. +1 (Q12): the aggression - up, the hit driven
+     * into a soft clip (x1 .. x3, then back down: the quiet parts as loud, the peaks squeezed - rougher, denser, not
+     * louder) and its first ~6 ms a little
+     * lifted (to +3 dB); down, the attack softened (to about -8 dB, swelling back over ~12 ms) */
+    int32_t pt = tw ? clamp(drum_punch[ln] * 512 + (trk[TRK_DRUM].p[P_DPUNCH] - 64) * 64, -4096, 4096) : 0;
+    drums.pu[vi] = pt > 0 ? pt * 2 / 5 : pt * 3 / 5;
+    drums.dg[vi] = (int16_t)(4096 + (pt > 0 ? pt * 2 : 0));   /* (x1 .. x3 into the clip, then / the same: the quiet
+                                                     * parts as they were, the loud ones squeezed and rough) */
+    drums.dn[vi] = (int16_t)(4096 * 4096 / drums.dg[vi]);
+    {   /* DECAY up (+1 .. +3): the tail lifted, the hit as it is - a gain rising over ~0.2 s to +3, +5, +7 dB */
+        static const int16_t SG[4] = {4096, 5786, 7292, 9178};
+        drums.sg[vi] = 4096 << 8;
+        drums.sgt[vi] = tw && drum_dec[ln] > 0 ? SG[drum_dec[ln] & 3] : 4096;
+    }
     drums.fl[vi][0] = drums.fl[vi][1] = drums.fh[vi][0] = drums.fh[vi][1] = 0;
 }
 /* a voice's sample through its LEVEL and PUNCH */
@@ -141,6 +157,12 @@ static inline int32_t drum_vapply(uint32_t k, int32_t s)
     drums.pu[k] -= drums.pu[k] >> 9;                /* (back to 0 over ~12 ms: from below the attack swells) */
     if (g != 4096)
         s = (int32_t)(((int64_t)s * g) >> 12);
+    if (drums.dg[k] != 4096)                        /* PUNCH up: driven */
+        s = (softclip((int32_t)(((int64_t)s * drums.dg[k]) >> 12)) * drums.dn[k]) >> 12;
+    if (drums.sgt[k] != 4096) {                     /* DECAY up: the tail lifted */
+        drums.sg[k] += (((int32_t)drums.sgt[k] << 8) - drums.sg[k]) >> 13;   /* (Q20: no step lost) */
+        s = (int32_t)(((int64_t)s * drums.sg[k]) >> 20);
+    }
     if (drums.klp) {                                /* HI CUT */
         drums.fl[k][0] += mulq15(s - drums.fl[k][0], drums.klp);
         drums.fl[k][1] += mulq15(drums.fl[k][0] - drums.fl[k][1], drums.klp);
@@ -154,7 +176,8 @@ static inline int32_t drum_vapply(uint32_t k, int32_t s)
     }
     return s;
 }
-static const uint8_t DK_SMP[4] = {47, 60, 74, 87};   /* a sample's DECAY -4 .. -1: -60 dB in 60, 120, 250, 500 ms */
+static const uint8_t DK_SMP[4] = {87, 100, 113, 126};   /* a sample's DECAY -4 .. -1: -60 dB in 0.4, 0.8, 1.6, 3.2 s
+                                                        * (M-PYRE: was 60 .. 500 ms - -1 cut most of a crash at once) */
 #define DRUM_CLICK(n) ((n) == 76u || (n) == 77u)    /* (the click's wood block: no lane, never tuned) */
 static uint32_t lane_of_note(uint32_t note);
 static int drum_tweaked(void)
@@ -300,6 +323,7 @@ static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel,
     drums.synth[i] = 1;
     drums.kit[i] = (uint8_t)kit;
     drum_vgain(i, note);
+    drums.sgt[i] = 4096;                                /* (a synth sound's DECAY is its own: ds_on) */
     {
         uint32_t ln = lane_of_note(note);
         tweak = tweak && !DRUM_CLICK(note);
@@ -404,7 +428,7 @@ static void drum_on(uint32_t note, uint32_t vel)
         drum_vgain(vi, v->note);
         drums.filter[vi] = 0;
         drums.env[vi] = 32767;
-        drums.denv[vi] = 32767;                     /* (2.7) DECAY below 0: a fade to -60 dB in 60 .. 500 ms (DK_SMP) */
+        drums.denv[vi] = 32767 << 12;               /* (2.7) DECAY below 0: a fade to -60 dB in 60 .. 500 ms (DK_SMP) */
         drums.dk[vi] = tw && drum_dec[ln] < 0 ? DECAY_K[DK_SMP[drum_dec[ln] + 4]] : 0u;
         shift = shift * 16 + (tw ? drum_tune[ln] * 16 : 0);    /* (2.7) TUNE: the sound's semitones */
         if (shift) {
@@ -509,10 +533,11 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
                 drums.env[k] -= (drums.env[k] >> 11) + 1;
                 if (drums.env[k] <= 0) v->active = 0;
             }
-            if (drums.dk[k]) {                      /* (2.7) a shorter DECAY: the sample fades out */
-                s = mulq15(s, drums.denv[k]);
-                drums.denv[k] = (int32_t)(((uint32_t)drums.denv[k] * drums.dk[k]) >> 16);
-                if (drums.denv[k] < 8) v->active = 0;
+            if (drums.dk[k]) {                      /* (2.7) a shorter DECAY: the sample fades out (M-PYRE: the fade
+                                                     * in Q27 - in Q15 its last steps rounded down fell far too fast) */
+                s = mulq15(s, drums.denv[k] >> 12);
+                drums.denv[k] = (int32_t)(((uint64_t)(uint32_t)drums.denv[k] * drums.dk[k]) >> 16);
+                if (drums.denv[k] < (8 << 12)) v->active = 0;
             }
             s = DRUM_VOICE_FX(k, drum_vapply(k, s));
             v->s[7] = s;

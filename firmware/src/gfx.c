@@ -50,14 +50,14 @@ static const palette_t PALETTES[] = {
     {"AMBER", {RGB(60, 26, 0), RGB(110, 50, 0), RGB(170, 82, 0), RGB(225, 120, 8), RGB(255, 166, 40)}, 0, 0},
     {"RED", {RGB(52, 8, 8), RGB(100, 18, 14), RGB(170, 36, 26), RGB(226, 64, 48), RGB(255, 112, 92)}, 0, 0},
     {"MONO", {RGB(40, 40, 40), RGB(80, 80, 80), RGB(130, 130, 130), RGB(186, 186, 186), RGB(226, 226, 226)}, 0, 0},
-    {"BEIGE", {RGB(208, 196, 172), RGB(168, 154, 130), RGB(118, 106, 88), RGB(70, 60, 48), RGB(24, 18, 12)},
+    {"LIGHT", {RGB(208, 196, 172), RGB(168, 154, 130), RGB(118, 106, 88), RGB(70, 60, 48), RGB(24, 18, 12)},
      RGB(238, 228, 206), 1},
-    /* GLUT (the M-PYRE look, the default): a warm black, the text a warm white, the rules and the dim ones embers,
-     * the accent orange */
-    {"GLUT", {RGB(70, 30, 18), RGB(112, 62, 42), RGB(150, 96, 70), RGB(214, 170, 136), RGB(255, 236, 214)},
-     RGB(26, 10, 6), RGB(255, 140, 30)},
+    /* EMBER (the M-PYRE look, the default): nearly black (a touch of red: the FM-1's screen shows dark tones
+     * light), the text a warm white, the rules and the dim ones embers, the accent orange */
+    {"EMBER", {RGB(70, 30, 18), RGB(112, 62, 42), RGB(150, 96, 70), RGB(214, 170, 136), RGB(255, 236, 214)},
+     RGB(8, 0, 0), RGB(255, 140, 30)},
 };
-#define PAL_GLUT 4u                              /* (the default: panel.c) */
+#define PAL_EMBER 4u                              /* (the default: panel.c) */
 #define PAL_LIGHT 3u                             /* (BEIGE: its own tracks' colours, palette_set) */
 #define NPALETTES (sizeof(PALETTES) / sizeof(PALETTES[0]))
 static uint16_t pal[5];
@@ -182,9 +182,9 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
         pal[k] = cu ? theme.c[k] : pp->c[k];
     pal_bg = cu ? theme.bg : pp->bg;
     pal_hi = cu ? theme.hi : pp->hi == 1u ? 0u : pp->hi ? pp->hi : 0xFFFFu;
-    for (k = 0; k < 4u; k++) {                   /* (GLUT: the greys warm too - embers, ash) */
-        static const uint16_t GLUT_G[4] = {RGB(44, 20, 12), RGB(74, 32, 20), RGB(150, 96, 70), RGB(214, 170, 136)};
-        te_g[k] = !cu && i % NPALETTES == PAL_GLUT ? GLUT_G[k] : te_gray(TE_G_DEF[k]);
+    for (k = 0; k < 4u; k++) {                   /* (EMBER: the greys warm too - embers, ash) */
+        static const uint16_t EMBER_G[4] = {RGB(34, 14, 8), RGB(70, 30, 18), RGB(150, 96, 70), RGB(214, 170, 136)};
+        te_g[k] = !cu && i % NPALETTES == PAL_EMBER ? EMBER_G[k] : te_gray(TE_G_DEF[k]);
     }
     for (k = 0; k < 4u; k++) {
         TE_COL[k] = cu ? theme.trk[k] : light ? LIGHT_TRK[k] : TE_COL_DEF[k];
@@ -277,7 +277,7 @@ static uint32_t glyph(const felucca_font_t *f, uint32_t ch)
     return ch - f->first;
 }
 
-/* M-PYRE (GLUT): a gauge as embers - the fill runs from red to yellow along the whole width, the rest a dark rule */
+/* M-PYRE (EMBER): a gauge as embers - the fill runs from red to yellow along the whole width, the rest a dark rule */
 static void cv_ember(int32_t x, int32_t y, int32_t w, int32_t h, int32_t ratio, int dim)
 {
     int32_t i, f = ratio * w / 1000;
@@ -288,7 +288,9 @@ static void cv_ember(int32_t x, int32_t y, int32_t w, int32_t h, int32_t ratio, 
     }
 }
 
-/* text, alpha-blended onto the background with colour c; returns the end x */
+/* text, alpha-blended onto the background with colour c; returns the end x (M-PYRE: cv_plain 0 - its edges onto the
+ * pixels under it, for text on a picture) */
+static uint8_t cv_plain = 1;
 static int32_t cv_text(int32_t x, int32_t y, const felucca_font_t *f, const char *s, uint16_t c)
 {
     uint16_t ramp[16];
@@ -316,8 +318,19 @@ static int32_t cv_text(int32_t x, int32_t y, const felucca_font_t *f, const char
             for (gx = 0; gx < w; gx++) {
                 uint32_t sx = gx >> f->sh, v = gd[(gy >> f->sh) * bpr + sx / 2u];
                 v = (sx & 1u) ? (v & 15u) : (v >> 4);
-                if (v)
+                if (v == 15u || (v && cv_plain))
                     cv_pset(x - f->pad + (int32_t)gx, y + (int32_t)gy, ramp[v]);
+                else if (v) {                          /* M-PYRE: the edge onto what is there (a pedal, an amp's
+                                                        * panel), not onto the background */
+                    int32_t px = x - f->pad + (int32_t)gx, py = y + (int32_t)gy + cv_oy;
+                    if ((uint32_t)px < cv_w && (uint32_t)py < cv_h) {
+                        uint32_t u = swap16(cv_px[(uint32_t)py * cv_w + (uint32_t)px]), r, g, b;
+                        r = (((u >> 11) & 31u) * (15u - v) + ((c >> 11) & 31u) * v) / 15u;
+                        g = (((u >> 5) & 63u) * (15u - v) + ((c >> 5) & 63u) * v) / 15u;
+                        b = ((u & 31u) * (15u - v) + (c & 31u) * v) / 15u;
+                        cv_px[(uint32_t)py * cv_w + (uint32_t)px] = swap16(r << 11 | g << 5 | b);
+                    }
+                }
             }
         x += f->adv[gi];
     }

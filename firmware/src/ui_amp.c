@@ -309,7 +309,9 @@ static void av_knob(int32_t cx, int32_t cy, int32_t ratio, int dark_panel, uint3
 /* text in the middle of cx, in colour c (FONT_S: one bit a pixel, crisp on any texture) */
 static void av_text_c(int32_t cx, int32_t y, const char *s, uint16_t c)
 {
+    cv_plain = 0;                                       /* (its edges onto the panel under it) */
     cv_text(cx - text_w(&FONT_S, s) / 2, y, &FONT_S, s, c);
+    cv_plain = 1;
 }
 
 /* the head into the canvas (its rows y0 .. y0 + cv_h - 1 of the screen) */
