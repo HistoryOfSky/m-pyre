@@ -109,7 +109,7 @@ static void host_preset_req(track_t *t, uint32_t e, uint32_t pi)
     t->p[P_ED_FX] = preset_trim(e, pi % ENGINES[e]->npresets);
     t->p[P_VOICE] = p->mono ? V_LEGATO : V_POLY;
     for (i = 0; i < 4u; i++) {
-        t->p[P_DIST + i] = (int16_t)(p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);
+        t->p[P_DIST + i] = (int16_t)(i == 0u ? 127 : p->fx[i] ? p->fx[i] - 1 : FX_DEF[i]);   /* (M-PYRE: as ui.c) */
         t->p[P_AMODE + i] = (int16_t)(p->arp[i] ? p->arp[i] - 1 : TP[P_AMODE + i].def);
     }
     preset_extras(t->p, p);
