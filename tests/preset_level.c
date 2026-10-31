@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Every factory preset plays a phrase that fits it (a bass line, held chords, comping or a melody),
  * 4.75 s each, through the whole mix (sends, master), for tools/level_presets.py.
- *   argv[1]: a WAV of them all, argv[2]: the list (engine preset role name), argv[3]: mono int32 raw
+ *   argv[1]: a WAV of them all, argv[2]: the list (engine preset role name), argv[3]: the left channel, int32 raw
  *   cc -O2 -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/preset_level.c -lm -o build/host/preset_level */
 #include <stdint.h>
 static uint32_t host_slots[4u * 0x14000u / 4u];   /* M-PYRE: the sound pack (guitar, palm, bass) in the user slots */
@@ -107,7 +107,8 @@ int main(int argc, char **argv)
                 }
                 mix_block(o, CTL);
                 for (i = 0; i < CTL; i++) {
-                    int32_t m = (o[2 * i] + o[2 * i + 1]) / 2;
+                    int32_t m = o[2 * i];   /* (M-PYRE: the left: a doubled guitar's two takes would cancel in part in a
+                                             * mono sum; each side is as loud as the part) */
                     wav_put(w, o[2 * i], o[2 * i + 1]);
                     fwrite(&m, 4, 1, raw);
                     frames++;

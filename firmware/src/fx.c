@@ -184,7 +184,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
     if (thr_dly && fb < 89 * 230)                       /* ECHO THROW: FDBK at least 70 %, gliding with it (2.6) */
         fb += ((89 * 230 - fb) * thr_dly) >> 15;
-    int32_t dmix = song.g[G_DTIME] ? 32767 : 0;          /* M-PYRE: the return at unity (each track's MIX sets the
+    int32_t dmix = song.g[G_DTIME] || thr_dly ? 32767 : 0;          /* M-PYRE: the return at unity (each track's MIX sets the
                                                          * wet), nothing while the delay is OFF */
     /* M-PYRE: the reverb's TYPE - the lines' length (of the full ones), the loop gain over SIZE, the damping over DAMP:
      *   ROOM   lines at 45 %, shorter and darker: a small live room, ~0.2 .. 1.2 s
@@ -198,7 +198,8 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     uint32_t rt = song.g[G_RTYPE] >= 1 && song.g[G_RTYPE] <= 5 ? (uint32_t)song.g[G_RTYPE] - 1u : 1u;   /* (M-PYRE: 0 OFF) */
     /* loop gain, damping (M-PYRE: TONE is the damping turned round: 127 bright), LEVEL the return (100: as before) */
     int32_t g = RT_G0[rt] + song.g[G_RSIZE] * RT_GK[rt], lpk = 32767 - (127 - song.g[G_RDAMP]) * RT_DK[rt];
-    int32_t rlv = song.g[G_RTYPE] ? 32767 : 0;          /* (the return at unity; OFF: nothing) */
+    int32_t rlv = song.g[G_RTYPE] || rev_frz || thr_rev ? 32767 : 0;   /* (the return at unity; OFF: nothing - but a
+                                                         * punch-in FREEZE or THROW brings it in) */
     uint32_t len1 = (REV_LINE[1] * RT_SC[rt]) >> 8, len2 = (REV_LINE[2] * RT_SC[rt]) >> 8, len3 = (REV_LINE[3] * RT_SC[rt]) >> 8;
     int32_t frnd = rev_frz ? 128 : 0;                  /* FREEZE: what is in the lines stays there (below: no
                                                          * loss, rounded to nearest; 0: as always, bit for bit) */
@@ -605,6 +606,15 @@ static void mix_part(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)   /* into
     mix_part_run(t, n, mx, b);
     memcpy(t->p, pn, sizeof pnew[0]);
 }
+/* M-PYRE: the rhythm guitar doubled - a heavy guitar is always played twice, hard left and hard right. With a CLEAN,
+ * CRNCH or HIGH amp on, the left is the part as played, the right the same ~16 ms later with its time drifting slowly
+ * (+-1.4 ms at ~0.35 Hz: a few cents up and down, as a second take's pitch and timing wander): the width of two
+ * takes; PAN moves the pair. (LEAD and BASS stay in the middle) */
+#define DBL_N 1024u
+typedef struct { int32_t buf[DBL_N]; uint32_t w, ph; } dbl_t;
+static dbl_t dbl_st[NPART] __attribute__((section(".pool")));
+static int part_doubled(const track_t *t) { return !is_drum(t) && t->p[P_AMP] >= 1 && t->p[P_AMP] <= 3; }
+
 static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
 {
     uint32_t i;
@@ -652,6 +662,15 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
             if (djf_block(f, t->p[P_TFLT], &fc, tflt_reso()))
                 tflt_run(f, &fc, b, n, 0);
         }
+        dbl_t *db = part_doubled(t) ? &dbl_st[(uint32_t)(t - trk) % NPART] : 0;
+        int32_t dd0 = 0, ddd = 0;                        /* the second take's delay, Q8 samples, across the block */
+        if (db) {
+            int32_t s0 = sine_i(db->ph), s1;
+            db->ph += 34000u * CTL;                     /* (~0.35 Hz) */
+            s1 = sine_i(db->ph);
+            dd0 = (705 << 8) + (int32_t)(((int64_t)s0 * (60 << 8)) >> 15);
+            ddd = ((705 << 8) + (int32_t)(((int64_t)s1 * (60 << 8)) >> 15) - dd0) / (int32_t)n;
+        }
         int32_t lvl0, dl, gl0, dgl, gr0, dgr;          /* (2.7) LEVEL (and a new sound's trim) and PAN glide (drums.c
                                                          * mix_glide), ramped sample by sample inside the block */
         if (!t->mix_on)
@@ -678,6 +697,13 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
             if (dry < 32767)                            /* (M-PYRE: the effects' MIX past 50 %: less of the dry) */
                 x = (int32_t)(((int64_t)x * dry) >> 15);
             mx->l[i] += ((x >> 4) * gl) >> 8;           /* (x may pass 2^19: >> 4 first) */
+            if (db) {                                   /* (M-PYRE: the second take, on the right) */
+                uint32_t r = db->w - (dd0 >> 8) - 1u;
+                int32_t a0 = db->buf[r & (DBL_N - 1u)], a1 = db->buf[(r + 1u) & (DBL_N - 1u)];
+                db->buf[db->w++ & (DBL_N - 1u)] = x;
+                x = a1 + (int32_t)(((int64_t)(a0 - a1) * (dd0 & 255)) >> 8);
+                dd0 += ddd;
+            }
             mx->r[i] += ((x >> 4) * gr) >> 8;
         }
         t->peak = pk;

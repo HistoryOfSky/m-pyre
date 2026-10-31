@@ -82,6 +82,12 @@ AMPS = [
 BANDS = [biquad("lp", 120, FS, 0.6), biquad("bp", 700, FS, 0.8), biquad("hp", 2200, FS, 0.6), biquad("bp", 4000, FS, 0.9)]
 # the half-rate cabinet: its anti-alias low-pass before taking every other sample
 CAB_AA = biquad("lp", 9500, FS, 0.6)
+# M-PYRE: after the cabinet, what the half rate took (the interpolation back to 44.1 kHz and the two image low-passes:
+# ~-8 dB at 8 kHz) given back, and the low mids a touch fuller - the guitar's long-term spectrum set against the
+# band's own recording of it through their amp (Samples_Distortion_Guitar: our render 9 .. 14 dB short over 6 kHz,
+# ~4 dB at 250 Hz)
+CAB_HS = biquad("highshelf", 5000, FS, 0.7, 10)
+CAB_LM = biquad("peak", 260, FS, 0.9, 3)
 # 88.2 -> 44.1 kHz after the stages: a 4th-order Butterworth at 10.5 kHz (two biquads; the reference resampled to 22.05)
 AMP_DEC = [biquad("lp", 10500, 2 * FS, 0.5412), biquad("lp", 10500, 2 * FS, 1.3066)]
 CAB_NAMES = ["CLEAN", "CRUNCH", "HIGAIN", "LEAD", "BASS"]
@@ -91,7 +97,8 @@ CAB_NAMES = ["CLEAN", "CRUNCH", "HIGAIN", "LEAD", "BASS"]
 BASS_BQ = {
     "BD_LO": biquad("lp", 220, FS, 0.7), "BD_HI": biquad("hp", 250, FS, 0.7), "BD_PK1": biquad("peak", 1200, FS, 0.8, 4),
     "BD_PK2": biquad("peak", 500, FS, 0.9, -4), "BD_LP1": biquad("lp", 4500, FS, 0.7), "BD_LP2": biquad("lp", 5500, FS, 0.6),
-    "B_HP30": biquad("hp", 30, FS, 0.7),
+    "B_HP30": biquad("hp", 42, FS, 0.7),       # (M-PYRE: 42 Hz, was 30: the sub out from under the kick)
+    "B_LS": biquad("lowshelf", 110, FS, 0.7, -3),   # (and the boom a little down: room for the kick)
 }
 # in front of the amp (amp.c track_pre): TONE (left: bite at 1.8 kHz, right: treble from 3 kHz) and the pedals
 #   BOOST  clean, + the highs from 700 Hz       OD    a tube screamer: the band over 720 Hz clipped softly, added
@@ -163,6 +170,8 @@ def main(out):
     L.append("};")
     L.append("static const bq_coef_t AMP_BANDS[4] = {" + ", ".join(bq(c) for c in BANDS) + "};")
     L.append(f"static const bq_coef_t CAB_AA = {bq(CAB_AA)};")
+    L.append(f"static const bq_coef_t CAB_HS = {bq(CAB_HS)};")
+    L.append(f"static const bq_coef_t CAB_LM = {bq(CAB_LM)};")
     L.append("static const bq_coef_t AMP_DEC[2] = {" + ", ".join(bq(c) for c in AMP_DEC) + "};")
     # the wah, as a Cry Baby: a resonant band-pass from ~450 Hz (heel) to ~1.8 kHz (toe), its Q from ~6.5 at the heel
     # to ~4 at the toe; the rocker's audio-taper pot: the sweep slow at the heel, quick toward the toe (t^1.35)

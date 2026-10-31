@@ -28,7 +28,7 @@ SKIP = {"GM KIT"}
 # M-PYRE: the sound pack's parts where a rock mix wants them against the drums (the kit's peaks sit at the master
 # limiter: dense, driven guitars and the bass at the common level would bury it), dB under the target
 MIX = {"CRUNCH GTR": -6, "HI-GAIN": -6, "DJENT GTR": -6, "PALM MUTE": -6, "CLEAN GTR": -3, "LEAD GTR": -4,
-       "PICK BASS": -6, "DRIVE BASS": -6, "HEAVY BASS": -6, "MOOG FUZZ": -3}                              # (the drum map on a synth track: as it is)
+       "PICK BASS": -10, "DRIVE BASS": -9, "HEAVY BASS": -9, "MOOG FUZZ": -3}                              # (the drum map on a synth track: as it is)
 
 
 def lufs(x):

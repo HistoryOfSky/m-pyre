@@ -39,6 +39,7 @@ static inline int32_t amp_tanh(int32_t x)
 typedef struct {
     bq_st_t pre[3], mid[3], post[3], band[4], aa, dec[2], up;   /* (mid, dec: at 88.2 kHz, two samples a step) */
     bq_st_t bs[12];                                 /* the bass amps' (track_bass) */
+    bq_st_t hs, lm;                                 /* M-PYRE: after the cabinet (CAB_HS, CAB_LM) */
     int32_t xprev;                                  /* the last input (the 2x interpolation) */
     int32_t fir[2 * CAB_TAPS];                      /* the cabinet's history, twice (a straight read) */
     uint32_t fw;                                    /* its write position */
@@ -249,7 +250,7 @@ static void track_bass(track_t *t, amp_st_t *a, int32_t *b, uint32_t n)
         a->tl1 += ((a->tl0 - a->tl1) * 1147) >> 15;
         if (tv < 0)
             y += ((a->tl1 - y) * -tv) >> 6;
-        y = bq(&B_HP30, &a->bs[11], y);
+        y = bq(&B_LS, &a->bs[10], bq(&B_HP30, &a->bs[11], y));
         if (h)
             y = cab_run(a, h, y);
         b[i] = amp_dc(a, (y * 9) >> 3);
@@ -328,8 +329,10 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
                 if (kb[j])
                     y += (bq(&AMP_BANDS[j], &a->band[j], yb) * kb[j]) >> 14;
         }
-        if (h)
+        if (h) {
             y = bq(&CAB_AA, &a->up, cab_run(a, h, y));   /* (the half-rate cabinet back to 44.1 kHz: its images cut) */
+            y = bq(&CAB_LM, &a->lm, bq(&CAB_HS, &a->hs, y));   /* (M-PYRE: its highs given back, the low mids fuller) */
+        }
         b[i] = amp_dc(a, (int32_t)(((int64_t)y * mk) >> (13 - AMP_IN_SHIFT)));
     }
 }
