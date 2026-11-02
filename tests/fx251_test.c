@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* SLOOP 2.6, after Felucca 1.4 / 1.5 (Leo Kuroshita): the sound side of what came from there.
  *   insert   each INSERT type changes a part and stays bounded; TYPE OFF and MIX 0 leave it bit for bit; TYPE OFF
  *            again: dry once its fade ran; the drum track's INSERT works on its left, right and sends

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Application-level recovery, not a second firmware bank. The intact app's
  * startup, RAM flash driver and USB stack are still required. TIMER5, audio,
  * settings, samples, projects, editor and normal UI are never started here. */

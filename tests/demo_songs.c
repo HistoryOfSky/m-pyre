@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: the demo songs (tools/demo_songs.py -> build/demo/songs.h) built as projects on the host: a .mpyre file
  * each (the project's bytes: the emulator's SONG LADEN, the FM-1's editor) and a WAV of each, two times round.
  *   python3 tools/demo_songs.py build/demo/songs.h

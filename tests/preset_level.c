@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Every factory preset plays a phrase that fits it (a bass line, held chords, comping or a melody),
  * 4.75 s each, through the whole mix (sends, master), for tools/level_presets.py.
  *   argv[1]: a WAV of them all, argv[2]: the list (engine preset role name), argv[3]: the left channel, int32 raw

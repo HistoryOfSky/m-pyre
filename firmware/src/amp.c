@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: the amp of a synth part (fx.c mix_part_run, after the drive pedal P_DIST): models of a clean, a crunch, a
  * high-gain and a lead amp (tools/gen_mpyre_amp.py: build/gen/mpyre_amp.h), each
  *   pre      three biquads at 44.1 kHz (the hiss cut, the tightening high-pass, the mid boost of a pedal in front)

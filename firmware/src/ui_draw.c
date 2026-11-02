@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Felucca UI drawing: status bar (top), columns + gauges, graphs, focus readout,
  * footer (steps + engine / preset / page). */
 static void draw_menu(void);

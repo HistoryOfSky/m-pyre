@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 """Install a Felucca package (.fwsc) on an FM-1 over USB-MIDI.
 
 The same update as the web installer (web/fm1ota.js): step 1, the
@@ -33,7 +34,7 @@ FINISH_CHECK, FINISH_WRITE = 0xE0000000, 0xF0000000
 MAXDATA = 512
 BLOCKS, BLK, KEEP = 20, 0x30, 0x2F
 LOADER_MARK = b"FELUCCA-LOADER-1"
-PORT_RE = re.compile(r"fm-1|felucca|sloop|clipper|ota|composite|sinco|usb-midi", re.I)   # never probe other gear
+PORT_RE = re.compile(r"fm-1|m-pyre|felucca|sloop|clipper|ota|composite|sinco|usb-midi", re.I)   # never probe other gear
 # (the FM-1 under SLOOP / Felucca, under CLIPPER, the update loaders, the stock firmware: as web/fm1ota.js FM1_PORT)
 
 # seconds; the tests shorten them

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE browser emulator: firmware/host/emu.c -> build/emu/mpyre-emu.wasm (clang --target=wasm32 + wasm-ld,
 tools/wasm_shim), then web/emu.html with the wasm and the sound pack inlined -> build/emu/m-pyre-emulator.html
 (one file: open it, or publish it).

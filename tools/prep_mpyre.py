@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE: prepare the riffbox's own samples (History Of Sky) for the FM-1.
 
   tools/prep_mpyre.py [OUT_DIR]        (default build/mpyre; needs numpy, scipy and ffmpeg)

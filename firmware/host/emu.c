@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE browser emulator: the whole firmware (DSP, sequencer, UI) as one WebAssembly module, the FM-1's
  * hardware replaced by RAM: the screen a 240 x 240 RGB565 buffer, the keys / buttons / knobs set from
  * JavaScript, the user sample slots in RAM (the sound pack loaded into them). The audio runs in an

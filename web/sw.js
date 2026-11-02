@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
+// Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 // SLOOP 2.6: the site without internet (webapp/sw.js, made by web/make_site.py). Opened once online, the
 // installer, the editor and the firmware they install are kept here; offline they come from this copy, still on
 // https, so Web MIDI asks as usual (a downloaded file on Android opens as content://, where Chrome refuses MIDI).
 // Online the network always wins (the page as published, never an old one); the copy is only the fallback.
 // A new site (any file changed) is a new sw.js: the new copy replaces the old one.
 const STAMP = "/*STAMP*/";                          // version + a hash of the files
-const CACHE = "sloop-site-" + STAMP;
+const CACHE = "m-pyre-site-" + STAMP;
 const FILES = /*FILES*/[];                          // relative to this file
 const KEEP = new Set(FILES.map((f) => new URL(f, self.location).href));
 
@@ -28,7 +29,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     for (const k of await caches.keys())
-      if (k.startsWith("sloop-site-") && k !== CACHE) await caches.delete(k);
+      if ((k.startsWith("m-pyre-site-") || k.startsWith("sloop-site-")) && k !== CACHE) await caches.delete(k);
     await self.clients.claim();
   })());
 });

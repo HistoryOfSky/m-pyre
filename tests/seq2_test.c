@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* SLOOP 2.0 sequencer: the transport clock and what plays on it.
  *   timing   the kick and the click stay together for 64 bars at any tempo (no drift); a tempo or DIV
  *            change mid-step plays one step, not a burst; LEN changes keep the track in phase; an odd

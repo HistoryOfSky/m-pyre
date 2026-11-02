@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* SLOOP menu (HOME held), in sections as the pages are (2.4): SCREEN (COLOR, ZOOM, KNOB ACCEL (2.7)), LIGHTS (LIGHTS, KEYS, NOTES),
  * AUDIO (LOWCUT, USB AUDIO, USB SERIAL (FELUCCA_CDC builds only), USB RATE (2.7 beta)), SEQ (2.7.1: STEP ADVANCE, DRUM PREVIEW), SYSTEM (2ND CORE (dualcore), HARDWARE CALIBRATION, LEARN CLEAR (2.6), ABOUT).
  * SELECT goes to the section before / after (stopping at the ends), KNOB 1..4 set the section's settings in order (the knob's colour marks
@@ -140,7 +141,7 @@ UI_SMALL static void draw_menu(void)
             cv_text(4, 36, &FONT_S, "BY HISTORY OF SKY", C_AMB);
             cv_text(4, 54, &FONT_S, FELUCCA_VERSION, C_HI);
             cv_text(236 - text_w(&FONT_S, __DATE__), 54, &FONT_S, __DATE__, C_GRAY);   /* build date */
-            cv_text(4, 72, &FONT_S, "BASED ON SLOOP + FELUCCA", C_HI);
+            cv_text(4, 72, &FONT_S, "BASED ON SLOOP (ISOD89) + FELUCCA", C_HI);
             cv_text(cv_text(4, 88, &FONT_S, "LEO KUROSHITA", C_HI) + 8, 88, &FONT_S, "@KUROGEDELIC", C_AMB);
             cv_text(4, 104, &FONT_S, "H\xDCGELTON INSTRUMENTS", C_AMB);   /* Latin-1 U-umlaut */
 #if FELUCCA_CPU1
@@ -154,12 +155,12 @@ UI_SMALL static void draw_menu(void)
 #if FELUCCA_CPU1                                    /* (the host tests include this file without cpu1.c) */
             cv_text(236 - text_w(&FONT_S, cpu1_label()), 119, &FONT_S, cpu1_label(), C_AMB);   /* 2 CORES / 1 CORE (cpu1.c) */
 #endif
-            cv_text(4, 132, &FONT_S, "GITHUB.COM/ISOD89/SLOOP-FM1", C_AMB);   /* (the source of this firmware) */
-            cv_text(4, 146, &FONT_S, "FONT: TERMINUS (OFL)", C_DIM);
-            cv_text(4, 159, &FONT_S, "SAMPLES: VERSILIAN (CC0)", C_DIM);
-            cv_text(4, 172, &FONT_S, "+ SONIC PI (CC0)", C_DIM);
+            cv_text(4, 132, &FONT_S, MPYRE_SOURCE, C_AMB);   /* (the source of this firmware) */
+            cv_text(4, 146, &FONT_S, "FONT: BARLOW CONDENSED (OFL)", C_DIM);
+            cv_text(4, 159, &FONT_S, "GUITAR, BASS, DRUMS: HISTORY OF SKY", C_DIM);
+            cv_text(4, 172, &FONT_S, "KEYS: VERSILIAN (CC0)", C_DIM);
             cv_text(4, 185, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
-            cv_text(4, 198, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", C_DIM);
+            cv_text(4, 198, &FONT_S, "HYBRID: CLIPPER BY 3DSAM", C_DIM);
         } else {
             int32_t x = 4;
             for (i = 0; i < MS_COUNT; i++) {        /* the sections as tabs: this one lit */

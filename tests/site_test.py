@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 """SLOOP 2.6: the offline editor (web/make_site.py offline_editor): one file that needs nothing next to it; and the
 site without internet (webapp/sw.js, the manifest): what sw.js keeps is all there and all it needs."""
 import json
@@ -24,9 +25,9 @@ def check(what, ok):
     bad += not ok
 
 
-check("the editor links the offline file (download)", src.count('download="sloop-editor.html"') == 1)
+check("the editor links the offline file (download)", src.count('download="m-pyre-editor.html"') == 1)
 check("the installer page links it too",
-      (ROOT / "web" / "index_pkg.html").read_text(encoding="utf-8").count('href="../editor/sloop-editor.html"') == 1)
+      (ROOT / "web" / "index_pkg.html").read_text(encoding="utf-8").count('href="../editor/m-pyre-editor.html"') == 1)
 check("offline: the icon font inlined", 'url("fukiai.ttf")' not in off and "font/ttf;base64," in off)
 check("offline: no download link to itself", "<!--DL-->" not in off and 'id="offline"' not in off)
 check("offline: the installer and the font licence online",
@@ -55,9 +56,9 @@ try:
     path = lambda f: (app / f / "index.html") if f.endswith("/") else (app / f)   # noqa: E731
     check("sw.js: stamped with the version", 'const STAMP = "9.9-' in sw and "/*" + "FILES*/" not in sw)
     check("sw.js keeps the installer, the editor, its font, the firmware",
-          {"installer/", "editor/", "editor/fukiai.ttf", "../firmware/sloop-9.9.fwsc"} <= set(files))
+          {"installer/", "editor/", "editor/fukiai.ttf", "../firmware/m-pyre-9.9.fwsc"} <= set(files))
     check("sw.js: every file it keeps is in the site", all(path(f).is_file() for f in files))
-    m = json.loads((app / "sloop.webmanifest").read_text(encoding="utf-8"))
+    m = json.loads((app / "m-pyre.webmanifest").read_text(encoding="utf-8"))
     check("manifest: standalone, starts at the editor, icons 192 and 512 (+ maskable)",
           m["display"] == "standalone" and m["start_url"] == "editor/" and
           {i["sizes"] for i in m["icons"]} == {"192x192", "512x512"} and
@@ -66,7 +67,7 @@ try:
     for page in ("editor", "installer"):
         h = (app / page / "index.html").read_text(encoding="utf-8")
         check(f"{page}: links the manifest, registers ../sw.js, an install button",
-              'href="../sloop.webmanifest"' in h and 'register("../sw.js")' in h and "beforeinstallprompt" in h)
+              'href="../m-pyre.webmanifest"' in h and 'register("../sw.js")' in h and "beforeinstallprompt" in h)
     stamp = sw.split('const STAMP = "')[1].split('"')[0]
     (tmp / "site2").mkdir()
     make_site.main(tmp / "p.fwsc", "9.9", tmp / "site2")

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 """Synthesised drum kits for firmware/src/drum_synth.c -> felucca_drumkits.h
 
 Each kit has 16 sounds (lanes), one per white key of the drum track:

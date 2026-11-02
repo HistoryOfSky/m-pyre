@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* SLOOP 2.5: the drum track's SYN1..SYN4, your own synthesised kits (drum_synth.c dsu), and the editor's DRUM
  * SYNTH commands (editor_dsyn.c, protocol v10), through hostsim.c:
  *   the kits list ends with SYN1..SYN4; never stored they are copies of 808, 909, TRAP, INDUSTR

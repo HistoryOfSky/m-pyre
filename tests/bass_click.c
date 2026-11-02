@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: the PICK BASS as the sequencer plays it (8ths, the gate short of the next note) at a tempo: a WAV, to
  * hear and measure the clicks between notes (tools: an onset's high band against the note's).
  *   cc -O1 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o build/host/bass_click tests/bass_click.c -lm

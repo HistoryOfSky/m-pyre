@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: render a script through the firmware's own DSP (hostsim.c's sources), with the sound pack
  * (build/mpyre/soundpack.bin) in a RAM image of the user slots, as the FM-1 has it in flash.
  *   build/host/mpyre_render SCRIPT OUT.wav [SOUNDPACK]

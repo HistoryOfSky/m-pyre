@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* SLOOP 2.4: the drum track's KIT USR1..USR3, a user sample slot as a drum kit (the web editor's DRUM KIT
  * writes a zone per lane, lo = hi = root = the lane's GM note, drums.c LANE_NOTE). Through hostsim.c, the
  * slot in a RAM image of the flash (SMP_USER_XIP) read by smp_user_scan as at boot:

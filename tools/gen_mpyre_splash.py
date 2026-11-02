@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE boot splash: assets/mpyre/splash.png (240 x 240, the artwork by History Of Sky) -> the
 same header gen_logo.py writes (SLOOP_SPLASH_*: 16 colours, RLE runs of (run - 1) << 4 | index), the
 whole screen. Octree to 16 colours, no dither (dither breaks the runs).

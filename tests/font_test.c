@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* The screen fonts (gfx.c cv_text, tools/gen_font.py). M-PYRE: Barlow Condensed - S SemiBold anti-aliased (4 bits) in
  * the 16-row cell, L Bold at 1 bit in the 32-row cell, capitals 32..95 only. Checked: every glyph of both in several
  * colours, at several offsets (clipped at every edge, and with a graph y offset), hashed (the pixels pinned); every

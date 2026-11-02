@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Projects: four slots in .noinit RAM (the song sections A..D), so they survive resets and UBOOT
  * entry. With FELUCCA_FLASH every save also goes to flash through storage.c, and an empty RAM slot
  * is filled from flash on load. The working project is also kept in flash by itself (autosave, when

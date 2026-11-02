@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
+// Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 // Real firmware audio: WASM vs the native C adapter, plus playback/edit/stop.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

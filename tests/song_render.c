@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: a song exported from the browser emulator (SONG EXPORTIEREN: project.c's bytes) played on the host, the
  * sound pack in the user slots: a WAV of it and what each track holds (sounds, settings, the steps).
  *   cc -O2 -w -Ibuild/gen -Ifirmware/src -o build/host/song_render tests/song_render.c -lm

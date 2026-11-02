@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE demo songs, rock to metal: each a 4-bar loop on the four tracks (rhythm guitar, a second part, bass,
 drums), written here as text and turned into build/demo/songs.h for tests/demo_songs.c (which builds them as
 projects - .mpyre files the emulator's SONG LADEN and the FM-1 open - and renders a WAV of each).

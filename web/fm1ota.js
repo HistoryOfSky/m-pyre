@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+// Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 //
 // The FM-1 USB-MIDI update protocol (M-UPGRADE compatible) over WebMIDI.
 // Step 1: the running firmware reads parts of the package and stages the update
@@ -17,7 +18,7 @@ export const OUR_LOADER = (id) => /^ota-FM-1_9\d\d$/i.test(id.text);
 // the MIDI ports the installer may probe (never other gear): the FM-1 under SLOOP / Felucca ("Felucca"), under
 // CLIPPER ("Clipper", its sister firmware), under a firmware named after itself ("SLOOP"), the update loaders, and
 // the names Windows / macOS give the stock firmware
-export const FM1_PORT = /fm-1|felucca|sloop|clipper|ota|composite|sinco|usb-midi/i;
+export const FM1_PORT = /fm-1|m-pyre|felucca|sloop|clipper|ota|composite|sinco|usb-midi/i;
 
 // errors carry a code the pages translate: notfound, model, stopped, noloader, lost, noreturn,
 // mismatch (detail: the identity the device reports), badreq, foreign (detail: the loader's identity)

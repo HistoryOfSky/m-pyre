@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Physical panel: which matrix button / encoder carries which printed label.
  * The default table can be overridden by HARDWARE CALIBRATION (hold OCT- and
  * OCT+ while powering on), which asks for each label in turn. The learned

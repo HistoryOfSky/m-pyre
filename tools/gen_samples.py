@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 """Build the SAMPLE engine's sample sets from WAV files into a C header.
 
 Samples are stored as IMA ADPCM (4 bit). Roots come from the file names, loops

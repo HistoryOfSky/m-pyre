@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE: the amp faces' wordmarks (ui_amp.c), one per face, as 2-bit coverage (4 levels) packed 4 a byte.
 
   tools/gen_mpyre_amplogo.py OUT.h [PREVIEW.png]

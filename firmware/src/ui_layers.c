@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* LAYERS, teenage-engineering style: hold a function button, touch a key (or turn a knob). While the
  * button is held the screen shows what the 16 white keys and KNOB 1..4 do now; tapped (pressed and
  * let go without touching anything) the button opens its pages as before.

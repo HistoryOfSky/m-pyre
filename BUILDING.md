@@ -1,4 +1,17 @@
-# Building SLOOP
+# Building M-PYRE
+
+## M-PYRE's sounds
+
+Before the first build, prepare History Of Sky's samples (they go into the firmware's drum kit and into the sound
+pack):
+
+```
+python3 tools/prep_mpyre.py          # assets/mpyre-src -> build/mpyre/sets.json (needs numpy, scipy, ffmpeg)
+python3 tools/mpyre_slots.py         # build/mpyre/sets.json -> build/mpyre/soundpack.bin (the editor installs it)
+```
+
+The cabinet IRs are read from `assets/mpyre-src/ir` by `tools/gen_mpyre_amp.py` during the build; without them a
+generic cabinet made of filters is used.
 
 The build makes three files in `build/`:
 
@@ -10,7 +23,7 @@ The build makes three files in `build/`:
 
 ## Windows (WSL)
 
-`INSTALL-SLOOP.bat` builds in a WSL distribution and opens the installer on
+`INSTALL-MPYRE.bat` builds in a WSL distribution and opens the installer on
 `http://localhost:8766/webapp/installer/`. It needs Python 3 with Pillow on Windows, a WSL
 distribution with the JieLi toolchain, and the three SDK files (below) in `build/deps/ac79`.
 Set `SLOOP_WSL_DISTRO` (default `Ubuntu`) and `SLOOP_TOOLCHAIN` (a Linux path, default
@@ -104,8 +117,8 @@ against the same adapter compiled for the host and verify sequencing, live mixer
 `web/make_site.py` includes the preview and caches it for the site app when the WASM build is present:
 
 ```sh
-# Use a release package downloaded from isod89/sloop-fm1, or your own firmware build.
-python3 web/make_site.py build/releases/sloop-2.6.fwsc 2.6 build/site
+# Use a release package, or your own firmware build.
+python3 web/make_site.py build/felucca.fwsc 1.0 build/site
 python3 -m http.server 8766 --bind 127.0.0.1 --directory build/site
 ```
 
@@ -117,7 +130,7 @@ The standalone downloaded HTML editor does not include the WASM asset.
 
 ## Install
 
-On Windows, `INSTALL-SLOOP.bat` builds and opens the web installer (Chrome or Edge). The
+On Windows, `INSTALL-MPYRE.bat` builds and opens the web installer (Chrome or Edge). The
 `.fwsc` of each release is on the GitHub releases page.
 
 From the command line (needs `pip3 install mido python-rtmidi`):

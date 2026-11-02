@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 """Load WAV files into a Felucca user sample slot (USR1..USR4) over USB-MIDI.
 
   fm1_sample_upload.py info
@@ -42,10 +43,10 @@ class Link:
         except ImportError:
             sys.exit("needs mido: pip install mido python-rtmidi")
         self.mido = mido
-        outs = [n for n in mido.get_output_names() if "Felucca" in n]
-        ins = [n for n in mido.get_input_names() if "Felucca" in n]
+        outs = [n for n in mido.get_output_names() if "Felucca" in n or "M-PYRE" in n]
+        ins = [n for n in mido.get_input_names() if "Felucca" in n or "M-PYRE" in n]
         if not outs or not ins:
-            sys.exit("no MIDI port named Felucca: connect the FM-1 (running Felucca) by USB")
+            sys.exit("no MIDI port named M-PYRE or Felucca: connect the FM-1 by USB")
         self.o = mido.open_output(outs[0])
         self.i = mido.open_input(ins[0])
         for _ in range(3):                          # the first frame after opening the port can be lost

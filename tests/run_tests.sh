@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 # Host tests (no hardware). Run from the repo root after ./build.sh:
 #   tests/run_tests.sh
 #

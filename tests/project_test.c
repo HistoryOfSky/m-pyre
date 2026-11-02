@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Host test of the project formats (firmware/src/project.c, -DPROJ_HOST part). Format 5 ("FUN5",
  * SLOOP 2.4: format 4 + per-step nudges, parameter locks and fill conditions) is written; format 4 ("FUN4", SLOOP 2.0:
  * 10-byte steps with levels and ratchets, the drum track's 16 lanes, P_CHORD), format 3 ("FUN3", SLOOP

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Synthesised drum kits (drums.c kits DRUM_SAMPLED..): analogue-style models in fixed point, in the
  * spirit of the classic drum machines. Every sound of a kit is one dsnd_t, written in musical units
  * by tools/gen_drumkits.py (felucca_drumkits.h). A sound is up to four layers into one filter:

@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 3dSam (Clipper), after Leo Kuroshita (@kurogedelic), Hügelton Instruments (Felucca) */
+ * Copyright (C) 2026 3dSam (Clipper), after Leo Kuroshita (@kurogedelic), Hügelton Instruments (Felucca)
+ * Adapted for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* HYBRID: the Clipper voice. Three oscillators, two filters, two envelopes and two LFOs of its own per voice,
  * and a 16-slot modulation matrix, on top of what every engine gets from voice.c (the amplitude ADSR, the
  * part's LFO, glide, unison, the pitch envelope).

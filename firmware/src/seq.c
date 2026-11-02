@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Keyboard and its layers, scale and chords, arpeggiator, note repeat, sequencer, recording and
  * transport. Runs in the audio ISR, once per CTL-sample block (events_block), and ends in
  * trk_note_on / trk_note_off / drum_on: engines never see where a note came from.

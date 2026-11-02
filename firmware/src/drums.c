@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* GM drum part (track 4): the SAMPLE engine's KIT set (General MIDI percussion map,
  * tools/gen_samples.py GM_KIT), played by its step pattern, the keys when track 4
  * is selected, and its own MIDI channel (GLO -> DRUMS, default 10). Its own voices

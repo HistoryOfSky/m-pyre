@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Felucca core types: tracks, voices, engines, parameters.
  * Four tracks: tracks 1..3 are synth parts (each its own engine, preset, parameters,
  * voices and 64-step pattern), track 4 is the GM drum part (drums.c; its own voices,

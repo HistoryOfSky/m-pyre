@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* SLOOP 2.6 screenshots for the README (not a test): the UI test's harness, a pattern, then the new pages as RGB888
  * 240x240 frames into DIR/<name>.rgb */
 #define UI_PAGES_HARNESS_ONLY 1

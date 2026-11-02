@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE: the amps' fixed filters and the cabinets (impulse responses) -> build/gen/mpyre_amp.h
 
   tools/gen_mpyre_amp.py OUT.h

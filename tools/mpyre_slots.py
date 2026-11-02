@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 History Of Sky (M-PYRE)
 """M-PYRE: the sound pack, the four user sample slots as M-PYRE ships them (from build/mpyre/sets.json).
 
   tools/mpyre_slots.py [OUT_DIR]       (default build/mpyre) -> slot1..4.hdr / .bin, soundpack.bin

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
+# Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 """Measures every factory preset and writes firmware/src/preset_trim.h: a level trim per preset
 (1/2 dB, the steps of LEVEL), so every sound comes out as loud as the others at the same LEVEL.
 Loudness: ITU-R BS.1770 integrated (gated) over a phrase that fits the sound (tests/preset_level.c:

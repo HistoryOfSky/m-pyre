@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: the default song's parts as a rock song plays them (a riff in 8ths on the guitar, the bass with it, a lead
  * line over it, the drums' beat), 4 bars at 100 BPM, each part alone and all together: raw stereo int16 files, for
  * the levels of the sample presets in the mix (tools: loudness per part).

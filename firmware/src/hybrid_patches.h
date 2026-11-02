@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 3dSam (Clipper) */
+ * Copyright (C) 2026 3dSam (Clipper)
+ * Adapted for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* The HYBRID factory patches (eng_hybrid.c) and the presets that play them (one each: the part's amplitude
  * ADSR, voice mode, FX sends and the EDIT values; PTCH = the patch).
  * Scales: cutoff 0..127 = 30 Hz .. 16 kHz (38 ~ 200 Hz, 57 ~ 500 Hz, 71 ~ 1 kHz, 85 ~ 2 kHz, 99 ~ 4 kHz);

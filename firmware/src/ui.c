@@ -1,9 +1,13 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
+ * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
+#ifndef MPYRE_SOURCE   /* the source of this firmware (the ABOUT page; -DMPYRE_SOURCE=... overrides) */
+#define MPYRE_SOURCE "GITHUB.COM/HISTORYOFSKY/M-PYRE"
+#endif
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "M-PYRE 0.1"  /* the riffbox firmware for the FM-1 (based on SLOOP 2.8.1 and Felucca) */
+#define FELUCCA_VERSION "M-PYRE 1.0"  /* the riffbox firmware for the FM-1 (based on SLOOP 2.8.1 and Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);

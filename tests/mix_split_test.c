@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only
- * Copyright (C) 2026 Andre Rezemini (the SLOOP dualcore branch, github.com/andrerezemini/sloop-lab) */
+ * Copyright (C) 2026 Andre Rezemini (the SLOOP dualcore branch, github.com/andrerezemini/sloop-lab)
+ * Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* The render split over the two cores (fx.c mix_units): the same output, bit for bit, whatever the split.
  * Each scene renders about two seconds with cpu1_units = 0 (every unit on this core, as SLOOP 2.5 renders) and
  * again with every other split: each unit alone, pairs, all four, the firmware's own choice (-1); each render

@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Copyright (C) 2026 History Of Sky (M-PYRE) */
 /* M-PYRE: the LIVE view's groups (guitar track playing) and the TRACKS screen to PPM */
 #include <stdint.h>
 static uint32_t host_slots[4u * 0x14000u / 4u];
@@ -77,6 +78,8 @@ int main(int argc, char **argv)
         go_live(); ui.force = 1; frames(2);
         pad_lit[0] = 6; pad_lit[1] = 2; pad_lit[11] = 6; ui.force = 1; frame(); ppm("mp-kit-live");
     }
+    settings.palette = 4; palette_set(4);             /* M-PYRE: the ABOUT page (MENU > ABOUT): the credits */
+    go_home(); ui.menu = 2; ui.force = 1; frames(3); ppm("mp-about"); ui.menu = 0;
     { int m = 0; for (i = 0; i < SCOPE_N; i++) if (abs(scope_buf[i]) > m) m = abs(scope_buf[i]); printf("scope peak %d\n", m); }
     printf("ok\n");
     return 0;

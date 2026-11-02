@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
+/* Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) */
 /* LIVE screens, 240 x 240, in a teenage-engineering-like style: black, four colours (one per
  * track and per knob: blue, green, yellow, orange), white for what you touch, red for recording,
  * big numbers, lowercase labels, four dials at the bottom that show what KNOB 1..4 do.
