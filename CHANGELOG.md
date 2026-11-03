@@ -27,6 +27,9 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
 
 - **Five amps:** CLEAN, CRNCH, HIGH, LEAD and BASS, each drawn on the screen as its own amp. GAIN, BASS, MID and
   TREB on the panel; AMP, CAB, PRES and COMP above it.
+- **HIGH and LEAD voiced on the band's own guitar:** fitted to History Of Sky's DI and the same DI through their amp
+  and cabinet: a tighter low end, mids that cut through, the highs as recorded, and the cabinet at the full sample
+  rate.
 - **Cabinets:** the band's own impulse responses for clean, crunch, high-gain, lead and bass.
 - **Doubled rhythm guitars:** with the CLEAN, CRNCH and HIGH amps the guitar plays left and right, the right side a
   second take a little later.

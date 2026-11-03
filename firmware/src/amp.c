@@ -41,6 +41,7 @@ typedef struct {
     bq_st_t pre[3], mid[3], post[3], band[4], aa, dec[2], up;   /* (mid, dec: at 88.2 kHz, two samples a step) */
     bq_st_t bs[12];                                 /* the bass amps' (track_bass) */
     bq_st_t hs, lm;                                 /* M-PYRE: after the cabinet (CAB_HS, CAB_LM) */
+    bq_st_t eq[5];                                  /* M-PYRE 1.0: HI-GAIN and LEAD after their full-rate cabinet */
     int32_t xprev;                                  /* the last input (the 2x interpolation) */
     int32_t fir[2 * CAB_TAPS];                      /* the cabinet's history, twice (a straight read) */
     uint32_t fw;                                    /* its write position */
@@ -200,6 +201,21 @@ static inline int32_t cab_run(amp_st_t *a, const int16_t *h, int32_t x)
     return a->c1;
 }
 
+/* M-PYRE 1.0: the HI-GAIN and LEAD cabinets at the full rate, 256 taps (CABF_IR): their highs as recorded */
+static inline int32_t cabf_run(amp_st_t *a, const int16_t *h, int32_t x)
+{
+    int64_t acc = 0;
+    const int32_t *p;
+    uint32_t k;
+    a->fw = (a->fw + CAB_TAPS - 1u) % CAB_TAPS;      /* newest first: p[k] is x[n - k] */
+    a->fir[a->fw] = a->fir[a->fw + CAB_TAPS] = x;
+    p = &a->fir[a->fw];
+    for (k = 0; k < CAB_TAPS; k += 4u)
+        acc += (int64_t)p[k] * h[k] + (int64_t)p[k + 1u] * h[k + 1u] + (int64_t)p[k + 2u] * h[k + 2u] +
+               (int64_t)p[k + 3u] * h[k + 3u];
+    return (int32_t)(acc >> 15);
+}
+
 /* one 88.2 kHz sample through the gain stages */
 static inline int32_t amp_stages(amp_st_t *a, const amp_model_t *m, int32_t g1, int32_t g2, int32_t u, int32_t b0)
 {
@@ -212,7 +228,11 @@ static inline int32_t amp_stages(amp_st_t *a, const amp_model_t *m, int32_t g1, 
         y = bq(&m->mid[2], &a->mid[2], y);
         y = amp_tanh((y * m->g3) >> 4);
     }
-    return bq(&AMP_DEC[1], &a->dec[1], bq(&AMP_DEC[0], &a->dec[0], y));   /* (88.2 -> 44.1 kHz: no fold-back fizz) */
+    {
+        const bq_coef_t *d = m->full < 2u ? AMP_DECF : AMP_DEC;   /* (88.2 -> 44.1 kHz: no fold-back fizz; the fitted amps
+                                                     * keep up to 14 kHz) */
+        return bq(&d[1], &a->dec[1], bq(&d[0], &a->dec[0], y));
+    }
 }
 
 /* the bass amp: the low end clean, the mids and highs driven, in parallel. GAIN 0: the bass clean (the split faded
@@ -302,7 +322,7 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
         kb[j] = v > 0 ? v * 260 : v * 128;          /* Q14 */
     }
     {   /* make-up per amp: a held note about as loud as the CLEAN amp's, under the master limiter (measured renders) */
-        static const int16_t MK[4] = {13000, 1840, 2100, 2200};
+        static const int16_t MK[4] = {13000, 1840, 859, 1093};   /* (1.0: HI-GAIN, LEAD as loud as before) */
         mk = (int32_t)(((int64_t)MK[(type - 1) & 3] * gmk) >> 12);
     }
     for (i = 0; i < n; i++) {
@@ -330,7 +350,11 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
                 if (kb[j])
                     y += (bq(&AMP_BANDS[j], &a->band[j], yb) * kb[j]) >> 14;
         }
-        if (h) {
+        if (h && m->full < 2u && h == CAB_IR[m->cab]) {   /* M-PYRE 1.0: HI-GAIN / LEAD on their own cabinet */
+            y = cabf_run(a, CABF_IR[m->full], y);
+            for (j = 0; j < 5u; j++)
+                y = bq(&m->eq[j], &a->eq[j], y);
+        } else if (h) {
             y = bq(&CAB_AA, &a->up, cab_run(a, h, y));   /* (the half-rate cabinet back to 44.1 kHz: its images cut) */
             y = bq(&CAB_LM, &a->lm, bq(&CAB_HS, &a->hs, y));   /* (M-PYRE: its highs given back, the low mids fuller) */
         }
