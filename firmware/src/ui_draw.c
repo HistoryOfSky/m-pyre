@@ -700,6 +700,75 @@ UI_SMALL static void graph_scope(uint16_t c)
     }
 }
 
+/* M-PYRE: CHORD NAME (menu SCREEN): over the LIVE view's scope (dimmed) the chord the selected track sounds - a power
+ * chord E5, a triad E / E MIN, 7 MAJ7 MIN7 SUS2 SUS4 DIM AUG ADD9 - or the note (A2), the big type three or two times
+ * as large, the notes under it; the last one stays (dimmed) when the notes end */
+static const char *const NOTE_N[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+static const struct { uint16_t mask; char sfx[6]; } CHORDS[] = {
+    {0x081, "5"}, {0x091, ""}, {0x089, " MIN"}, {0x491, "7"}, {0x891, " MAJ7"}, {0x489, " MIN7"}, {0x0A1, " SUS4"},
+    {0x085, " SUS2"}, {0x049, " DIM"}, {0x111, " AUG"}, {0x095, " ADD9"}, {0x411, "7"}, {0x409, " MIN7"}, {0x481, "7"}};
+static char chord_s[12], chord_n[24];
+static uint8_t chord_on;
+UI_SMALL static void chord_scan(const track_t *t)
+{
+    uint32_t i, pcs = 0, k, r, lo = 127;
+    uint8_t nt[NVOICE], n = 0;
+    for (i = 0; i < NVOICE; i++)                     /* the voices sounding now (held, not released): their pitches */
+        if (t->v[i].active && t->v[i].stage && t->v[i].stage < 3u) {
+            uint32_t p = (uint32_t)clamp((t->v[i].pitch16 + 8) >> 4, 0, 127), j;
+            for (j = n; j > 0 && nt[j - 1] > p; j--)
+                nt[j] = nt[j - 1];
+            nt[j] = (uint8_t)p, n++;
+            pcs |= 1u << (p % 12u);
+            if (p < lo)
+                lo = p;
+        }
+    chord_on = n != 0;
+    if (!n)
+        return;
+    chord_n[0] = 0;
+    for (i = 0; i < n && str_len(chord_n) < 19u; i++) {   /* the notes, low to high */
+        if (i && nt[i] == nt[i - 1])
+            continue;
+        if (chord_n[0])
+            str_cpy(chord_n + str_len(chord_n), "  ", 3);
+        str_cpy(chord_n + str_len(chord_n), NOTE_N[nt[i] % 12u], 3);
+    }
+    for (k = 0; k < 12u; k++) {                      /* the root: the lowest note first, then the others */
+        r = (lo + k) % 12u;
+        if (pcs >> r & 1u) {
+            uint32_t m = ((pcs >> r) | (pcs << (12u - r))) & 0xFFFu;
+            for (i = 0; i < sizeof CHORDS / sizeof CHORDS[0]; i++)
+                if (m == CHORDS[i].mask) {
+                    str_cpy(chord_s, NOTE_N[r], 3);
+                    str_cpy(chord_s + str_len(chord_s), CHORDS[i].sfx, 7);
+                    return;
+                }
+        }
+    }
+    str_cpy(chord_s, NOTE_N[lo % 12u], 3);           /* one note (or none of the above): the lowest, with its octave */
+    fmt_int(chord_s + str_len(chord_s), (int32_t)lo / 12 - 1);
+}
+UI_SMALL static void chord_draw(void)
+{
+    const felucca_font_t *f = &FONT_L;
+    const char *s;
+    int32_t w = text_w(f, chord_s), k = w * 3 <= 232 ? 3 : 2, x = (240 - w * k) / 2;
+    uint16_t c = chord_on ? C_WHITE : C_DIM;
+    for (s = chord_s; *s; s++) {                     /* the big type, k times: each set pixel a k x k block */
+        uint32_t gi = glyph(f, (uint8_t)*s), gx, gy, gw = f->bw[gi], sw = gw >> f->sh;
+        const uint8_t *gd = f->data + f->off[gi];
+        for (gy = 4; gy < f->h - 4u; gy++)
+            for (gx = 0; gx < gw; gx++) {
+                uint32_t i = (gy >> f->sh) * sw + (gx >> f->sh);
+                if ((gd[i >> 3] >> (7u - (i & 7u))) & 1u)
+                    cv_rect(x + ((int32_t)gx - f->pad) * k, 2 + ((int32_t)gy - 4) * k - (k == 2 ? -12 : 0), k, k, c);
+            }
+        x += f->adv[gi] * k;
+    }
+    cv_text((240 - text_w(&FONT_S, chord_n)) / 2, 80, &FONT_S, chord_n, chord_on ? C_HI : C_DIM);
+}
+
 /* M-PYRE: the pages without a graph (EDIT, FX, VOICE, GLOBAL ...) as the mockup: their four values large, 2 x 2 as the
  * knobs (KNOB 1 2 / KNOB 3 4) under the header, each its label, value, unit and an ember gauge; the one turned in the
  * accent. One value alone (FILTER) in the middle. Two strips of 240 x 78 (the canvas holds 124 rows) */
@@ -826,7 +895,13 @@ UI_SMALL static void draw_graph(void)
         cv_oy = 0;
         kv_kit(-1);
     } else if (ui.home) {
-        graph_scope(c);
+        if (chord_view) {                            /* M-PYRE: CHORD NAME - the scope dimmed, the chord over it */
+            chord_scan(t);
+            graph_scope(chord_s[0] ? C_LINE : c);
+            if (chord_s[0])
+                chord_draw();
+        } else
+            graph_scope(c);
     } else if (drum_note) {                          /* a page the drum track has no use for */
         static const char *const L[2] = {"DRUM TRACK", "SEQ  TRACKS  GLO DRUMS"};
         cv_text((240 - text_w(&FONT_S, L[0])) / 2, 26, &FONT_S, L[0], C_HI);

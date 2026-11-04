@@ -50,6 +50,8 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
   - PLAY: CHORD, BEND, VIB, PALM
   - PLAY 2: LEG, WHAM, WAH, PVOL
 - **Chords for guitar:** PW (power chord), PW+, OCT and TERZ.
+- **CHORD NAME** (menu > SCREEN, off by default): the LIVE view names the chord or note being played, in large type
+  over the scope.
 - **Palm mutes, slides and accents per step:** the note sheet's ART row (NORM, PALM, SLIDE, HAMMR), and FORCE goes on
   past ACC to PALM.
 - **Drum sound editor:** EDIT on the drum track shows the kit. Each sound has LEVEL, PUNCH (a softer or harder

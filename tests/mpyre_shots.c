@@ -30,6 +30,11 @@ int main(int argc, char **argv)
         tap(B_HOME); frames(2);
     }
     { int m = 0; for (i = 0; i < SCOPE_N; i++) if (abs(scope_buf[i]) > m) m = abs(scope_buf[i]); printf("held peak %d\n", m); }
+    chord_view = 1; tap(B_HOME); frames(2); ui.force = 1; frames(3); ppm("mp-chord");   /* M-PYRE: CHORD NAME, the fifth held */
+    TSEL->p[P_CHORD] = 1; fm1_in.notes = 1u << 4; frames(20); ui.force = 1; frames(3); ppm("mp-chord-pw");   /* E, CHORD PW */
+    TSEL->p[P_CHORD] = 0; fm1_in.notes = 1u << 9; frames(20); ui.force = 1; frames(3); ppm("mp-chord-note");  /* one note */
+    fm1_in.notes = 0; frames(30); ui.force = 1; frames(3); ppm("mp-chord-off");          /* let go: the last one, dimmed */
+    fm1_in.notes = 1u << 0 | 1u << 7; chord_view = 0; frames(4);
     fm1_in.notes = 0; frames(4);
     press(B_HOME); frames(60); release(B_HOME); frames(3); ppm("mp-hold-tracks");
     {   /* M-PYRE: the AMP view (EDIT > AMP, AMP 2), each amp; then the PEDAL page; then the BEIGE palette */

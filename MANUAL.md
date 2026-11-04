@@ -169,7 +169,10 @@ Tap **HOME**: the four knobs become the things you play with. Tap **HOME** again
 - **WAH:** a wah pedal; OFF at the left.
 - **VOL:** a volume pedal, for swells and fades.
 
-The scope between the header and the footer shows the track's sound. On the drum track the LIVE view shows the kit
+The scope between the header and the footer shows the track's sound. With **CHORD NAME** on (menu > SCREEN, off by
+default) the scope is dimmed and the chord the track plays is named over it in large type: a power chord (E5), a triad
+(E, E MIN), 7, MAJ7, MIN7, SUS2, SUS4, DIM, AUG, ADD9 - or, for a single note, the note with its octave (A2). The notes
+are listed under it. When you let go, the last name stays, dimmed. On the drum track the LIVE view shows the kit
 (see [The drums](#9-the-drums)).
 
 ## 8. Writing riffs
@@ -228,6 +231,6 @@ these slots replaces them; install the sound pack again to get them back.
 ## 11. Settings
 
 Hold **GLO** for about 1.2 seconds for the menu. M-PYRE adds the palettes **EMBER** (the default), **AMBER**,
-**RED**, **MONO** and **LIGHT**. **ABOUT** shows the version and the credits.
+**RED**, **MONO** and **LIGHT**, and **CHORD NAME** (SCREEN, off by default; see [The LIVE view](#7-the-live-view)). **ABOUT** shows the version and the credits.
 
 The other settings are SLOOP's: see its [guide](reference/sloop/GUIDE.md).
