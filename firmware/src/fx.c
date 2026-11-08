@@ -871,11 +871,32 @@ static void cpu1_units_job(uint32_t arg)                /* core 1's job: the uni
     cpu1_job_ticks += cpu1_ticks() - t0;
 }
 
-/* the units core 1 renders this block: the last part and the drums (cpu1_units when set: the menu, the tests),
- * less the parts that must stay here (above) */
+/* M-PYRE: what a unit costs, roughly (units of ~64 host instructions a sample, tests/cpu_baseline.txt and the amps
+ * measured alone): a part, more with samples (read from the flash), plus its amp; the drums; core 0's own (the buses) */
+static uint32_t unit_w(const track_t *t)
+{
+    static const uint8_t AW[8] = {0, 21, 24, 22, 23, 17, 17, 17};   /* OFF CLEAN CRNCH HIGH LEAD BASS (BASS BASS) */
+    return (ENGINES[t->engine] == &ENG_SAMPLE ? 16u : 8u) + AW[t->p[P_AMP] & 7];
+}
+/* the units core 1 renders this block: the split that loads the two cores most evenly (M-PYRE; SLOOP: always the last
+ * part and the drums - two amps then share core 0), cpu1_units when set (the menu, the tests), less the parts that
+ * must stay here (above) */
 static uint32_t units_split(void)
 {
-    uint32_t mask = cpu1_units < 0 ? (1u << (NPART - 1u)) | U_DRUMS : (uint32_t)cpu1_units & U_ALL, k, nform = 0, nhyb = 0;
+    uint32_t mask = (uint32_t)cpu1_units & U_ALL, k, nform = 0, nhyb = 0;
+    if (cpu1_units < 0) {
+        uint32_t w[NPART + 1u], m, best = ~0u;
+        for (k = 0; k < NPART; k++)
+            w[k] = unit_w(&trk[k]);
+        w[NPART] = 20u;                                 /* the drums */
+        for (m = 1u; m <= U_ALL; m++) {
+            uint32_t c0 = 8u, c1 = 0;                   /* (core 0: the buses, the limiter) */
+            for (k = 0; k <= NPART; k++)
+                *(m >> k & 1u ? &c1 : &c0) += w[k];
+            if ((c0 > c1 ? c0 : c1) < best)
+                best = c0 > c1 ? c0 : c1, mask = m;
+        }
+    }
     if (!mask)
         return 0;
     for (k = 0; k < NPART; k++)
