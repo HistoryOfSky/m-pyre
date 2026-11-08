@@ -150,10 +150,22 @@ def main(pkg, version, out):
         notes = HERE / "beta_banner.html"
         banner = notes.read_text(encoding="utf-8") if notes.exists() else "<p><b>BETA</b></p>"
     html = html.replace("<!--BANNER-->", banner)
+    media = HERE.parent / "assets" / "mpyre" / "video"            # M-PYRE: the promo video, next to the site (not kept offline)
+    if (media / "m-pyre-promo.mp4").exists():
+        (out / "media").mkdir(parents=True, exist_ok=True)
+        for f in ("m-pyre-promo.mp4", "m-pyre-promo-poster.jpg"):
+            shutil.copy(media / f, out / "media" / f)
+        html = html.replace("<!--VIDEO-->", '<div class="video"><video controls preload="none" playsinline '
+                            'poster="../../media/m-pyre-promo-poster.jpg" src="../../media/m-pyre-promo.mp4"></video>'
+                            '<p>M-PYRE in two minutes: everything in it rendered by the firmware. Music: History Of Sky.</p></div>')
+    html = html.replace("<!--VIDEO-->", "")
     for old in list(fw.glob("felucca-*.fwsc")) + list(fw.glob("sloop-*.fwsc")) + list(fw.glob("m-pyre-*.fwsc")):   # one package: the current one
         old.unlink()
     shutil.copy(pkg, fw / name)
     ed_html = (HERE / "editor.html").read_text(encoding="utf-8")
+    if font.exists():                              # M-PYRE: the editor's face too, inline (it also runs offline)
+        ed_html = ed_html.replace('/*FONT*/local("Barlow Condensed SemiBold")',
+                                  'url(data:font/ttf;base64,' + base64.b64encode(font.read_bytes()).decode() + ') format("truetype")')
     dl = f'download="m-pyre-editor-{re.sub(r"[^A-Za-z0-9.-]", "-", version)}.html"'
     if ed_html.count('download="m-pyre-editor.html"') != 1 or html.count('download="m-pyre-editor.html"') != 1:
         raise SystemExit('editor.html and index_pkg.html must link download="m-pyre-editor.html" once; update make_site.py')

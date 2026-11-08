@@ -35,6 +35,7 @@ These are not code. They are made by History Of Sky:
 | The HEAVY KIT drum recordings (built into the firmware) | `assets/mpyre-src/drums/` |
 | The cabinet impulse responses (built into the firmware) | `assets/mpyre-src/ir/` |
 | The M-PYRE boot picture and the History Of Sky logo | `assets/mpyre/splash.png` |
+| The promo video and its poster (its music: History Of Sky's songs, all rights reserved) | `assets/mpyre/video/` |
 
 Copyright (C) 2026 History Of Sky. **Licence: to be decided before the first public release** (see below).
 

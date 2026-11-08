@@ -1,6 +1,7 @@
 # M-PYRE manual
 
-M-PYRE 1.0, the riffbox firmware for the M-VAVE FM-1, by History Of Sky.
+M-PYRE 1.0, the riffbox firmware for the M-VAVE FM-1, by History Of Sky. It's not a groovebox, it's a riffbox: from
+idea to song on the FM-1's four tracks.
 
 This manual covers what M-PYRE adds to the FM-1: the guitar and bass sounds, the amps, the pedals, the LIVE view and
 the drums. The rest — recording, the step sequencer, song mode, MIDI, USB audio and the menu — works as in SLOOP 2.8.1,
@@ -188,7 +189,7 @@ Record with **REC** or write notes on the **NOTES** page (tap **SEQ**), as in SL
 
 ## 9. The drums
 
-The drum kits: **HEAVY KIT** (recorded by History Of Sky) and its shadings **DEEP**, **TIGHT**, **BRIGHT** and
+The drum kits: **HEAVY KIT** (a fully editable kit based on realistic drum samples) and its shadings **DEEP**, **TIGHT**, **BRIGHT** and
 **DUST**; the synthesised kits **808**, **909**, **606**, **80S**, **VINTAGE**, **TRAP**, **INDUSTR**; your own kits
 (USR, SYN) as in SLOOP.
 

@@ -18,7 +18,7 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
 - **Synths for rock:** MOOG FUZZ, MOOG BASS, MOOG LEAD, LADDER PAD and the rest of the HYBRID voice (from Clipper by
   3dSam), next to ANALOG, DIGITAL, PHASE, LOFI, TRIO, DRAWBAR and FM6. FORMANT, GRAIN, PHYS and NOISE were removed to
   make room.
-- **HEAVY KIT:** a drum kit recorded by History Of Sky (kick, snare, ghost, hi-hats, ride and bell, three toms,
+- **HEAVY KIT:** a fully editable kit based on realistic drum samples (kick, snare, ghost, hi-hats, ride and bell, three toms,
   two crashes, china), with four shadings (DEEP, TIGHT, BRIGHT, DUST). The synthesised kits 808, 909, 606, 80S,
   VINTAGE, TRAP and INDUSTR stay.
 - **Drum lanes for rock:** PEDAL hi-hat, RIDE and BELL, three toms, CRASH, CRASH 2, CHINA, REV CRASH, DROP.
@@ -71,6 +71,9 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
 
 - **Installer, editor and web app** renamed to M-PYRE. The editor installs the sound pack (Sound pack > Install
   sound pack).
+- **The editor in M-PYRE's look** (the EMBER colours and Barlow Condensed, like the installer), and with M-PYRE's pages:
+  the Sound page shows AMP and AMP 2, PLAY and PLAY 2 (the LIVE view's controls), and the pedalboard, as on the FM-1.
+- **The video:** the installer page plays M-PYRE's promo video (`assets/mpyre/video/`).
 - **USB name:** the FM-1 shows up as "M-PYRE" by "History Of Sky" on a computer. The installer and the editor still
   find it under its old names.
 - **Browser emulator** (`tools/build_emu.py`, `web/emu.html`): the firmware running in a web page, for trying songs

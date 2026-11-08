@@ -1,6 +1,7 @@
 <p align="center"><img src="assets/mpyre/splash.png" alt="M-PYRE by History Of Sky" width="240"></p>
 
-<p align="center"><b>A riffbox firmware for the M-VAVE FM-1 — for rock and metal.</b><br>
+<p align="center"><b>It's not a groovebox. It's a RIFFBOX.</b><br>
+A firmware for the M-VAVE FM-1, for rock and metal — from idea to song.<br>
 Made by History Of Sky. Free and open source (GPL-3.0), based on <a href="https://github.com/isod89/sloop-fm1">SLOOP</a>
 and <a href="https://github.com/hugelton/Felucca">Felucca</a>.</p>
 
@@ -12,12 +13,17 @@ and <a href="https://github.com/hugelton/Felucca">Felucca</a>.</p>
 <a href="../../issues">Report a bug</a>
 </p>
 
+<p align="center"><a href="https://historyofsky.github.io/m-pyre/media/m-pyre-promo.mp4"><img
+src="assets/mpyre/video/m-pyre-promo-poster.jpg" width="640" alt="The M-PYRE video: the FM-1's screens playing History Of Sky's The Quintessence"></a><br>
+<a href="https://historyofsky.github.io/m-pyre/media/m-pyre-promo.mp4"><b>Watch the video</b></a> (2 minutes, everything in it rendered by the firmware)</p>
+
 ---
 
-M-PYRE turns the FM-1 into a box for writing riffs. Three tracks play real guitar and bass samples through amp
-models and the band's own cabinet IRs, the fourth plays a drum kit the band recorded. The effects are a pedalboard
-on the screen. The step sequencer knows palm mutes, slides, accents and power chords. Write a riff, loop it, play
-over it.
+M-PYRE turns the FM-1 into a box for writing riffs, from the first idea to the song. Record the drums, the bass, the
+rhythm guitars and the lead on its four tracks: real guitar and bass samples through amp models and the band's own
+cabinet IRs, a fully editable kit based on realistic drum samples. The effects are a pedalboard on the screen. The
+step sequencer knows palm mutes, slides, accents and power chords, and the LIVE view puts live controls for realistic
+guitar performances on the knobs: bend, vibrato, palm mute, whammy, wah. Write a riff, loop it, play over it.
 
 > **Status:** 1.0. Custom firmware: install it at your own risk. Your FM-1 can go back to the official firmware at
 > any time (see [Going back](#going-back)).
@@ -37,17 +43,21 @@ over it.
 
 - **Guitar and bass, sampled:** History Of Sky's DI guitar, palm mutes and picked bass, tuned and looped. Presets:
   CLEAN GTR, CRUNCH GTR, HI-GAIN, DJENT GTR, LEAD GTR, PALM MUTE, DI GUITAR, PICK BASS, DRIVE BASS, HEAVY BASS.
+- **From idea to song:** four tracks to record on — drums, bass, rhythm guitar, lead — with the step sequencer, song
+  mode and sections A–D to turn a riff into a song.
 - **Five amps** drawn on the screen (CLEAN, CRNCH, HIGH, LEAD, BASS) with GAIN, BASS, MID, TREB, presence and a
-  compressor, through the band's own cabinet IRs. Rhythm guitars are doubled left and right.
+  compressor, through the band's own cabinet IRs. HIGH and LEAD are voiced on the band's own guitar and amp. Rhythm
+  guitars are doubled left and right.
 - **A pedalboard:** BOOST, OD, DIST, FUZZ and an octave pedal; PHASER, FLANGER, CHORUS, TREMOLO; a delay; a reverb
   with ROOM, HALL, PLATE, SPRING and CLOUD. Wah, whammy and a volume pedal on every guitar and bass track.
-- **HEAVY KIT:** a drum kit recorded by the band, with a hi-hat pedal, ride bell, three toms, two crashes and a china,
-  plus the synthesised kits 808, 909, 606, 80S, VINTAGE, TRAP and INDUSTR. Each sound has its own level, punch,
-  pitch and decay.
-- **Played like a guitar:** power chords (PW, PW+, OCT, TERZ), bend, vibrato, palm mutes, legato, whammy and wah on
-  the LIVE view; palm mutes, slides and hammer-ons per step in the sequencer.
-- **Synths for rock:** MOOG FUZZ, MOOG BASS, MOOG LEAD and the rest of the HYBRID voice, organs, pianos, pads and
-  leads (ANALOG, DIGITAL, PHASE, LOFI, TRIO, DRAWBAR, FM6).
+- **HEAVY KIT:** a fully editable kit based on realistic drum samples, with a hi-hat pedal, ride bell, three toms,
+  two crashes and a china, plus the synthesised kits 808, 909, 606, 80S, VINTAGE, TRAP and INDUSTR. Each sound has its
+  own level, punch, pitch and decay, and the kit is drawn on the screen as it plays.
+- **Live controls for realistic guitar performances:** power chords (PW, PW+, OCT, TERZ), bend, vibrato, palm mutes,
+  legato, whammy and wah on the LIVE view; palm mutes, slides and hammer-ons per step in the sequencer. CHORD NAME
+  (in the menu) shows the chord you play.
+- **8 synth engines and sampled instruments:** ANALOG, DIGITAL, PHASE, LOFI, TRIO, DRAWBAR, FM6 and HYBRID (MOOG FUZZ,
+  MOOG BASS, MOOG LEAD …), organs, pianos, Mellotron, strings and pads.
 - **Everything SLOOP does:** the step sequencer with parameter locks and micro timing, song mode with sections A–D,
   punch-in effects, MIDI in and out, MIDI clock, USB audio, the web editor.
 
@@ -117,7 +127,8 @@ The [manual](MANUAL.md) explains the amp view, the pedals, the LIVE view and the
 
 ## Credits
 
-- **M-PYRE:** History Of Sky (samples, cabinet IRs, artwork, sound design), with Claude (Anthropic) on the code.
+- **M-PYRE:** History Of Sky (samples, cabinet IRs, artwork, sound design, the video and its music), with Claude
+  (Anthropic) on the code.
 - **[SLOOP](https://github.com/isod89/sloop-fm1)** by **isod89**: the groovebox M-PYRE is built on, with its
   contributors (see [reference/sloop/README-SLOOP.md](reference/sloop/README-SLOOP.md#credits-and-thanks)).
 - **[Felucca](https://github.com/hugelton/Felucca)** by **Leo Kuroshita** (@kurogedelic) / **Hügelton Instruments**:

@@ -1,6 +1,7 @@
 <!doctype html>
 <!-- SPDX-License-Identifier: GPL-3.0-only
-     Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments -->
+     Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+     Copyright (C) 2026 History Of Sky (M-PYRE). Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md) -->
 <!-- Felucca web editor. One file, no libraries. Protocol: EDITOR_PROTOCOL.md.
      Add ?mock=1 to the URL to use a built-in simulated device. -->
 <html lang="ja">
@@ -841,6 +842,27 @@
     .lvpad { height: 64px; }
     .lvfxpads { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
+
+  /* ---- M-PYRE: the look of the installer and the FM-1's EMBER palette - nearly black, warm, fire colours, Barlow
+     Condensed (SIL OFL 1.1; make_site.py inlines it, else the installed face or Arial Narrow) ---- */
+  @font-face { font-family: "Barlow Condensed"; font-weight: 600; src: /*FONT*/local("Barlow Condensed SemiBold"); font-display: swap; }
+  :root {
+    --bg: #080000; --s1: #140805; --s2: #22100a; --s3: #4a2618; --line: #2c140c; --dim: #a08670; --fg2: #e2d2c4; --fg: #f8ece2;
+    --red: #e8481c; --f1: #c0201a; --f2: #e8481c; --f3: #ff8c1e; --f4: #ffc35a;
+    --font: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  }
+  body { font-size: 17px; line-height: 22px; -webkit-font-smoothing: antialiased; font-smooth: auto; text-rendering: optimizeLegibility; }
+  button { letter-spacing: .03em; }
+  .brand { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .brand svg { width: 168px; }
+  .brand span { text-transform: uppercase; letter-spacing: .14em; font-size: 13px; line-height: 16px; padding: 0; }
+  .brand::after { content: ""; display: block; width: 100%; height: 4px; margin-top: 10px;
+                  background: linear-gradient(90deg, var(--f1) 25%, var(--f2) 25% 50%, var(--f3) 50% 75%, var(--f4) 75%); }
+  .tabs .navh { color: var(--dim); text-transform: uppercase; letter-spacing: .14em; font-size: 13px; }
+  .tabs button { font-size: 18px; }
+  #pagetitle { font-size: 40px; line-height: 40px; letter-spacing: .02em; }
+  .card > h2, .group > h2 { letter-spacing: .06em; font-size: 19px; }
+  .card, .group { border-top: 2px solid var(--s3); }
 </style>
 </head>
 <body>
@@ -851,7 +873,7 @@
         <text x="2" y="66" font-family="'Barlow Condensed', 'Arial Narrow', Impact, sans-serif" font-weight="700" font-size="80"
               textLength="296" lengthAdjust="spacingAndGlyphs" fill="#FF8C1E">M-PYRE</text>
       </svg>
-      <span>editor</span>
+      <span>editor · by History Of Sky</span>
     </a>
     <nav class="tabs" id="tabs" role="tablist" aria-orientation="vertical">
       <div class="navh" data-t="navTrack"></div>
@@ -3356,7 +3378,7 @@ function makeMockDevice(opt = {}) {
         b(0);
         break;
       case CMD.INFO:
-        s(opt.legacy ? "FELUCCA 0.4 BETA (MOCK)" : opt.v3 ? "FELUCCA 0.8 (MOCK)" : "FELUCCA SLOOP 2.6 (MOCK)"); b(ENG.length); b(P_COUNT); b(G_COUNT); b(NSTEP); b(P_E0);
+        s(opt.legacy ? "FELUCCA 0.4 BETA (MOCK)" : opt.v3 ? "FELUCCA 0.8 (MOCK)" : "M-PYRE 1.0 (MOCK)"); b(ENG.length); b(P_COUNT); b(G_COUNT); b(NSTEP); b(P_E0);
         ENG.forEach((e) => s(e.name));
         if (!opt.legacy) b(NTRK);
         if (v5) b(mockProto);   /* v12: LIVE (2.7), v11: your theme (2.7) */   /* v10: SYN kits (v9: FM6 patches, v8: fill conditions, v7: nudges and locks, v6: backup) */
@@ -4598,7 +4620,8 @@ const GLYPH = {
 /* section headings (LAYOUT titles) and page titles */
 const HEAD_IC = { ENV: "function_env_adsr_exp", LFO: "waveform_sine", EDIT: "ui_knob", VOICE: "symbol_keyboard",
   FX: "symbol_effector", SEL: "symbol_tuning", ARP: "control_arrow_up_down", "SEQ PATTERN": "symbol_grid",
-  GLOBAL: "symbol_cog", MASTER: "ui_slider_vertical", DRUMS: "symbol_drum", INSTRUMENT: "symbol_keyboard" };
+  GLOBAL: "symbol_cog", MASTER: "ui_slider_vertical", DRUMS: "symbol_drum", INSTRUMENT: "symbol_keyboard",
+  AMP: "ui_knob", PLAY: "symbol_keyboard" };   /* (M-PYRE) */
 const PAGE_IC = { FLT: "function_filter_lpf_peak", FILT: "function_filter_lpf_peak", DLY: "symbol_echo", REVERB: "symbol_spring", CHORUS: "symbol_spring", SLICER: "symbol_grid" };
 /* WAVE / WAVE2 choices; phase-distortion shapes without a close glyph (SPLS, RSAW, RTRI, RTRP) get none */
 const WAVE_IC = { SIN: "waveform_sine", TRI: "waveform_triangle_ac", SAW: "waveform_sawtooth_ac", SQR: "waveform_square",
@@ -5958,12 +5981,15 @@ const stepEdit = new Map(); /* index -> time of the last edit */
 
 /* parameter ids (firmware/src/core.h); used only when P_COUNT / G_COUNT match */
 /* pcount 71 / pe0 63: 2.6's INSERT, filter TYPE, ENV SYNC, LFO 2 (P_ITYPE 53 .. P_LPOL 62, after Felucca 1.4 / 1.5) */
-const EXPECT = { pcount: [61, 71], gcount: [32, 33, 45, 46, 47, 48, 49, 50, 51, 52], pe0: [53, 63] };   /* gcount 33: 2.5's drum DLY (G_DRDLY); 45: 2.6's GLO > MIDI, TEXTURE, BEND; 46: 2.7's FX CH; 47: DR MAP; 48: REMOTE; 49: CLK OUT; 50: 2.7.2's FX FADE */
+const EXPECT = { pcount: [61, 71, 91], gcount: [32, 33, 45, 46, 47, 48, 49, 50, 51, 52], pe0: [53, 63, 83] };   /* pcount 91 / pe0 83: M-PYRE (P_AMP 63 .. P_WAH 82) */   /* gcount 33: 2.5's drum DLY (G_DRDLY); 45: 2.6's GLO > MIDI, TEXTURE, BEND; 46: 2.7's FX CH; 47: DR MAP; 48: REMOTE; 49: CLK OUT; 50: 2.7.2's FX FADE */
 const P = { LEVEL: 0, SLEN: 29, CHORD: 49 };
 const LAYOUT = (pe0) => {
   const v251 = pe0 >= 63;                         /* (2.6: the pages the device has for the new parameters) */
   const opt = (yes, ...pages) => (yes ? pages : []);
+  const mp = pe0 >= 83;                           /* M-PYRE: the amp, the guitar's live controls, as the device's pages */
   return [
+    ...opt(mp, { t: "AMP", pages: [["AMP", 0, [63, 69, 68, 72]], ["AMP 2", 0, [64, 65, 66, 67]]] },   /* AMP CAB PRES COMP; GAIN BASS MID TREB */
+      { t: "PLAY", pages: [["PLAY", 0, [49, 76, 77, 75]], ["PLAY 2", 0, [78, 79, 82, 81]]] }),   /* CHORD BEND VIB PALM; LEGATO WHAMMY WAH VOL */
     { t: "ENV", pages: [["ENV", 0, [1, 2, 3, 4]], ["ENV DEST", 0, [5, 6, 7, 8]], ...opt(v251, ["ENV SYNC", 0, [59]])] },
     { t: "LFO", pages: [["LFO", 0, [9, 10, 11, 12]], ...opt(v251, ["LFO 2", 0, [60, 61, 62]]), ["LFO DEST", 0, [13, 14, 15, 16]]] },
     { t: "EDIT", engine: true, pages: [["EDIT 1", 0, [pe0, pe0 + 1, pe0 + 2, pe0 + 3]], ["EDIT 2", 0, [pe0 + 4, pe0 + 5, pe0 + 6, pe0 + 7]],
