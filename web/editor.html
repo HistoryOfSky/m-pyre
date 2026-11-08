@@ -1829,7 +1829,7 @@ function fmtValue(d, v) {
     case F.CTR: return [sign(v - 64), ""];                                   /* M-PYRE: 64 = as voiced */
     case F.OCTST: return v === 24 ? ["OFF", ""] : [sign(v - 24), "st"];      /* the octaver */
     case F.WHAM: return [sign(Math.trunc((v - 64) * 12 / 63)), "st"];        /* the whammy */
-    case F.BEND: return [!v ? "OFF" : v < 40 ? "1/4" : v < 110 ? "1/2" : "FULL", ""];
+    case F.BEND: return [!v ? "OFF" : v < 96 ? "1/2" : "FULL", ""];   /* (M-PYRE 1.0.1: no quarter tone) */
     case F.OFFPCT: return !v ? ["OFF", ""] : [String(Math.trunc((v * 100 + Math.trunc(d.max / 2)) / d.max)), "%"];
     default: return [d.names && d.names[v - d.min] != null ? d.names[v - d.min] : String(v), d.unit || ""];
   }

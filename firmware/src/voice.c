@@ -840,9 +840,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     t->bend_s = (int16_t)(t->bend_s + ((t->bend - t->bend_s) >> 2) + (t->bend > t->bend_s) - (t->bend < t->bend_s));
     bendq = ((int32_t)t->bend_s * clamp(song.g[G_BEND], 1, 12)) >> 1;   /* MIDI pitch bend (2.6): 1/4096 semitone,
                                                                          * gliding (a quarter of the way a block) */
-    {   /* M-PYRE: BEND - a little = a quarter tone, then a semitone, near the end a whole tone; WHAMMY: 64 none, an
+    {   /* M-PYRE: BEND - a semitone, from 96 a whole tone (the LIVE view sets 0, 64, 127); WHAMMY: 64 none, an
          * octave down to the left, up to the right. Both glide (a semitone in ~50 ms, the whammy 4x as fast) */
-        int32_t bt = !p[P_BEND] ? 0 : p[P_BEND] < 40 ? 2048 : p[P_BEND] < 110 ? 4096 : 8192;
+        int32_t bt = !p[P_BEND] ? 0 : p[P_BEND] < 96 ? 4096 : 8192;
         int32_t wt = (p[P_WHAM] - 64) * 4096 * 12 / 63, d;
         d = bt - t->rf_bend;
         t->rf_bend += d > 60 ? 60 : d < -60 ? -60 : d;

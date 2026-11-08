@@ -883,39 +883,39 @@ static uint32_t unit_w(const track_t *t)
  * must stay here (above) */
 static uint32_t units_split(void)
 {
-    uint32_t mask = (uint32_t)cpu1_units & U_ALL, k, nform = 0, nhyb = 0;
-    if (cpu1_units < 0) {
-        uint32_t w[NPART + 1u], m, best = ~0u;
-        for (k = 0; k < NPART; k++)
-            w[k] = unit_w(&trk[k]);
-        w[NPART] = 20u;                                 /* the drums */
-        for (m = 1u; m <= U_ALL; m++) {
-            uint32_t c0 = 8u, c1 = 0;                   /* (core 0: the buses, the limiter) */
-            for (k = 0; k <= NPART; k++)
-                *(m >> k & 1u ? &c1 : &c0) += w[k];
-            if ((c0 > c1 ? c0 : c1) < best)
-                best = c0 > c1 ? c0 : c1, mask = m;
-        }
-    }
+    uint32_t mask = (uint32_t)cpu1_units & U_ALL, stay = 0, k, nform = 0, nhyb = 0;
     if (!mask)
         return 0;
     for (k = 0; k < NPART; k++)
         nform += ENGINES[trk[k].engine] == &ENG_FORMANT, nhyb += ENGINES[trk[k].engine] == &ENG_HYBRID;
-    for (k = 0; k < NPART; k++) {
+    for (k = 0; k < NPART; k++) {                       /* the parts that stay on core 0 this block (above) */
         const track_t *t = &trk[k];
         const engine_t *e = ENGINES[t->engine];
         uint32_t fade = t->xf_on && t->xf, inc;
         const int16_t *p = fade && t->pold ? t->p_old : t->p;   /* the values this block renders with (mix_part: a
                                                          * preset fading out keeps its old sound; voice.c track_render:
                                                          * an engine fading out its old engine values, pe_old) */
-        if (!(mask & (1u << k)))
-            continue;
         inc = p[P_LSYNC] ? lfo_sync_inc(p) : LFO_INC[p[P_LRATE] & 127];   /* (2.6: LFO 2 SYNC, as track_lfo_tick) */
         if (t->lfo_ph + inc < t->lfo_ph || (e == &ENG_PHYS && phys_render_draws(t, fade ? t->pe_old[0] : p[P_E0])) ||
             (e == &ENG_FORMANT && nform > 1u) || (e == &ENG_HYBRID && nhyb > 1u))   /* (M-PYRE: HYBRID's scratch is one) */
-            mask &= ~(1u << k);
+            stay |= 1u << k;
     }
-    return mask;
+    if (cpu1_units < 0) {                               /* M-PYRE: of the units that may go, the most even split */
+        uint32_t w[NPART + 1u], m, best = ~0u;
+        for (k = 0; k < NPART; k++)
+            w[k] = unit_w(&trk[k]);
+        w[NPART] = 20u;                                 /* the drums */
+        for (m = 1u; m <= U_ALL; m++) {
+            uint32_t c0 = 8u, c1 = 0;                   /* (core 0: the buses, the limiter) */
+            if (m & stay)
+                continue;
+            for (k = 0; k <= NPART; k++)
+                *(m >> k & 1u ? &c1 : &c0) += w[k];
+            if ((c0 > c1 ? c0 : c1) < best)
+                best = c0 > c1 ? c0 : c1, mask = m;
+        }
+    }
+    return mask & ~stay;
 }
 
 static int32_t master_cur = -1;                        /* the volume knob, ramped per sample (no zipper) */

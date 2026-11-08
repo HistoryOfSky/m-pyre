@@ -389,8 +389,8 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         *unit = d->fmt == F_CTR ? "" : "st";
         break;
     }
-    case F_BEND:                                      /* voice.c: a quarter, a half, a whole tone */
-        str_cpy(val, !v ? "OFF" : v < 40 ? "1/4" : v < 110 ? "1/2" : "FULL", 6);
+    case F_BEND:                                      /* voice.c: a half, a whole tone (1.0.1: no quarter) */
+        str_cpy(val, !v ? "OFF" : v < 96 ? "1/2" : "FULL", 6);
         break;
     case F_OFFPCT:
         if (!v) {

@@ -1331,7 +1331,11 @@ UI_SMALL static void ui_input(void)
         if (ui.home) {
             int16_t *vp;
             const param_desc_t *d = home_param(k, &vp);
-            *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, s, d->names ? 0 : d->max - d->min), d->min, d->max);   /* (a list: no jumps) */
+            if (d->fmt == F_BEND)                       /* M-PYRE: BEND - a turn right a semitone, a strong one (or on
+                                                         * from there) a whole tone; any turn left: off, the note as played */
+                *vp = (int16_t)(s < 0 ? 0 : *vp || s > 1 ? 127 : 64);
+            else
+                *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, s, d->names ? 0 : d->max - d->min), d->min, d->max);   /* (a list: no jumps) */
             if (!is_drum(TSEL) && p_lockable(home_id(k)))
                 ui.lock_par = (uint8_t)home_id(k);
             if (!is_drum(TSEL))

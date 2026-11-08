@@ -201,7 +201,8 @@ static inline int32_t cab_run(amp_st_t *a, const int16_t *h, int32_t x)
     return a->c1;
 }
 
-/* M-PYRE 1.0: the HI-GAIN and LEAD cabinets at the full rate, 256 taps (CABF_IR): their highs as recorded */
+/* M-PYRE 1.0: the HI-GAIN and LEAD cabinets at the full rate (CABF_IR): their highs as recorded. 1.0.1: CABF_TAPS
+ * (64) of them, the rest of the box's response in the model's eq - a quarter of the cost (the ring stays CAB_TAPS) */
 static inline int32_t cabf_run(amp_st_t *a, const int16_t *h, int32_t x)
 {
     int64_t acc = 0;
@@ -210,7 +211,7 @@ static inline int32_t cabf_run(amp_st_t *a, const int16_t *h, int32_t x)
     a->fw = (a->fw + CAB_TAPS - 1u) % CAB_TAPS;      /* newest first: p[k] is x[n - k] */
     a->fir[a->fw] = a->fir[a->fw + CAB_TAPS] = x;
     p = &a->fir[a->fw];
-    for (k = 0; k < CAB_TAPS; k += 4u)
+    for (k = 0; k < CABF_TAPS; k += 4u)
         acc += (int64_t)p[k] * h[k] + (int64_t)p[k + 1u] * h[k + 1u] + (int64_t)p[k + 2u] * h[k + 2u] +
                (int64_t)p[k + 3u] * h[k + 3u];
     return (int32_t)(acc >> 15);
@@ -322,7 +323,8 @@ static void track_amp(track_t *t, int32_t *b, uint32_t n)
         kb[j] = v > 0 ? v * 260 : v * 128;          /* Q14 */
     }
     {   /* make-up per amp: a held note about as loud as the CLEAN amp's, under the master limiter (measured renders) */
-        static const int16_t MK[4] = {13000, 1840, 859, 1093};   /* (1.0: HI-GAIN, LEAD as loud as before) */
+        static const int16_t MK[4] = {13000, 1840, 578, 801};    /* (1.0: HI-GAIN, LEAD as loud as before; 1.0.1: -3.4 / -2.7 dB,
+                                                         * what the refitted eq adds) */
         mk = (int32_t)(((int64_t)MK[(type - 1) & 3] * gmk) >> 12);
     }
     for (i = 0; i < n; i++) {

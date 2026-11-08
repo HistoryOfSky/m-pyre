@@ -640,6 +640,8 @@ UI_SMALL static void apply_preset_to(track_t *t, uint32_t pi)
                 t->p[P_AMODE + i] = (int16_t)(pr->arp[i] ? pr->arp[i] - 1 : TP[P_AMODE + i].def);
         }
         preset_extras(t->p, pr);                     /* glide, pitch / LFO modulation, voice mode */
+        if (t->p[P_AMP] && !keep_arp)                /* M-PYRE: a guitar's or bass's arpeggio rings to the next note */
+            t->p[P_AGATE] = 127;
     }
     fm6_track_loaded(t);                             /* FM6: the preset's patch (its PTCH) */
 }

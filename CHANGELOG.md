@@ -42,6 +42,8 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
 - **Mixes that mix:** at 50 % the effect is as loud as the dry sound, at 100 % only the effect is heard.
 - **Delay and reverb start OFF:** the leftmost knob of each (TIME, TYPE) switches it on.
 - **Wah, whammy, volume pedal and compressor** on every guitar and bass track.
+- **Both cores shared by load:** the tracks go to the FM-1's two cores so that each has about as much to do (SLOOP
+  always gave the second core the third track and the drums); the full-rate cabinets cost a quarter of before.
 
 ### Playing
 
@@ -50,6 +52,8 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
   - PLAY: CHORD, BEND, VIB, PALM
   - PLAY 2: LEG, WHAM, WAH, PVOL
 - **Chords for guitar:** PW (power chord), PW+, OCT and TERZ.
+- **BEND in steps:** a turn right bends a semitone, a strong turn a whole tone, any turn left lets go.
+- **Arpeggios on guitar and bass** ring to the next note (the ARP's GATE at 100 % in their presets).
 - **CHORD NAME** (menu > SCREEN, off by default): the LIVE view names the chord or note being played, in large type
   over the scope.
 - **Palm mutes, slides and accents per step:** the note sheet's ART row (NORM, PALM, SLIDE, HAMMR), and FORCE goes on

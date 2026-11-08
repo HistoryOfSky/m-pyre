@@ -162,7 +162,8 @@ Tap **HOME**: the four knobs become the things you play with. Tap **HOME** again
 
 - **CHORD:** each key plays a chord. PW is a power chord (root and fifth), PW+ adds the octave, OCT plays the octave,
   TERZ the third; TRIAD, 7TH, 9TH and SUS4 as in SLOOP.
-- **BEND:** bends the notes up, as a string bend: a quarter, a half or a whole tone.
+- **BEND:** bends the notes up, as a string bend. Turn it right a little: a semitone; turn it right hard (or once more):
+  a whole tone. Any turn to the left lets the bend go: back to the note as played.
 - **VIB:** vibrato, faster as you turn it up.
 - **PALM:** ON plays palm mutes instead of open notes.
 - **LEGATO:** notes played while one is held glide or hammer into each other instead of starting again.
