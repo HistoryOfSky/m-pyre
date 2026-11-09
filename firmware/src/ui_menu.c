@@ -159,8 +159,8 @@ UI_SMALL static void draw_menu(void)
 #endif
             cv_text(4, 132, &FONT_S, MPYRE_SOURCE, C_AMB);   /* (the source of this firmware) */
             cv_text(4, 146, &FONT_S, "FONT: BARLOW CONDENSED (OFL)", C_DIM);
-            cv_text(4, 159, &FONT_S, "GUITAR, BASS, DRUMS: HISTORY OF SKY", C_DIM);
-            cv_text(4, 172, &FONT_S, "KEYS: VERSILIAN (CC0)", C_DIM);
+            cv_text(4, 159, &FONT_S, "GTR, BASS, IRS: HISTORY OF SKY (CC BY)", C_DIM);
+            cv_text(4, 172, &FONT_S, "DRUMS: CC0, KEYS: VERSILIAN (CC0)", C_DIM);
             cv_text(4, 185, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
             cv_text(4, 198, &FONT_S, "HYBRID: CLIPPER BY 3DSAM", C_DIM);
         } else {

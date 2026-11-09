@@ -25,27 +25,37 @@ another: `firmware/src/fm6_core.c`, msfa, Apache-2.0, below; the firmware built 
 You may use, study, change and share it under the GPL. If you distribute M-PYRE, or firmware derived from it, you
 must also give your recipients its complete corresponding source under the same licence.
 
-## History Of Sky's assets
+## History Of Sky's assets (CC BY 4.0)
 
 These are not code. They are made by History Of Sky:
 
 | What | Where |
 | --- | --- |
 | The guitar, palm mute and bass recordings (the sound pack) | `assets/mpyre-src/` (sources), `soundpack.bin` (release) |
-| The HEAVY KIT drum recordings (built into the firmware) | `assets/mpyre-src/drums/` |
 | The cabinet impulse responses (built into the firmware) | `assets/mpyre-src/ir/` |
 | The M-PYRE boot picture and the History Of Sky logo | `assets/mpyre/splash.png` |
-| The promo video and its poster (its music: History Of Sky's songs, all rights reserved) | `assets/mpyre/video/` |
 
-Copyright (C) 2026 History Of Sky. **Licence: to be decided before the first public release** (see below).
+Copyright (C) 2026 History Of Sky. Licensed under the **Creative Commons Attribution 4.0 International** licence
+(CC BY 4.0, <https://creativecommons.org/licenses/by/4.0/legalcode>): you may share and adapt them, also outside
+M-PYRE and commercially, if you name History Of Sky ("by History Of Sky", with a link to this repository where you
+can) and say what you changed. CC BY 4.0 is compatible with GPLv3 (FSF), so the firmware that contains them can be
+shared under the GPL as a whole.
 
-<!-- History Of Sky chooses one of these before release; the text below is replaced by the choice:
-     CC BY 4.0 (anyone may use and share them, also outside M-PYRE, naming History Of Sky; the FSF considers CC BY 4.0
-     compatible with GPLv3, which keeps the firmware that contains them simple to share), CC0, or all rights reserved
-     with a permission to share them unchanged with M-PYRE and to use them freely in your own music. -->
+## The HEAVY KIT drum recordings (CC0)
 
-Whatever the licence, music you make with M-PYRE is yours: the sounds may be used in your recordings and
-performances without asking and without credit.
+The drum samples built into the firmware (`assets/mpyre-src/drums/`) were recorded by a friend of History Of Sky, who
+gives them to the public domain: **CC0 1.0 Universal** (<https://creativecommons.org/publicdomain/zero/1.0/legalcode>).
+Use them for anything, with or without credit.
+
+## The video
+
+The promo video and its poster (`assets/mpyre/video/`) contain History Of Sky's songs: Copyright (C) 2026 History Of
+Sky, all rights reserved. You may share the video unchanged.
+
+## Music you make
+
+Music you make with M-PYRE is yours: its sounds may be used in your recordings and performances without asking and
+without credit (CC BY's attribution is for sharing the sounds themselves, not for music made with them).
 
 ## The Felucca assets (additional permission, GPL-3.0 section 7)
 
