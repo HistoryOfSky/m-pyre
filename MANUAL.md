@@ -98,7 +98,8 @@ Each amp is drawn as its own: CLEAN a tweed combo, CRNCH black and gold, HIGH di
 heads. The cabinets are History Of Sky's impulse responses.
 
 With **CLEAN**, **CRNCH** and **HIGH** the guitar is doubled: the left channel plays as it is, the right a second take
-a few milliseconds later, its timing drifting slightly. LEAD and BASS stay in the middle.
+a few milliseconds later, its timing drifting slightly. LEAD and BASS stay in the middle. **GTR DOUBLE** in the menu
+(SEQ, ON by default) switches the doubling off for every track: the guitars then play once, in the middle.
 
 **The BASS amp:** GAIN goes from clean to fuzz. TREB below the middle closes the tone down to almost only the low
 end; above the middle it brings out the clank of the strings.
@@ -233,6 +234,7 @@ these slots replaces them; install the sound pack again to get them back.
 ## 11. Settings
 
 Hold **GLO** for about 1.2 seconds for the menu. M-PYRE adds the palettes **EMBER** (the default), **AMBER**,
-**RED**, **MONO** and **LIGHT**, and **CHORD NAME** (SCREEN, off by default; see [The LIVE view](#7-the-live-view)). **ABOUT** shows the version and the credits.
+**RED**, **MONO** and **LIGHT**, **CHORD NAME** (SCREEN, off by default; see [The LIVE view](#7-the-live-view)) and
+**GTR DOUBLE** (SEQ, on by default; see [The amp](#5-the-amp)). **ABOUT** shows the version and the credits.
 
 The other settings are SLOOP's: see its [guide](reference/sloop/GUIDE.md).

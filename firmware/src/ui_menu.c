@@ -12,12 +12,12 @@ enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_CHORD, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_L
 #if FELUCCA_CDC
        MI_SERIAL,
 #endif
-       MI_RATE, MI_FRESO, MI_ADV, MI_DPREV, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
+       MI_RATE, MI_FRESO, MI_ADV, MI_DPREV, MI_DBL, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
 static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "CHORD NAME", "LIGHTS", "KEYS", "NOTES", "SPEAKER LOWCUT", "USB AUDIO",
 #if FELUCCA_CDC
                                               "USB SERIAL",
 #endif
-                                              "USB RATE", "FILTER RESO", "STEP ADVANCE", "DRUM PREVIEW", "2ND CORE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
+                                              "USB RATE", "FILTER RESO", "STEP ADVANCE", "DRUM PREVIEW", "GTR DOUBLE", "2ND CORE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
 enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_SEQ, MS_SYSTEM, MS_COUNT };   /* (2.7.1: SEQ) */
 static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "SEQ", "SYSTEM"};   /* (AUDIO: and USB) */
 static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_ADV, MI_CPU1, MI_COUNT};   /* rows of each */
@@ -64,6 +64,7 @@ UI_SMALL static const char *mi_value(uint32_t i, uint16_t *c)
     case MI_CHORD: return chord_view ? "ON" : "OFF";       /* (M-PYRE) the LIVE view names what is played */   /* (2.7) the knobs speed up with a fast turn */
     case MI_ADV: return step_adv_off ? "OFF" : "ON";      /* (2.7.1) the STEP page's cursor moves on when the keys are let go */
     case MI_DPREV: return drum_preview ? "ON" : "OFF";     /* (2.7.1) a drum sound picked with a knob is heard */
+    case MI_DBL: return dbl_off ? "OFF" : "ON";           /* (M-PYRE) CLEAN, CRNCH, HIGH: two takes, left and right */
     case MI_LIGHTS: return LIGHTS_NAME[lights_lvl % LIGHTS_N];
     case MI_KEYS:
         *c = lights_lvl ? C_HI : C_DIM;               /* (needs LIGHTS) */
@@ -113,7 +114,7 @@ UI_SMALL static void draw_menu(void)
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
                    settings.zoom * 104729u + lights_lvl * 1299709u + lights_keys * 15485863u + ml_count() * 2654435u +
                    lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + usb_rate * 15486719u + theme_shown() * 32452867u + theme.crc + cpu1_off * 122949829u +
-                   knob_accel_off * 179424673u + chord_view * 295075153u + drum_preview * 236887691u + step_adv_off * 373587883u + flt_reso * 512927357u;
+                   knob_accel_off * 179424673u + chord_view * 295075153u + drum_preview * 236887691u + step_adv_off * 373587883u + flt_reso * 512927357u + dbl_off * 694847539u;
     if (!ui.force && sig == ui.menu_sig)
         return;
     ui.menu_sig = sig;
@@ -258,6 +259,9 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
         break;
     case MI_DPREV:                                     /* (2.7.1) right ON, left OFF; OCT+ toggles (ui_studio.c drum_hear) */
         drum_preview = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !drum_preview);
+        break;
+    case MI_DBL:                                       /* (M-PYRE) right ON, left OFF; OCT+ toggles (fx.c part_doubled) */
+        dbl_off = (uint8_t)(s > 0 ? 0u : s < 0 ? 1u : !dbl_off);
         break;
     case MI_ZOOM:
     case MI_LOWCUT: {                                  /* right ON, left OFF; OCT+ toggles */

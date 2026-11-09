@@ -32,7 +32,7 @@ that is not listed below works as it does there (see `reference/sloop/` for SLOO
   rate.
 - **Cabinets:** the band's own impulse responses for clean, crunch, high-gain, lead and bass.
 - **Doubled rhythm guitars:** with the CLEAN, CRNCH and HIGH amps the guitar plays left and right, the right side a
-  second take a little later.
+  second take a little later. **GTR DOUBLE** (menu > SEQ) switches it off.
 - **The FX as a pedalboard.** The first FX page is the overview of the four mixes (DST, MOD, DLY, REV). Then come
   four pedal pages, each drawn as its pedal:
   - PEDAL: BOOST, OD, DIST and FUZZ (DRIVE, TONE, LEVEL), and OCT (OCT+, OCT-, LEVEL)

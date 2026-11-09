@@ -100,6 +100,8 @@ static uint8_t vis_style;                       /* the visualiser's style, 0..11
 static uint8_t chord_view;                      /* M-PYRE: menu SCREEN > CHORD NAME: 1 = ON, the LIVE view names the chord (or the note)
                                                  * played over its scope (ui_draw.c); OFF by default. Kept in the visualiser's bits
                                                  * (17..20: 15, a style no SLOOP writes) - M-PYRE has no visualiser */
+extern uint8_t dbl_off;                         /* M-PYRE: menu SEQ > GTR DOUBLE (fx.c): 1 = OFF; with CHORD NAME in bits 17..20:
+                                                 * 0 / 15 doubled, 14 / 13 not (CHORD NAME off / on) */
 static uint8_t knob_accel_off;                  /* menu KNOB ACCEL (2.7): 1 = OFF, one value a detent however fast (ui_input.c accel) */
 static uint8_t step_adv_off;                    /* menu SEQ > STEP ADVANCE (2.7.1): 1 = OFF, the STEP page's cursor stays where it
                                                  * is when the keys are let go (KNOB 1 moves it); kept in the MIDI part */
@@ -114,7 +116,7 @@ UI_SMALL static uint32_t lights_word(void)
 #if FELUCCA_VIS
            (uint32_t)(vis_style % 12u) << 17 |
 #else
-           (uint32_t)(chord_view ? 15u : 0u) << 17 |
+           (uint32_t)(dbl_off ? (chord_view ? 13u : 14u) : chord_view ? 15u : 0u) << 17 |   /* (M-PYRE: + GTR DOUBLE OFF) */
 #endif
            (uint32_t)(lights_min >= 2u && lights_min <= 17u ? lights_min - 1u : 0u) << 21 |   /* 2.6: CH n (n 1..16; 0 none) */
            (uint32_t)(cpu1_off != 0u) << 26 |          /* 2ND CORE OFF (2.7: ON by default; 2.6 took 21..25) */
@@ -137,7 +139,9 @@ UI_SMALL static void lights_from_word(uint32_t w)
     if (((w >> 21) & 31u) >= 1u && ((w >> 21) & 31u) <= 16u)
         lights_min = (uint8_t)(((w >> 21) & 31u) + 1u);   /* 2.6: CH n (an older SLOOP reads NOTES) */
     usb_serial = (uint8_t)((w >> 16) & 1u);
-    chord_view = (uint8_t)(((w >> 17) & 15u) == 15u);   /* (M-PYRE: CHORD NAME; any SLOOP style reads OFF) */
+    chord_view = (uint8_t)(((w >> 17) & 15u) == 15u || ((w >> 17) & 15u) == 13u);   /* (M-PYRE: CHORD NAME; any SLOOP
+                                                 * style reads OFF) */
+    dbl_off = (uint8_t)(((w >> 17) & 15u) == 13u || ((w >> 17) & 15u) == 14u);   /* (GTR DOUBLE: 13, 14 = OFF) */
     vis_style = (uint8_t)(((w >> 17) & 15u) % 12u);   /* the visualiser (ui_vis.c); 0 in 2.3 = OSCILLOSCOPE */     /* menu USB SERIAL (usb.c usb_cdc_on, at the next start); 0 in 2.3 = OFF */
     cpu1_off = (uint8_t)((w >> 26) & 1u);       /* menu 2ND CORE (ui_menu.c); 2.7: bit 26 set = OFF, so any older settings
                                                  * word (2.6 and before: 0) reads as ON, the two-core SLOOP (an early 2.7 beta

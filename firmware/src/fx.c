@@ -612,9 +612,10 @@ static void mix_part(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)   /* into
  * (+-1.4 ms at ~0.35 Hz: a few cents up and down, as a second take's pitch and timing wander): the width of two
  * takes; PAN moves the pair. (LEAD and BASS stay in the middle) */
 #define DBL_N 1024u
-typedef struct { int32_t buf[DBL_N]; uint32_t w, ph; } dbl_t;
+typedef struct { int32_t buf[DBL_N]; uint32_t w, ph, on; } dbl_t;   /* (on: the delay holds this part's sound) */
 static dbl_t dbl_st[NPART] __attribute__((section(".pool")));
-static int part_doubled(const track_t *t) { return !is_drum(t) && t->p[P_AMP] >= 1 && t->p[P_AMP] <= 3; }
+uint8_t dbl_off;                                        /* menu SEQ > GTR DOUBLE: 1 = OFF, every guitar in the middle (panel.c) */
+static int part_doubled(const track_t *t) { return !dbl_off && !is_drum(t) && t->p[P_AMP] >= 1 && t->p[P_AMP] <= 3; }
 
 static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
 {
@@ -663,8 +664,15 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
             if (djf_block(f, t->p[P_TFLT], &fc, tflt_reso()))
                 tflt_run(f, &fc, b, n, 0);
         }
-        dbl_t *db = part_doubled(t) ? &dbl_st[(uint32_t)(t - trk) % NPART] : 0;
+        dbl_t *db = &dbl_st[(uint32_t)(t - trk) % NPART];
         int32_t dd0 = 0, ddd = 0;                        /* the second take's delay, Q8 samples, across the block */
+        if (!part_doubled(t)) {                          /* (not doubled: the delay emptied, so the next doubling
+                                                         * starts from silence, not from what it held then) */
+            if (db->on)
+                memset(db->buf, 0, sizeof db->buf), db->on = 0;
+            db = 0;
+        } else
+            db->on = 1;
         if (db) {
             int32_t s0 = sine_i(db->ph), s1;
             db->ph += 34000u * CTL;                     /* (~0.35 Hz) */
