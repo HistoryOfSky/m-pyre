@@ -80,12 +80,12 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
              * figures the render alone (after Felucca 1.0) */
             uint32_t all = fm1_ticks() - t0;
             us = (all - t5_nested_ticks) / FM1_TICKS_PER_US;
-            shed_over = (uint8_t)(shed_over << 1 | (all / FM1_TICKS_PER_US * 100u > (HALF_FRAMES * 1000000u / FS) * 85u));
+            shed_over = (uint8_t)(shed_over << 1 | (all / FM1_TICKS_PER_US * 100u > (HALF_FRAMES * 1000000u / FS) * 92u));   /* (M-PYRE: 92 %, Felucca 85) */
         }
         if (us > audio_max_us)
             audio_max_us = us;
-        if ((shed_over & 3u) == 3u)
-            shed_req = 1;                               /* two in a row */
+        if ((shed_over & 7u) == 7u)
+            shed_req = 1;                               /* (M-PYRE: three in a row; Felucca two) */
         song.cpu_q8 = (song.cpu_q8 * 15u + (us * 256u) / (HALF_FRAMES * 1000000u / FS)) / 16u;
         if (fm1_audio_free_half() != half)
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */

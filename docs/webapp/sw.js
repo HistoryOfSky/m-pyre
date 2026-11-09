@@ -5,9 +5,9 @@
 // https, so Web MIDI asks as usual (a downloaded file on Android opens as content://, where Chrome refuses MIDI).
 // Online the network always wins (the page as published, never an old one); the copy is only the fallback.
 // A new site (any file changed) is a new sw.js: the new copy replaces the old one.
-const STAMP = "1.0.1-b6716c52c7aa";                          // version + a hash of the files
+const STAMP = "1.0.2-3a0482eeefcd";                          // version + a hash of the files
 const CACHE = "m-pyre-site-" + STAMP;
-const FILES = ["../firmware/m-pyre-1.0.1.fwsc", "../firmware/soundpack.bin", "editor/", "editor/FUKIAI-LICENSE.txt", "editor/fukiai.ttf", "editor/preview-worklet.js", "editor/preview.js", "editor/sloop-preview.wasm", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "installer/", "m-pyre.webmanifest"];                          // relative to this file
+const FILES = ["../firmware/m-pyre-1.0.2.fwsc", "../firmware/soundpack.bin", "editor/", "editor/FUKIAI-LICENSE.txt", "editor/fukiai.ttf", "editor/preview-worklet.js", "editor/preview.js", "editor/sloop-preview.wasm", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "installer/", "m-pyre.webmanifest"];                          // relative to this file
 const KEEP = new Set(FILES.map((f) => new URL(f, self.location).href));
 
 const key = (url) => {                              // the copy's name of a request: no query, index.html = the folder

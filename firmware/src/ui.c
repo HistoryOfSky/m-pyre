@@ -7,7 +7,7 @@
 #define MPYRE_SOURCE "GITHUB.COM/HISTORYOFSKY/M-PYRE"
 #endif
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "M-PYRE 1.0.1"  /* the riffbox firmware for the FM-1 (based on SLOOP 2.8.1 and Felucca) */
+#define FELUCCA_VERSION "M-PYRE 1.0.2"  /* the riffbox firmware for the FM-1 (based on SLOOP 2.8.1 and Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);

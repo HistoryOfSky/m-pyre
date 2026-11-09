@@ -1,5 +1,14 @@
 # Changelog
 
+## M-PYRE 1.0.2
+
+- **Chords hold:** the FM-1 lets voices go under load later than before (three short overloads in a row over 92 %,
+  was two over 85 %), and the drums need far less: a sound hit again takes over its own voice (a crash struck again
+  ends the one before, as on a kit) - about 40 % less for the drums in the tests. A held power chord keeps its fifth.
+- **Recording guitar and bass:** a note played again over an earlier pass replaces it there (notes held together still
+  make a chord), instead of piling up; a note the pattern just started is taken over by your key - one attack, not
+  two, and the step's end no longer cuts the note you hold.
+
 ## M-PYRE 1.0.1
 
 - **No more lost notes under load:** when the FM-1 runs short of time it lets voices go, as before, but never one just

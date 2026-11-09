@@ -135,7 +135,7 @@ preset/HYBRID/23_INIT 93968b3d2ffd68f8
 preset/HYBRID/24_MOOG_BASS 19778dc49156adac
 preset/HYBRID/25_MOOG_LEAD 19d912808e8aebe0
 preset/HYBRID/26_LADDER_PAD ee1fb21e0d251784
-drums/gm_kit 703bd291bb30ef20
+drums/gm_kit 5b9907c608580b00
 mode/ANALOG/POLY 74143471f852c150
 mode/ANALOG/MONO 9583d8d67d814abc
 mode/ANALOG/LEGATO 688683752bbf85f8
@@ -160,7 +160,7 @@ sends/DIGITAL/delay a130322343af6b40
 sends/DIGITAL/reverb a130322343af6b40
 sends/DIGITAL/all 054ad46fad5fb345
 sends/DIGITAL/dist a130322343af6b40
-song/4track_mix 3fe2b900489789f3
+song/4track_mix e3ec94ad260e2b48
 slicer/gate/ANALOG_DARK_STR 130f133d0377833f
 slicer/stut/DIGITAL_RHODES 5f7f1116fa1120d4
-slicer/song_gate_stut ae78c0b78013f252
+slicer/song_gate_stut b91c73927e752860

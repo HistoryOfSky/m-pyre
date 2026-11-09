@@ -709,6 +709,10 @@ UI_SMALL static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t 
         uint32_t last = t->rh_ties || t->rh_rs ? t->rh_last : t->rh_start;
         int leg = t->p[P_VOICE] != V_POLY && !rat && hold && t->rh_n && !(t->rh_n == 1u && t->rh_note[0] == note) &&
                   idx != t->rh_start && (idx == (last + 1u) % len || (t->rh_ties && idx == last && st->time == ST_TIE));
+        if (t->p[P_AMP] && hold && st->time == ST_NOTE && st->n && !(t->rh_n && t->rh_start == idx))
+            st->n = 0;                              /* M-PYRE: a guitar or bass played again over a pass recorded
+                                                     * before replaces it there (notes held together still make a
+                                                     * chord); overdubbed passes no longer pile up into 4-note steps */
         step_add(t, idx, note, vel, vel_lvl(vel), rat);
         if (leg)                                    /* (2.7.2) MONO / LEGATO: played over the note before, still held
                                                      * into this step (or to it): legato, as it sounded */
@@ -1648,8 +1652,24 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
         arp_add(t, note);                         /* (the arp records the notes it plays) */
         return;
     }
-    if (((song.rec >> trk_index(t)) & 1u) && song.playing)
+    if (((song.rec >> trk_index(t)) & 1u) && song.playing) {
         rec_note(t, note, vel, 0, 1);
+        if (t->p[P_AMP]) {                        /* M-PYRE: the pattern started this note just now (the pass before,
+                                                   * played a little earlier): the key takes it over - one attack,
+                                                   * not two, and the step's end no longer cuts the held note */
+            uint32_t i, j;
+            for (i = 0; i < t->seq_n && t->seq_notes[i] != note; i++)
+                ;
+            if (i < t->seq_n) {
+                for (j = i; j + 1u < t->seq_n; j++)
+                    t->seq_notes[j] = t->seq_notes[j + 1u];
+                t->seq_n--;
+                for (j = 0; j < NVOICE; j++)
+                    if (t->v[j].active && t->v[j].gate && t->v[j].note == note && t->v[j].vt < 110u)
+                        return;                   /* (struck under ~80 ms ago: it sounds on, now the key's) */
+            }
+        }
+    }
     if (in_chord)                                 /* a chord from the keys: maybe strummed (voice.c) */
         trk_note_chord(t, in_chord, in_chord_n, in_chord_i, vel);
     else
@@ -2622,6 +2642,11 @@ static void seq_tick(track_t *t, uint32_t adv)
                     for (k = 0; k < t->rskip_n; k++)
                         if (s->note[i] == t->rskip[k])
                             skip |= 1u << i;
+            if (t->p[P_AMP] && t->rh_n)              /* M-PYRE: recording a guitar / bass: a note held on its key now
+                                                     * is not struck again by the pattern */
+                for (i = 0; i < s->n; i++)
+                    if (rh_held(t, s->note[i]))
+                        skip |= 1u << i;
             t->rskip_n = 0;
             seq_step(t, s, slen, skip);
         }

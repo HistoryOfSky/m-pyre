@@ -81,7 +81,7 @@
   <p id="status"></p>
   <pre id="log"></pre>
   <a class="ed" href="../editor/" data-t="editor"></a>
-  <p class="small"><a href="../editor/m-pyre-editor.html" download="m-pyre-editor-1.0.1.html" data-t="edOffline"></a></p>
+  <p class="small"><a href="../editor/m-pyre-editor.html" download="m-pyre-editor-1.0.2.html" data-t="edOffline"></a></p>
   <p><button id="app" class="ed" hidden data-t="appInstall"></button></p>
   <hr>
   <p class="small" data-t="direct"></p>
@@ -3846,7 +3846,7 @@ const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textCont
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };
 let image = null, pack = null;
-const meta = {"version": "1.0.1", "product": "FM-1_900", "pkg": "../../firmware/m-pyre-1.0.1.fwsc", "sha256": "286b2961b9465b25ebb4f6ba5e7bf514c215cb55740a8371555f6c54cc2f5eb8", "pack": "../../firmware/soundpack.bin", "packSha256": "a5ce2cdc28601891dfeec3c5d58387f24ee3ee4e19901a55c429bb891f2dbd34"};
+const meta = {"version": "1.0.2", "product": "FM-1_900", "pkg": "../../firmware/m-pyre-1.0.2.fwsc", "sha256": "066688708207187c7e4057878f319f76c4b20e5b048c938a809d36c8db64f7a8", "pack": "../../firmware/soundpack.bin", "packSha256": "a5ce2cdc28601891dfeec3c5d58387f24ee3ee4e19901a55c429bb891f2dbd34"};
 
 let writing = false;
 const lockAll = (on) => {

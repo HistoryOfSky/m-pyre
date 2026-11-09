@@ -143,7 +143,7 @@ static void voice_kill(voice_t *v)                      /* fade out over the nex
     voice_kills++;
 }
 
-/* overload (after Felucca 1.0; audio.c asks for it when two halves in a row took > 85 % of their time):
+/* overload (after Felucca 1.0; audio.c asks for it when three halves in a row took > 92 % of their time (M-PYRE; Felucca: two, 85 %)):
  * fade one voice out over the next blocks (voice_kill: no click), one more each half while it lasts. A
  * single late half (a USB burst, a flash write) sheds nothing. First the quietest releasing voice; else
  * the oldest held one that is not a part's lowest POLY note nor its MONO / LEGATO / UNISON lead, as the

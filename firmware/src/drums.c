@@ -405,6 +405,12 @@ static void drum_on(uint32_t note, uint32_t vel)
         if (drums.v[i].age < v->age)
             v = &drums.v[i];
     }
+    for (i = 0; i < NDRUM; i++)                     /* M-PYRE: a sound hit again takes over its own voice (a cymbal
+                                                     * struck again, as on a kit): one voice a sound, fewer at once */
+        if (drums.v[i].active && drums.v[i].note == note && !drums.synth[i]) {
+            v = &drums.v[i];
+            break;
+        }
     if (v->active)
         drums.tail += v->s[7];                      /* stolen voice: fade its last value */
     v->note = (uint8_t)note;
