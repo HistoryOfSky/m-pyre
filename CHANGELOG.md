@@ -8,6 +8,8 @@
   (fewer voices at once, less load).
 - **Recording in time:** a key's press is timed when it happens, and the recording places the hit where it was played,
   also when the FM-1 is busy (fast kicks no longer slip a step).
+- **The installer writes the sound pack** right after the firmware, when the FM-1 does not have it yet (it asks before
+  replacing other samples in USR1 to USR4).
 - The installer page links History Of Sky's songs on Spotify and Instagram.
 
 ## M-PYRE 1.0

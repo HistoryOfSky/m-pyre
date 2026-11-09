@@ -73,11 +73,12 @@ guitar performances on the knobs: bend, vibrato, palm mute, whammy, wah. Write a
 
 1. Open **[the M-PYRE installer](https://historyofsky.github.io/m-pyre/)** in **Chrome or Edge** on a computer.
 2. Connect the FM-1 by USB: a **data** cable, directly (no hub).
-3. Press **INSTALL M-PYRE**, allow MIDI access and wait for *Done*. The FM-1 restarts on the M-PYRE logo.
-4. Open the **editor** from the installer page, press **Connect**, go to **samples**, press **Install sound pack** and
-   choose
-   `soundpack.bin` from the [release](../../releases). This writes the guitars, palm mutes and bass into the FM-1's
-   four sample slots; it takes about a minute and is needed once. The drums are in the firmware.
+3. Press **INSTALL M-PYRE**, allow MIDI access and wait for *Done*. The FM-1 restarts on the M-PYRE logo, and the
+   installer writes the sound pack (the guitars, palm mutes and bass) into its four sample slots right after — about a
+   minute, only when they are not there yet. The drums are in the firmware.
+
+   (By hand, in the editor: **Connect** → **samples** → **Install sound pack** with `soundpack.bin` from the
+   [release](../../releases).)
 
 **Before you install:** M-PYRE does not open projects saved by SLOOP 2.6 to 2.8, and the sound pack uses all four
 user sample slots (USR1 to USR4). If you have music or samples on the FM-1 you want to keep, save a backup with your

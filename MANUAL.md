@@ -227,7 +227,8 @@ The guitar and bass recordings are too large for the firmware. They live in the 
 | USR3 | the palm mutes |
 | USR4 | the bass, B0 to C4 |
 
-To install them: open the editor, **Connect**, go to **samples**, press **Install sound pack** and choose
+The installer writes them right after the firmware when they are not on the FM-1 yet (it asks first if the slots
+hold other samples). By hand: open the editor, **Connect**, go to **samples**, press **Install sound pack** and choose
 `soundpack.bin`. Once installed they stay on the FM-1, also through firmware updates. Loading your own samples into
 these slots replaces them; install the sound pack again to get them back.
 

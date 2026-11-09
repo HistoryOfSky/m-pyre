@@ -1822,5 +1822,52 @@ samplesMatch();
 chopTests();
 await packages();
 await updater();
+await installerPack();
+/* M-PYRE: the installer writes the sound pack after the firmware (index_pkg.html PACK-BEGIN..END) against the
+   editor's mock device: an empty FM-1 gets it, a second run leaves it, other samples are replaced only when allowed */
+async function installerPack() {
+  const sp = join(HERE, "..", "build", "mpyre", "soundpack.bin");
+  if (!existsSync(sp)) { console.log("installer sound pack: build/mpyre/soundpack.bin missing, skipped"); return; }
+  const page = readFileSync(join(HERE, "index_pkg.html"), "utf8");
+  const code = page.slice(page.indexOf("/*PACK-BEGIN*/"), page.indexOf("/*PACK-END*/"));
+  const m = E.makeMockDevice();
+  const EP = { Link: E.Link, req: E.req, parse: E.parse, CMD: E.CMD, SMP: E.SMP, soundPackSlots: E.soundPackSlots,
+    fm1Ports: () => [{ input: [...m.access.inputs.values()][0], output: [...m.access.outputs.values()][0] }] };
+  let asked = 0, answer = true;
+  const ctx = { EP, pack: new Uint8Array(readFileSync(sp)), $: () => ({ value: 0 }), sayK: () => {}, log: () => {},
+    t: (k) => k, confirm: () => { asked++; return answer; }, setTimeout, clearTimeout, console, Date, Promise, Math, String };
+  const run = vm.runInNewContext(code + ";installPack", ctx);
+  const midi = {};
+  let r = await run(midi);
+  const info = async () => {
+    const l = new E.Link((d) => [...m.access.outputs.values()][0].send(d), { timeout: 300 });
+    [...m.access.inputs.values()][0].onmidimessage = (e) => l.receive(e.data);
+    const o = E.parse[E.CMD.SMP_INFO](await l.request(E.req.smpInfo()));
+    l.close();
+    return o;
+  };
+  let o = await info();
+  ok(r === "done" && asked === 0 && o.slots[0].name === "GUITAR" && o.slots[3].name === "BASS", "installer: the sound pack after the firmware (empty slots)");
+  r = await run(midi);
+  ok(r === "packHave" && asked === 0, "installer: the sound pack already there: left alone");
+  {
+    const l = new E.Link((d) => [...m.access.outputs.values()][0].send(d), { timeout: 300 });
+    [...m.access.inputs.values()][0].onmidimessage = (e) => l.receive(e.data);
+    const own = E.buildSlot("MYKIT", [{ s: new Float32Array(2000).fill(0.1), root: 60 }]);
+    await l.request(E.req.smpBegin(2));
+    for (let off = 0; off < own.data.length; off += 256) await l.request(E.req.smpWrite(2, E.SMP.DATA_OFF + off, own.data.subarray(off, off + 256)));
+    await l.request(E.req.smpEnd(2, own.hdr));
+    l.close();
+  }
+  answer = false;
+  r = await run(midi);
+  o = await info();
+  ok(r === "packKept" && asked === 1 && o.slots[2].name === "MYKIT", "installer: other samples kept when not allowed");
+  answer = true;
+  r = await run(midi);
+  o = await info();
+  ok(r === "done" && asked === 2 && o.slots[2].name === "PALM", "installer: other samples replaced when allowed");
+}
+
 console.log(failed ? `WEB TESTS FAILED (${failed})` : "web tests passed");
 process.exit(failed ? 1 : 0);

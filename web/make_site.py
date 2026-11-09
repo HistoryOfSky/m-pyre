@@ -79,6 +79,8 @@ def app_files(out, version, fw_name):
     (app / "m-pyre.webmanifest").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
     keep = {"installer/": app / "installer" / "index.html", "editor/": app / "editor" / "index.html",
             "../firmware/" + fw_name: out / "firmware" / fw_name, "m-pyre.webmanifest": app / "m-pyre.webmanifest"}
+    if (out / "firmware" / "soundpack.bin").exists():
+        keep["../firmware/soundpack.bin"] = out / "firmware" / "soundpack.bin"   # (M-PYRE: offline too)
     for f in ("fukiai.ttf", "FUKIAI-LICENSE.txt"):
         if (app / "editor" / f).exists():
             keep["editor/" + f] = app / "editor" / f
@@ -122,8 +124,18 @@ def main(pkg, version, out):
     lib = strip_module((HERE / "fm1pkg.js").read_text(encoding="utf-8")) + "\n" + \
         strip_module((HERE / "fm1ota.js").read_text(encoding="utf-8"))
     name = f"m-pyre-{re.sub(r'[^A-Za-z0-9.-]', '-', version)}.fwsc"
+    # M-PYRE: the sound pack next to the firmware: the installer writes it right after (USR1..USR4)
+    pack = HERE.parent / "build" / "mpyre" / "soundpack.bin"
+    pack_meta = {"pack": "../../firmware/soundpack.bin", "packSha256": hashlib.sha256(pack.read_bytes()).hexdigest()} \
+        if pack.exists() else {}
     meta = json.dumps({"version": version, "product": product, "pkg": "../../firmware/" + name,
-                       "sha256": hashlib.sha256(raw).hexdigest()})   # the page checks the download against it
+                       "sha256": hashlib.sha256(raw).hexdigest(), **pack_meta})   # the page checks the download against it
+    ed_src = (HERE / "editor.html").read_text(encoding="utf-8")
+    a, b = ed_src.find("/*PROTO-BEGIN*/"), ed_src.find("/*PROTO-END*/")
+    if a < 0 or b < a:
+        raise SystemExit("editor.html must hold /*PROTO-BEGIN*/ .. /*PROTO-END*/; update make_site.py")
+    html = html.replace("/*PROTO*/", "const EP = (() => {\n" + ed_src[a:b] +
+                        "\nreturn { Link, req, parse, CMD, SMP, fm1Ports, soundPackSlots };\n})();")   # (the editor's protocol)
     for mark in ("/*LIB*/", "/*META*/"):
         if html.count(mark) != 1:
             raise SystemExit(f"index_pkg.html must contain {mark} once; update make_site.py")
@@ -167,6 +179,8 @@ def main(pkg, version, out):
     for old in list(fw.glob("felucca-*.fwsc")) + list(fw.glob("sloop-*.fwsc")) + list(fw.glob("m-pyre-*.fwsc")):   # one package: the current one
         old.unlink()
     shutil.copy(pkg, fw / name)
+    if pack.exists():
+        shutil.copy(pack, fw / "soundpack.bin")
     ed_html = (HERE / "editor.html").read_text(encoding="utf-8")
     if font.exists():                              # M-PYRE: the editor's face too, inline (it also runs offline)
         ed_html = ed_html.replace('/*FONT*/local("Barlow Condensed SemiBold")',

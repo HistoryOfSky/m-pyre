@@ -101,11 +101,12 @@
 </main>
 <script type="module">
 /*LIB*/
+/*PROTO*/
 const $ = (id) => document.getElementById(id);
 const TEXT = {
   en: {
     step1: "Install the firmware here (about two minutes).",
-    step2: "Then open the editor, connect, and on the samples page press Install sound pack once: it writes the guitars, palm mutes and bass into the FM-1. The drums are in the firmware.",
+    step2: "The sound pack (the guitars, palm mutes and bass) is written right after the firmware, when the FM-1 does not have it yet. The drums are in the firmware.",
     intro: "Connect the FM-1 by USB. (Works in Chrome or Edge.)",
     warn: "Do not unplug the USB cable while writing.",
     install: "Install M-PYRE", other: "",
@@ -117,7 +118,11 @@ const TEXT = {
     beta: "M-PYRE is custom firmware, made by a band in its spare time. History Of Sky accepts no responsibility if your FM-1 is damaged or misbehaves because of it. Use it at your own risk.",
     nomidi: "This browser cannot do it. Open the page in Chrome or Edge.", loadfail: "Could not load: ",
     start: "Starting", verify: "Verifying", loader: "Switching to update mode", write: "Writing",
-    reboot: "Restarting", done: "Done. Now open the editor and install the sound pack.", stopped: "Stopped. Replug the USB cable and press Install again.",
+    reboot: "Restarting", done: "Done. M-PYRE and its sound pack are on the FM-1.", stopped: "Stopped. Replug the USB cable and press Install again.",
+    packWait: "Waiting for M-PYRE to start", packWrite: "Writing the sound pack ", packHave: "The sound pack is already on the FM-1. ",
+    packAsk: "The FM-1's sample slots USR1 to USR4 hold other samples ({names}). Replace them with M-PYRE's sound pack (guitars, palm mutes, bass)? Without it the guitar and bass sounds are silent.",
+    packKept: "Done. Your samples were kept: install the sound pack later in the editor (samples > Install sound pack).",
+    packFail: "M-PYRE is installed, but the sound pack could not be written: open the editor and press Install sound pack (samples page). ",
     error: "Error: ",
     denied: "MIDI (SysEx) access was not allowed. Allow MIDI in the site settings (address bar) and press Install again.",
     notfound: "FM-1 not found. Check the USB cable (a data cable), close other apps that use MIDI, and press Install again.",
@@ -161,7 +166,7 @@ if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
 const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textContent = t(k) + arg; };
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };
-let image = null;
+let image = null, pack = null;
 const meta = /*META*/;
 
 let writing = false;
@@ -191,6 +196,15 @@ window.addEventListener("beforeunload", (e) => { if (writing) { e.preventDefault
       if (h !== meta.sha256) { sayK("badpkg"); log(`sha256 ${h}, expected ${meta.sha256}`); return; }
     }
     image = logicalImage(pkg);
+    if (meta.pack) {                                   /* M-PYRE: the sound pack, written after the firmware */
+      try {
+        const r = await fetch(meta.pack, { cache: "no-cache" });
+        if (r.ok) {
+          const b = new Uint8Array(await r.arrayBuffer());
+          if (!check || (await sha(b)) === meta.packSha256) pack = b;
+        }
+      } catch (e) { log(`sound pack: ${e.message}`); }
+    }
     say(`M-PYRE ${meta.version}`);
     lockAll(writing);
   } catch (e) { sayK("loadfail", e.message); }
@@ -204,8 +218,81 @@ const step = (k, a) => {
   if (k === "loader") sayK("loader");
   if (k === "write") { sayK("write"); $("bar").value = Math.min(100, ((74 + a) / total) * 100); }
   if (k === "reboot") sayK("reboot");
-  if (k === "done") { $("bar").value = 100; sayK("done"); }
+  if (k === "done") { $("bar").value = 100; sayK("reboot"); }
 };
+
+/*PACK-BEGIN*/
+/* M-PYRE: the sound pack into USR1..USR4 right after the firmware, through the editor's protocol (EP, editor.html):
+   M-PYRE is found once it has started; slots that already hold the pack are left alone; other samples there are
+   replaced only when the player agrees. -> "done", "packKept", or throws */
+const SLOT_NAME = (h) => String.fromCharCode(...h.subarray(8, 16)).replace(/\0.*$/, "");
+async function packConnect(midi) {
+  for (let t0 = Date.now(); Date.now() - t0 < 30000;) {
+    for (const pr of EP.fm1Ports(midi)) {
+      const l = new EP.Link((d) => pr.output.send(d), { timeout: 400 });
+      pr.input.onmidimessage = (e) => l.receive(e.data);
+      if (pr.input.open) await pr.input.open().catch(() => {});
+      try {
+        const info = EP.parse[EP.CMD.INFO](await l.request(EP.req.info(), { timeout: 500, retries: 2, quiet: true }));
+        if (/M-PYRE/i.test(info.version || "")) return { link: l, input: pr.input };
+      } catch (e) { /* not yet */ }
+      l.close();
+      pr.input.onmidimessage = null;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error("M-PYRE did not answer");
+}
+async function installPack(midi) {
+  sayK("packWait");
+  const slots = EP.soundPackSlots(pack), { link, input } = await packConnect(midi);
+  try {
+    const rq = (r, o) => link.request(r, o);
+    const have = EP.parse[EP.CMD.SMP_INFO](await rq(EP.req.smpInfo()));
+    const want = [], other = [];
+    slots.forEach((sl, k) => {
+      if (!sl) return;
+      const h = sl.hdr, len = h[16] | h[17] << 8 | h[18] << 16 | h[19] << 24, d = have.slots[k] || { zones: 0 };
+      const same = d.zones === h[6] && d.name === SLOT_NAME(h) && Math.abs(d.kib - len / 1024) <= 2;
+      if (same) return;
+      want.push(k);
+      if (d.zones && !/^(GUITAR2?|PALM|BASS)$/.test(d.name)) other.push(`USR${k + 1} ${d.name || "?"}`);
+    });
+    if (!want.length) { log("sound pack: already there"); return "packHave"; }
+    if (other.length && !confirm(t("packAsk").replace("{names}", other.join(", ")))) return "packKept";
+    const total = want.reduce((n, k) => n + slots[k].data.length, 0);
+    let done = 0;
+    for (const k of want) {
+      const { hdr, data } = slots[k];
+      let r = EP.parse[EP.CMD.SMP_BEGIN](await rq(EP.req.smpBegin(k), { timeout: 1500, retries: 0 }));
+      if (r.rc) throw new Error(`USR${k + 1} begin rc ${r.rc}`);
+      for (let off = 0; off < data.length; off += 256) {
+        const w = EP.parse[EP.CMD.SMP_WRITE](await rq(EP.req.smpWrite(k, EP.SMP.DATA_OFF + off, data.subarray(off, off + 256)), { timeout: 1000, retries: 2 }));
+        if (w.rc) throw new Error(`USR${k + 1} write rc ${w.rc}`);
+        done += Math.min(256, data.length - off);
+        $("bar").value = (done / total) * 100;
+        sayK("packWrite", `${Math.round((done / total) * 100)} %`);
+      }
+      r = EP.parse[EP.CMD.SMP_END](await rq(EP.req.smpEnd(k, hdr), { timeout: 3000, retries: 0 }));
+      if (r.rc) throw new Error(`USR${k + 1} end rc ${r.rc}`);
+      log(`sound pack: USR${k + 1} written`);
+    }
+    return "done";
+  } finally {
+    link.close();
+    input.onmidimessage = null;
+  }
+}
+/*PACK-END*/
+async function afterInstall(midi) {
+  if (!pack) { sayK("done"); return; }
+  $("bar").value = 0;
+  try {
+    const k = await installPack(midi);
+    $("bar").value = 100;
+    if (k === "packHave") sayK("done"); else sayK(k);
+  } catch (e) { sayK("packFail", e.message); log(String(e && e.stack || e)); }
+}
 const failed = (e) => {
   if (e && e.code && TEXT[lang][e.code]) sayK(e.code, e.detail || "");
   else sayK("error", e && e.message);
@@ -223,9 +310,10 @@ $("go").addEventListener("click", async () => {
     const ota = await up.find((id) => /^ota-/i.test(id.model), true);
     if (ota) {
       ota.link.close();
-      sayK((await up.resume(image, step)) ? "done" : "stopped");
+      if (await up.resume(image, step)) await afterInstall(midi); else sayK("stopped");
     } else {
       await up.install(image, meta.product, step);
+      await afterInstall(midi);
     }
   } catch (e) { failed(e); }
   lockAll(false);
