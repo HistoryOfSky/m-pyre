@@ -17,6 +17,14 @@ and <a href="https://github.com/hugelton/Felucca">Felucca</a>.</p>
 src="assets/mpyre/video/m-pyre-promo-poster.jpg" width="640" alt="The M-PYRE video: the FM-1's screens playing History Of Sky's The Quintessence"></a><br>
 <a href="https://historyofsky.github.io/m-pyre/media/m-pyre-promo.mp4"><b>Watch the video</b></a> (2 minutes, everything in it rendered by the firmware)</p>
 
+<p align="center"><b>Music by History Of Sky</b><br>
+<a href="https://open.spotify.com/track/0zcH8TBsfImHzdnM2COh83">The Prism</a> ·
+<a href="https://open.spotify.com/track/41KA0kkv4ogBhnwRf7uqUN">The Quintessence</a> ·
+<a href="https://open.spotify.com/track/2sZQYQhxmWdmGsvXrxyEB4">The Truth (Parts I–III)</a> ·
+The Fountain (coming soon)<br>
+<a href="https://open.spotify.com/artist/4ehdjRy2ETpUSkIbtuEG3S">Spotify</a> ·
+<a href="https://www.instagram.com/historyofsky/">Instagram</a></p>
+
 ---
 
 M-PYRE turns the FM-1 into a box for writing riffs, from the first idea to the song. Record the drums, the bass, the

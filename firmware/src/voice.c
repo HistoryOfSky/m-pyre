@@ -149,6 +149,8 @@ static void voice_kill(voice_t *v)                      /* fade out over the nex
  * the oldest held one that is not a part's lowest POLY note nor its MONO / LEGATO / UNISON lead, as the
  * voice budget keeps them: a dense chord on a heavy engine thins out from the top, bass and lead stay. */
 static uint32_t shed_count;
+#define SHED_YOUNG 200u                                 /* M-PYRE: blocks (~0.15 s): a held note this young is never shed -
+                                                         * a chord's attack is the load's peak, and its notes must sound */
 
 static void shed_voice(void)
 {
@@ -170,7 +172,7 @@ static void shed_voice(void)
         uint32_t mode = voice_mode(t), low = mode == V_POLY ? lowest_held(t) : 0u;
         for (i = 0; i < NVOICE; i++) {
             voice_t *v = &trk[p].v[i];
-            if (v->active && v->gate && v->stage != 4u &&
+            if (v->active && v->gate && v->stage != 4u && v->vt >= SHED_YOUNG &&   /* (M-PYRE: never a note just struck) */
                 ((mode == V_POLY && i != low) || (mode != V_POLY && i > 0u)) && (!best || v->age < best->age))
                 best = v;
         }
@@ -202,6 +204,7 @@ static int voice_room(track_t *t, int soft)
  * held one, never the lowest held note (the bass). A free voice needs room in the
  * shared budget: when the voice to give up is one of this part's, it is restarted
  * in place instead. */
+#define TAIL_MAX 4u
 static voice_t *voice_alloc(track_t *t, uint32_t note)
 {
     uint32_t i, np = trk_nvoice(t), best = np, low = np, nfree = 0;
@@ -240,8 +243,22 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         }
         t->rr = (uint8_t)((best == np ? t->rr : best) + 1u) % np;
     }
-    if (best < np)
+    if (best < np) {
+        if (t->p[P_AMP] && eng_sampled(ENGINES[t->engine])) {   /* M-PYRE: a guitar or bass rings on in TAIL_MAX
+                                                         * notes let go at most: the next one damps the oldest (as a hand
+                                                         * on the strings does) - fewer voices reading the flash at once */
+            uint32_t nrel = 0, old = np;
+            for (i = 0; i < np; i++)
+                if (i != best && t->v[i].active && !t->v[i].gate && t->v[i].stage != 4u) {
+                    nrel++;
+                    if (old == np || t->v[i].age < t->v[old].age)
+                        old = i;
+                }
+            if (nrel >= TAIL_MAX)
+                voice_kill(&t->v[old]);
+        }
         return &t->v[best];
+    }
     for (i = 0; i < np; i++)                             /* the lowest held note is protected */
         if (t->v[i].gate && (low == np || t->v[i].note < t->v[low].note))
             low = i;

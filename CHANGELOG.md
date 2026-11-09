@@ -1,5 +1,15 @@
 # Changelog
 
+## M-PYRE 1.0.1
+
+- **No more lost notes under load:** when the FM-1 runs short of time it lets voices go, as before, but never one just
+  struck (the last ~0.15 s): a chord's notes and a key pressed always sound; ringing tails go first.
+- **Guitars and basses ring on in four notes at most:** the next one damps the oldest, as a hand on the strings does
+  (fewer voices at once, less load).
+- **Recording in time:** a key's press is timed when it happens, and the recording places the hit where it was played,
+  also when the FM-1 is busy (fast kicks no longer slip a step).
+- The installer page links History Of Sky's songs on Spotify and Instagram.
+
 ## M-PYRE 1.0
 
 The first release of M-PYRE, a riffbox firmware for rock and metal on the M-VAVE FM-1. It is based on

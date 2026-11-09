@@ -157,7 +157,12 @@ def main(pkg, version, out):
             shutil.copy(media / f, out / "media" / f)
         html = html.replace("<!--VIDEO-->", '<div class="video"><video controls preload="none" playsinline '
                             'poster="../../media/m-pyre-promo-poster.jpg" src="../../media/m-pyre-promo.mp4"></video>'
-                            '<p>M-PYRE in two minutes: everything in it rendered by the firmware. Music: History Of Sky.</p></div>')
+                            '<p>M-PYRE in two minutes: everything in it rendered by the firmware. Music by History Of Sky: '
+                            '<a href="https://open.spotify.com/track/0zcH8TBsfImHzdnM2COh83" target="_blank" rel="noopener">The Prism</a> · '
+                            '<a href="https://open.spotify.com/track/41KA0kkv4ogBhnwRf7uqUN" target="_blank" rel="noopener">The Quintessence</a> · '
+                            '<a href="https://open.spotify.com/track/2sZQYQhxmWdmGsvXrxyEB4" target="_blank" rel="noopener">The Truth (Parts I–III)</a> · '
+                            '<a href="https://open.spotify.com/artist/4ehdjRy2ETpUSkIbtuEG3S" target="_blank" rel="noopener">Spotify</a> · '
+                            '<a href="https://www.instagram.com/historyofsky/" target="_blank" rel="noopener">Instagram</a></p></div>')
     html = html.replace("<!--VIDEO-->", "")
     for old in list(fw.glob("felucca-*.fwsc")) + list(fw.glob("sloop-*.fwsc")) + list(fw.glob("m-pyre-*.fwsc")):   # one package: the current one
         old.unlink()

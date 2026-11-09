@@ -532,7 +532,7 @@ static void t_shed(void)
     trk_note_on(t, 72, 100);
     trk_note_on(m, 40, 100);                          /* a MONO lead */
     trk_note_on(t, 76, 100);
-    for (k = 0; k < 20u; k++)
+    for (k = 0; k < 250u; k++)                        /* (M-PYRE: past SHED_YOUNG, a note just struck is never shed) */
         run_block();
     trk_note_off(t, 76);                              /* releasing */
     run_block();
@@ -551,6 +551,13 @@ static void t_shed(void)
     for (k = 0, i = 0; i < NVOICE; i++)
         k += t->v[i].active && t->v[i].gate && (t->v[i].note == 64 || t->v[i].note == 67 || t->v[i].note == 72);
     check(low_ok && lead_ok && k == 0u, "overload: the upper notes thin out, the bass and the MONO lead stay");
+    trk_note_on(t, 79, 100);                          /* M-PYRE: a note just struck (a chord's attack: the peak) */
+    run_block();
+    for (k = 0; k < 6u; k++)
+        shed_voice();
+    for (k = 0, i = 0; i < NVOICE; i++)
+        k += t->v[i].note == 79 && t->v[i].gate && t->v[i].stage != 4u;
+    check(k == 1u, "overload: a note just struck is not shed (M-PYRE)");
 }
 
 /* MIDI clock in (SYNC USB / TRS): START, 24 pulses a beat, tempo changes, STOP; the other source ignored */

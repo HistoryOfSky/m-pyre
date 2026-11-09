@@ -482,13 +482,20 @@ static uint32_t undo_erase_sess;
  * 2 x HALF_FRAMES, ~9 ms on average). A note played in time with what the player hears reaches
  * the sequencer this much later than the sound it was played to: recording takes it back. */
 #define REC_LAT 512u
+/* M-PYRE: the key to ear time measured instead (FM1_NOTE_TIMES, the FM-1): audio.c sets blk_play_t, when the block being
+ * rendered will be heard (TIMER4 ticks); keyboard_block sets rec_lat_s for a key from the time its press was confirmed
+ * (fm1_note_t, + the debounce): a hit lands where it was played, also when a heavy render reads the keys late. 0: REC_LAT */
+static volatile uint32_t blk_play_t;
+static uint32_t rec_lat_s;
+#define REC_DEB_TICKS 38400u                            /* ~1.6 ms: contact to the debounced press (fm1_input.h) */
 
 /* the step a note played now goes into (as heard: REC_LAT earlier): the one playing, or the next one
  * when it is past the middle of the playing one; *later: it has not played yet (it must not sound twice) */
 static int8_t rec_m;                     /* (2.7) the last rec_target's note off the grid, as a nudge (rec_micro_set) */
 static uint32_t rec_target(const track_t *t, uint32_t *later)
 {
-    uint32_t into, slen, abs = trk_grid(t, &into, &slen), half = slen / 2u, lat = REC_LAT * (uint32_t)song.g[G_BPM];
+    uint32_t into, slen, abs = trk_grid(t, &into, &slen), half = slen / 2u,
+             lat = (rec_lat_s ? rec_lat_s : REC_LAT) * (uint32_t)song.g[G_BPM];
     int32_t off = (int32_t)into - (int32_t)lat, m;  /* where it was heard, from the start of the playing step */
     if (into > half + (lat < half ? lat : half)) {  /* (32 bits: a step is 8 beats at most, 8 x FS x 60 x 64 < 2^31) */
         abs++;
@@ -2131,9 +2138,16 @@ static void keyboard_block(void)
     for (k = 0; k < 27u; k++) {
         if (!((ch >> k) & 1u))
             continue;
-        if ((cur >> k) & 1u)
+        if ((cur >> k) & 1u) {
+#ifdef FM1_NOTE_TIMES
+            uint32_t s = (blk_play_t - fm1_note_t[k] + REC_DEB_TICKS) / (FM1_TICKS_PER_US * 1000000u / FS);   /* (ticks
+                                                         * a sample: 544) */
+            rec_lat_s = blk_play_t && fm1_note_t[k] && s >= 64u && s <= 6u * HALF_FRAMES ? s : 0u;   /* (else: REC_LAT;
+                                                         * a stale time is far out of range) */
+#endif
             key_down(k);
-        else
+            rec_lat_s = 0;
+        } else
             key_up(k);
         kb_prev ^= 1u << k;                           /* (key_down sees the keys down before it) */
     }

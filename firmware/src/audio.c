@@ -67,7 +67,9 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         uac_render_start();
         usb_full_now = (uint8_t)(usb_full && uac.feed);  /* menu USB AUDIO = FULL, while the computer records */
 #endif
-        for (b = 0; b < HALF_FRAMES; b += CTL)
+        blk_play_t = t0 + HALF_FRAMES * (FM1_TICKS_PER_US * 10000u) / (FS / 100u);   /* (M-PYRE: this half is heard
+                                                         * after the one playing now; a block later each block: seq.c) */
+        for (b = 0; b < HALF_FRAMES; b += CTL, blk_play_t += CTL * (FM1_TICKS_PER_US * 10000u) / (FS / 100u))
             audio_block(o + 2u * b, CTL);
         fm1_audio_ack_half();
         audio_halves++;

@@ -63,7 +63,7 @@
   
   <h1>Riffbox firmware for the M-VAVE FM-1</h1>
   <p class="lead">It's not a groovebox, it's a <b class="cond" style="color: var(--ember)">RIFFBOX</b>. From idea to song: record drums, bass, rhythm and lead guitar on the FM-1's four tracks, real guitar and bass samples through amp models and the band's own cabinet IRs, a pedalboard on the screen, a fully editable kit based on realistic drum samples, and live controls for realistic guitar performances.</p>
-  <div class="video"><video controls preload="none" playsinline poster="../../media/m-pyre-promo-poster.jpg" src="../../media/m-pyre-promo.mp4"></video><p>M-PYRE in two minutes: everything in it rendered by the firmware. Music: History Of Sky.</p></div>
+  <div class="video"><video controls preload="none" playsinline poster="../../media/m-pyre-promo-poster.jpg" src="../../media/m-pyre-promo.mp4"></video><p>M-PYRE in two minutes: everything in it rendered by the firmware. Music by History Of Sky: <a href="https://open.spotify.com/track/0zcH8TBsfImHzdnM2COh83" target="_blank" rel="noopener">The Prism</a> · <a href="https://open.spotify.com/track/41KA0kkv4ogBhnwRf7uqUN" target="_blank" rel="noopener">The Quintessence</a> · <a href="https://open.spotify.com/track/2sZQYQhxmWdmGsvXrxyEB4" target="_blank" rel="noopener">The Truth (Parts I–III)</a> · <a href="https://open.spotify.com/artist/4ehdjRy2ETpUSkIbtuEG3S" target="_blank" rel="noopener">Spotify</a> · <a href="https://www.instagram.com/historyofsky/" target="_blank" rel="noopener">Instagram</a></p></div>
   <div class="tiles">
     <div class="tile" style="--c: var(--red)"><b>5 amps</b><span>clean, crunch, high, lead, bass</span></div>
     <div class="tile" style="--c: var(--fire)"><b>11 fx</b><span>boost to fuzz, octave, mod, delay, reverb</span></div>
@@ -81,7 +81,7 @@
   <p id="status"></p>
   <pre id="log"></pre>
   <a class="ed" href="../editor/" data-t="editor"></a>
-  <p class="small"><a href="../editor/m-pyre-editor.html" download="m-pyre-editor-1.0.html" data-t="edOffline"></a></p>
+  <p class="small"><a href="../editor/m-pyre-editor.html" download="m-pyre-editor-1.0.1.html" data-t="edOffline"></a></p>
   <p><button id="app" class="ed" hidden data-t="appInstall"></button></p>
   <hr>
   <p class="small" data-t="direct"></p>
@@ -486,7 +486,7 @@ const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textCont
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };
 let image = null;
-const meta = {"version": "1.0", "product": "FM-1_900", "pkg": "../../firmware/m-pyre-1.0.fwsc", "sha256": "6b391b5e520603aadc2d1d76f1b648c69b31bda941d405dd6064f225b951b1f9"};
+const meta = {"version": "1.0.1", "product": "FM-1_900", "pkg": "../../firmware/m-pyre-1.0.1.fwsc", "sha256": "286b2961b9465b25ebb4f6ba5e7bf514c215cb55740a8371555f6c54cc2f5eb8"};
 
 let writing = false;
 const lockAll = (on) => {

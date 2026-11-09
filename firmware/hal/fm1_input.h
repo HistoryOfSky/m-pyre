@@ -98,6 +98,10 @@ static volatile struct {
 /* SLOOP 2.7: buttons held over MIDI (GLO > MIDI 3 > REMOTE: src/ui_input.c remote_poll), bit i = button i: read as
  * closed by the debounce, so a remote press is a press like any other (taps, holds, layers) */
 static volatile uint32_t fm1_remote_btn;
+/* M-PYRE: when each note key's press was confirmed (TIMER4 ticks, fm1_ticks): the recording places a hit where it was
+ * played, whenever the render reads it (seq.c rec_target) */
+#define FM1_NOTE_TIMES 1
+static volatile uint32_t fm1_note_t[27] __attribute__((section(".pool")));   /* (not in the small data: its neighbours keep their short addresses) */
 static uint8_t fm1_led[FM1_NCOL];
 #ifndef FM1_GLOW_NS
 #define FM1_GLOW_NS 4000u        /* the glow pulse a frame (ns); a lit LED ~95 us: ~1/24 the brightness */
@@ -201,7 +205,7 @@ static void fm1__key(uint32_t id, uint32_t closed)
     *c = 0;
     if (note) {
         if (!on)
-            fm1_in.notes_pressed |= bit;
+            fm1_in.notes_pressed |= bit, fm1_note_t[(id - 14u) % 27u] = fm1_ticks();
         fm1_in.notes ^= bit;
     } else {
         fm1_in.buttons ^= bit;
