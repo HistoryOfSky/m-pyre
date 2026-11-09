@@ -7,6 +7,7 @@ and <a href="https://github.com/hugelton/Felucca">Felucca</a>.</p>
 
 <p align="center">
 <a href="https://historyofsky.github.io/m-pyre/"><b>Install from the browser</b></a> ·
+<a href="https://historyofsky.github.io/m-pyre/webapp/editor/"><b>Editor</b></a> ·
 <a href="MANUAL.md">Manual</a> ·
 <a href="CHANGELOG.md">What's new</a> ·
 <a href="../../releases">Releases</a> ·
