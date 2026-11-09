@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
+// Modified for M-PYRE by History Of Sky, 2026 (CHANGELOG.md)
 // Browser-only firmware audio. Explicit start is required by autoplay policies.
 export class LocalPreview {
   constructor(getState, onError, onLevel = () => {}, onTransport = () => {}) {
@@ -18,7 +19,7 @@ export class LocalPreview {
       this.context = new Audio({ sampleRate: 44100, latencyHint: 'interactive' });
       if (this.context.sampleRate !== 44100) {
         await this.context.close(); this.context = null;
-        throw new Error('SLOOP preview requires audio at 44.1 kHz.');
+        throw new Error('M-PYRE preview requires audio at 44.1 kHz.');
       }
     }
     // Resume immediately inside the click/key gesture, before the network awaits.
