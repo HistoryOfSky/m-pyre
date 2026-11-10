@@ -1,5 +1,13 @@
 # Changelog
 
+## M-PYRE 1.0.3
+
+- **Newer FM-1s supported:** units sold since autumn 2026 (mostly via AliExpress) have a different flash chip
+  (UC25HQ80, JEDEC 0xB36014). M-PYRE took it for an unknown part: projects stayed in RAM and the update loader refused
+  to install. The app, the USB rescue and the update loader now know both chips (as SLOOP 2.8.5).
+- **Its own identity:** M-PYRE reports itself as `FM-1_123` (was Felucca's `FM-1_900`), so it is listed on its own on
+  The Firmware Hub and updates keep the Install button. Nothing changes for your projects or samples.
+
 ## M-PYRE 1.0.2
 
 - **Chords hold:** the FM-1 lets voices go under load later than before (three short overloads in a row over 92 %,

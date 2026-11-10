@@ -12,9 +12,9 @@ const UPGRADE = [0xF0, 0x22, 0x24, 0x35, 0x7F, 0xF7];
 const MAXDATA = 512;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const IS_OTA = (id) => /^ota-/i.test(id.model);
-// the update loader of SLOOP / Felucca packages ("ota-FM-1_9XX"). A device left in the update mode of another
+// the update loader of SLOOP / Felucca packages ("ota-FM-1_9XX", M-PYRE's "ota-FM-1_123"). A device left in the update mode of another
 // firmware (the stock updater's loader) is never written: its loader may lay the image out differently.
-export const OUR_LOADER = (id) => /^ota-FM-1_9\d\d$/i.test(id.text);
+export const OUR_LOADER = (id) => /^ota-FM-1_(9\d\d|123)$/i.test(id.text);
 // the MIDI ports the installer may probe (never other gear): the FM-1 under SLOOP / Felucca ("Felucca"), under
 // CLIPPER ("Clipper", its sister firmware), under a firmware named after itself ("SLOOP"), the update loaders, and
 // the names Windows / macOS give the stock firmware

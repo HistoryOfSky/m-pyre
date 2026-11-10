@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { logicalImage, productOf } from "./fm1pkg.js";
-import { Updater, pack7, unpack7, FM1_PORT } from "./fm1ota.js";
+import { Updater, pack7, unpack7, FM1_PORT, OUR_LOADER } from "./fm1ota.js";
 
 let failed = 0;
 const ok = (cond, what) => { console.log(`${what.padEnd(64)} ${cond ? "ok" : "FAIL"}`); if (!cond) failed++; };
@@ -1643,7 +1643,9 @@ async function packages() {
   const logical = py(`import sys; raw = open(sys.argv[1], "rb").read()
 sys.stdout.buffer.write(b"".join(raw[i * 48:i * 48 + 47] for i in range(20)) + raw[960:])`, pkg);
   ok(eq(logicalImage(raw), logical), "fm1pkg.js logicalImage");
-  ok(/^FM-1_9\d\d$/.test(productOf(raw)), "fm1pkg.js productOf");
+  ok(/^FM-1_(9\d\d|123)$/.test(productOf(raw)), "fm1pkg.js productOf");
+  ok(OUR_LOADER({ text: "ota-FM-1_123" }) && OUR_LOADER({ text: "ota-FM-1_900" }) && !OUR_LOADER({ text: "ota-FM-1_666" }) && !OUR_LOADER({ text: "ota-FM-1_015" }),
+     "fm1ota.js: M-PYRE's loader (ota-FM-1_123) and the Felucca ones are ours, others not");
 }
 
 /* ------------------------------------------------- update protocol (fm1ota.js) --- */

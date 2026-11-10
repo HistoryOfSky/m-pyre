@@ -20,7 +20,7 @@ Exit codes: 0 done, 1 cancelled or other error, 2 bad arguments or package,
 3 FM-1 not found, 4 connection lost or the device stopped, 5 timeout (no
 loader / no restart), 6 wrong model, another identity after the install, or the
 FM-1 is in the update mode of another firmware (only SLOOP's own loader,
-ota-FM-1_9XX, is resumed).
+ota-FM-1_9XX or M-PYRE's ota-FM-1_123, is resumed).
 """
 import argparse
 import queue
@@ -358,7 +358,7 @@ class Updater:
         if model_of(dev.id.text) != model_of(product):
             dev.link.close()
             raise InstallError("model", f"the device is {dev.id.text}, the package is for {product}")
-        if dev.id.loader and not re.fullmatch(r"ota-FM-1_9\d\d", dev.id.text, re.I):
+        if dev.id.loader and not re.fullmatch(r"ota-FM-1_(9\d\d|123)", dev.id.text, re.I):
             dev.link.close()           # another firmware's loader: its image layout may differ
             raise InstallError("foreign", f"the FM-1 is in the update mode of another firmware ({dev.id.text}): "
                                           "finish that update with its own updater (M-UPGRADE), then install again")

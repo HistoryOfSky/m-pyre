@@ -20,7 +20,7 @@
   web/make_site.py build/felucca-X.Y.fwsc X.Y OUT_DIR [--beta]
   (--beta: web/beta_banner.html at the top of the installer: the beta channel, docs/beta)
 
-The package identity (FM-1_9xx) is read from the package; the device reports it
+The package identity (M-PYRE: FM-1_123) is read from the package; the device reports it
 after the install.
 """
 import base64
@@ -116,8 +116,8 @@ def main(pkg, version, out):
     pkg, out = Path(pkg), Path(out)
     raw = pkg.read_bytes()
     product = product_of(raw)
-    if not re.fullmatch(r"FM-1_9\d\d", product):
-        raise SystemExit(f"{pkg}: identity {product!r} is not a Felucca package (FM-1_9xx)")
+    if not re.fullmatch(r"FM-1_(9\d\d|123)", product):
+        raise SystemExit(f"{pkg}: identity {product!r} is not a Felucca / M-PYRE package (FM-1_9xx, FM-1_123)")
     if b"FELUCCA-LOADER-1" not in raw:              # marker of firmware/loader
         raise SystemExit(f"{pkg}: no Felucca update loader in it")
     html = (HERE / "index_pkg.html").read_text(encoding="utf-8")
