@@ -1,7 +1,10 @@
 {
   "what": "A riffbox for rock and metal: real guitar, bass and drum samples, an amp engine with cabinet IRs, pedals and guitar effects, plus all of SLOOP's synth engines. Bend strings, play whammy, wah and palm mutes live, record on the 4-track and turn riffs into songs.",
   "author": "History Of Sky",
-  "kinds": ["groove"],
+  "kinds": [
+    "groove"
+  ],
+  "play": "https://historyofsky.github.io/m-pyre/emu/",
   "editor": "https://historyofsky.github.io/m-pyre/webapp/editor/",
   "image": "assets/hub/card.png",
   "color": "#FF7A1A"
