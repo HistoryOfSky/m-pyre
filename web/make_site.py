@@ -202,6 +202,14 @@ def main(pkg, version, out):
         shutil.copy(dsp, ed / dsp.name)
     elif (ed / dsp.name).exists():
         (ed / dsp.name).unlink()  # never serve an old audio build as the current one
+    emu = HERE.parent / "build" / "emu" / "m-pyre-emulator.html"     # tools/build_emu.py: the firmware in the browser
+    if emu.exists():
+        (out / "emu").mkdir(parents=True, exist_ok=True)
+        (out / "emu" / "index.html").write_text(
+            '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+            '<meta name="theme-color" content="#0b0908">\n</head>\n<body>\n'
+            + emu.read_text(encoding="utf-8") + '\n</body>\n</html>\n', encoding="utf-8")
     app_files(out, version, name)
     (out / "index.html").write_text(
         '<!doctype html><meta charset="utf-8"><title>M-PYRE</title>'

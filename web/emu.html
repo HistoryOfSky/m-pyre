@@ -14,6 +14,7 @@
   .page { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-block: 16px;
           padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .note { width: min(980px, 100%); color: var(--dim); font-size: 12px; }
+  .note a { color: var(--orange); }
   h1 { font-size: 15px; letter-spacing: .12em; margin: 0; color: var(--dim); font-weight: 600; }
   h1 b { color: var(--orange); }
   .fm1 { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 18px;
@@ -63,11 +64,12 @@
 </style>
 <main class="page">
 <h1><b>M-PYRE</b> EMULATOR · FM-1</h1>
+<p class="note links">The real M-PYRE firmware running in your browser – try it before you flash. <a href="../">Install it on your FM-1</a> · <a href="https://github.com/HistoryOfSky/m-pyre">GitHub</a></p>
 <div class="fm1" id="fm1">
   <div class="top">
     <div class="screen">
       <canvas id="lcd" width="240" height="240"></canvas>
-      <button class="power" id="power"><span>⏻ POWER</span>Tippen zum Einschalten (Ton an)</button>
+      <button class="power" id="power"><span>⏻ POWER</span>Tap to switch on (sound on)</button>
     </div>
     <div class="controls">
       <div class="row" id="encs1"></div>
@@ -79,21 +81,21 @@
   <div class="keys" id="keys"></div>
 </div>
 <div class="foot">
-  <div>Regler: ziehen (hoch/runter) oder Mausrad · Tasten halten = Maus gedrückt halten · Shift + Klick = Taste bleibt gedrückt</div>
-  <div>Tastatur: <kbd>A</kbd>…<kbd>'</kbd> weiße / <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd>… schwarze Tasten ab F3</div>
-  <div class="vol">Lautstärke <input type="range" id="vol" min="0" max="4096" value="2048"></div>
+  <div>Knobs: drag up/down or use the mouse wheel · hold a button = keep the mouse pressed · Shift + click = the button stays held</div>
+  <div>Keyboard: <kbd>A</kbd>…<kbd>'</kbd> white / <kbd>W</kbd> <kbd>E</kbd> <kbd>T</kbd>… black keys from F3</div>
+  <div class="vol">Volume <input type="range" id="vol" min="0" max="4096" value="2048"></div>
 </div>
 <div class="foot"><div id="kb2"></div></div>
 <div class="foot songs">
-  <div>Dein Song bleibt im Browser gespeichert (auch SAVE-Slots 1–4). Zum Weitergeben:</div>
+  <div>Your song stays saved in this browser (SAVE slots 1–4 too). To share it:</div>
   <div class="row">
-    <button class="btn" id="exp" disabled>SONG EXPORTIEREN</button>
-    <button class="btn" id="imp" disabled>SONG LADEN</button>
+    <button class="btn" id="exp" disabled>EXPORT SONG</button>
+    <button class="btn" id="imp" disabled>LOAD SONG</button>
     <input type="file" id="impf" accept=".mpyre,application/octet-stream" hidden>
     <span id="songmsg"></span>
   </div>
 </div>
-<p class="note">iPhone: Ist kein Ton zu hören, den Stummschalter an der Seite ausschalten (Web-Audio folgt ihm). Quer gehalten sind die Tasten größer.</p>
+<p class="note">iPhone: no sound? Switch off the mute switch on the side (web audio follows it). Hold the phone sideways for bigger keys.</p>
 <script>
 const WASM_B64 = /*WASM_B64*/"";
 const PACK_B64 = /*PACK_B64*/"";
@@ -283,7 +285,7 @@ addEventListener("resize", layoutKeys); layoutKeys();
 const KEYMAP = { a: 0, w: 1, s: 2, e: 3, d: 4, r: 5, f: 6, g: 7, y: 8, h: 9, u: 10, j: 11, k: 12, o: 13, l: 14, p: 15, ";": 16, "[": 17, "'": 18 };
 const BTNKEYS = { " ": "PLAY", "1": "HOME", "2": "FX", "3": "SEQ", "4": "EDIT", "5": "GLO", "6": "SAVE", "z": "OCT-", "x": "OCT+", "c": "REC" };
 const KNOBKEYS = { ArrowUp: ["SELECT", 1], ArrowDown: ["SELECT", -1], ArrowRight: ["PRESETS", 1], ArrowLeft: ["PRESETS", -1] };
-document.getElementById("kb2").innerHTML = "Tasten am Rechner: " + Object.entries(BTNKEYS).map(([k, v]) => `<kbd>${k === " " ? "Space" : k.toUpperCase()}</kbd> ${v}`).join(" · ")
+document.getElementById("kb2").innerHTML = "Computer keys: " + Object.entries(BTNKEYS).map(([k, v]) => `<kbd>${k === " " ? "Space" : k.toUpperCase()}</kbd> ${v}`).join(" · ")
   + " · <kbd>↑</kbd><kbd>↓</kbd> SELECT · <kbd>←</kbd><kbd>→</kbd> PRESETS";
 addEventListener("keydown", (e) => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.target.tagName === "INPUT") return;
@@ -324,7 +326,7 @@ function gotProj({ proj, i, ask }) {
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([proj], { type: "application/octet-stream" })),
       download: "m-pyre-song.mpyre" });
     document.body.appendChild(a); a.click(); a.remove();
-    songMsg("Exportiert: m-pyre-song.mpyre");
+    songMsg("Exported: m-pyre-song.mpyre");
     return;
   }
   lsSet(i === 4 ? "work" : "slot" + i, proj ? toB64(proj) : null);
@@ -339,7 +341,7 @@ document.getElementById("impf").addEventListener("change", async (e) => {
 /* ---- power */
 function showError(msg) {
   const p = document.getElementById("power") || document.querySelector(".screen").appendChild(Object.assign(document.createElement("div"), { className: "power" }));
-  p.innerHTML = "<span>FEHLER</span>"; p.append(String(msg));
+  p.innerHTML = "<span>ERROR</span>"; p.append(String(msg));
 }
 document.getElementById("vol").addEventListener("input", (e) => send({ t: "vol", v: +e.target.value }));
 document.getElementById("power").addEventListener("click", async (e) => {
@@ -354,7 +356,7 @@ document.getElementById("power").addEventListener("click", async (e) => {
     for (const url of [URL.createObjectURL(new Blob([WORKLET], { type: "text/javascript" })), "data:text/javascript;base64," + btoa(WORKLET)]) {
       try { await ctx.audioWorklet.addModule(url); ok = true; break; } catch (err) { /* the next way */ }
     }
-    if (!ok) throw new Error("AudioWorklet konnte nicht geladen werden");
+    if (!ok) throw new Error("Could not load the AudioWorklet");
     node = new AudioWorkletNode(ctx, "mpyre-emu", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
       processorOptions: { module, pack: PACK_B64 ? b64(PACK_B64) : null } });
     node.port.onmessage = ({ data }) => {
@@ -363,7 +365,7 @@ document.getElementById("power").addEventListener("click", async (e) => {
       else if (data.error) showError(data.error);
       else if (data.ready) restoreSongs();
       else if ("proj" in data) gotProj(data);
-      else if ("loaded" in data) songMsg(data.loaded ? "Geladen." : "Keine M-PYRE-Song-Datei.");
+      else if ("loaded" in data) songMsg(data.loaded ? "Loaded." : "Not an M-PYRE song file.");
     };
     node.connect(ctx.destination);
     p.remove();
