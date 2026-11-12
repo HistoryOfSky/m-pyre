@@ -1,0 +1,237 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<!-- M-PYRE at a glance: the controls on one page (web/make_site.py -> docs/cheatsheet/). From MANUAL.md. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M-PYRE at a glance</title>
+<meta name="description" content="M-PYRE cheat sheet: every button, knob and combination of the riffbox firmware for the M-VAVE FM-1.">
+<style>
+  @font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url("BarlowCondensed-Bold.ttf") format("truetype"); }
+  @font-face { font-family: "Barlow Condensed"; font-weight: 600; src: url("BarlowCondensed-SemiBold.ttf") format("truetype"); }
+  :root {
+    color-scheme: dark;
+    --bg: #0d0a09; --card: #1a1513; --card2: #221b18; --line: #3a2e28; --fg: #f2ebe3; --dim: #a8988c;
+    --ember: #ff7a1a; --hot: #ffb347; --kbd: #2c2420; --kbdl: #4a3c34;
+    --c-kick: #ff4b2b; --c-snare: #ff8a2b; --c-hat: #ffd23f; --c-ride: #e8b36b; --c-tom: #b5654a; --c-cym: #8fb3c9; --c-fx: #c08cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 -apple-system, "Segoe UI", Inter, Roboto, sans-serif; }
+  a { color: var(--hot); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 40px; }
+  header { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: center;
+           background: radial-gradient(ellipse at 20% 120%, #5a1d0a 0%, transparent 60%), var(--card);
+           border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  header img { width: 170px; height: 170px; border-radius: 14px; border: 2px solid var(--line); image-rendering: auto; }
+  h1 { font: 700 clamp(34px, 6vw, 64px)/1 "Barlow Condensed", sans-serif; letter-spacing: .04em; margin: 0 0 6px; }
+  h1 b { color: var(--ember); }
+  .ver { color: var(--dim); margin: 0 0 8px; }
+  .lead { font-size: 18px; margin: 0 0 12px; }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; }
+  .links a { text-decoration: none; color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; background: var(--card2); }
+  .links a:hover { border-color: var(--ember); }
+  h2 { font: 700 22px/1.1 "Barlow Condensed", sans-serif; letter-spacing: .12em; color: var(--ember); margin: 0 0 12px; text-transform: uppercase; }
+  .kb-sec { margin: 22px 0 6px; }
+  .kb-sec p { color: var(--dim); margin: 4px 0 10px; }
+  .kb { position: relative; height: 230px; max-width: 100%; overflow-x: auto; }
+  .kb .w, .kb .b { position: absolute; top: 0; border-radius: 0 0 8px 8px; }
+  .kb .w { width: calc(100% / 16 - 3px); height: 220px; background: #efe8de; color: #1a1513; border: 1px solid #000; }
+  .kb .w span { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%) rotate(180deg); writing-mode: vertical-rl;
+                white-space: nowrap; font: 700 15px "Barlow Condensed", sans-serif; letter-spacing: .04em; }
+  .kb .w i { position: absolute; bottom: 6px; left: 8%; right: 8%; height: 14px; border-radius: 4px; }
+  .kb .w em { position: absolute; top: 112px; width: 100%; text-align: center; font: 600 13px "Barlow Condensed", sans-serif; color: #6b5a50; font-style: normal; }
+  .kb .b { width: calc(100% / 16 * .62); height: 132px; background: #1b1614; border: 1px solid #000; z-index: 2; }
+  .kb .b::after { content: ""; position: absolute; left: 50%; bottom: 10px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: #6d625b; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; color: var(--fg); }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; margin-top: 22px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--ember); border-radius: 14px; padding: 18px 20px; }
+  .row { display: grid; grid-template-columns: minmax(150px, 46%) 1fr; gap: 6px 14px; padding: 7px 0; border-bottom: 1px solid #2a221e; }
+  .row:last-child { border-bottom: 0; }
+  .how { color: var(--dim); font-size: 14px; }
+  kbd { display: inline-block; font: 700 13px/1 -apple-system, "Segoe UI", sans-serif; letter-spacing: .03em; color: var(--fg);
+        background: var(--kbd); border: 1px solid var(--kbdl); border-bottom-width: 2px; border-radius: 6px; padding: 5px 7px; margin: 1px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 4px 0 10px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #2a221e; vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; }
+  td b { color: var(--hot); font-weight: 600; }
+  .note { color: var(--dim); font-size: 13.5px; margin: 6px 0 0; }
+  footer { color: var(--dim); font-size: 13px; margin-top: 26px; text-align: center; }
+  @media (max-width: 640px) {
+    header { grid-template-columns: 1fr; text-align: left; }
+    header img { width: 120px; height: 120px; }
+    .kb { height: 200px; } .kb .w { height: 190px; } .kb .b { height: 112px; }
+    .kb .w span { font-size: 11px; bottom: 24px; letter-spacing: 0; } .kb .w em { display: none; }
+    .row { grid-template-columns: 1fr; gap: 2px; }
+  }
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    :root { --bg: #fff; --card: #fff; --card2: #fff; --fg: #111; --dim: #555; --line: #ccc; --kbd: #f2f2f2; --kbdl: #bbb; --hot: #b34a00; }
+    header { background: #fff; }
+    .links { display: none; }
+    .card { break-inside: avoid; }
+    body { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <img src="splash.png" alt="M-PYRE by History Of Sky, the boot screen">
+  <div>
+    <h1><b>M-PYRE</b> AT A GLANCE</h1>
+    <p class="ver">For M-PYRE 1.0.3 · by History Of Sky · based on SLOOP by isod89 and Felucca by Leo Kuroshita</p>
+    <p class="lead">A riffbox for rock and metal: three tracks for guitars, bass or synths and one drum track.
+      ALGORITHM picks the track, the keys play it, REC records it, HOME brings the LIVE controls.</p>
+    <div class="links">
+      <a href="https://github.com/HistoryOfSky/m-pyre/blob/main/MANUAL.md">The full manual ↗</a>
+      <a href="../emu/">Try it in your browser</a>
+      <a href="../webapp/installer/">Install on your FM-1</a>
+    </div>
+  </div>
+</header>
+
+<section class="kb-sec">
+  <h2>The keys on the drum track</h2>
+  <p>27 keys from F3 to G5. On the drum track each white key plays one of the 16 drum sounds; a black key plays the
+    sound of the white key to its left. On tracks 1–3 the keys play notes (riffs line up: the same keys on guitar,
+    lead and bass).</p>
+  <div class="kb" id="kb"></div>
+  <div class="legend">
+    <span style="--c: var(--c-kick)">Kick</span>
+    <span style="--c: var(--c-snare)">Snare, ghost note</span>
+    <span style="--c: var(--c-hat)">Hats, pedal hat</span>
+    <span style="--c: var(--c-ride)">Ride, bell</span>
+    <span style="--c: var(--c-tom)">Toms</span>
+    <span style="--c: var(--c-cym)">Crashes, china, reverse crash</span>
+    <span style="--c: var(--c-fx)">Drop (a riser effect)</span>
+    <span style="--c: #6d625b">Black key: the white key to its left</span>
+  </div>
+</section>
+
+<div class="grid">
+
+<section class="card">
+  <h2>Getting around</h2>
+  <div class="row"><div><span class="how">turn</span> <kbd>ALGORITHM</kbd></div><div>Pick the track: 1 rhythm guitar, 2 lead, 3 bass, 4 drums.</div></div>
+  <div class="row"><div><span class="how">turn</span> <kbd>PRESETS</kbd></div><div>The track's sound (GTR, BASS, KEYS, STR, SYN, HYBR …) or the drum kit.</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>HOME</kbd></div><div>The LIVE view; tap again for its next group of knobs.</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>HOME</kbd></div><div>The TRACKS screen.</div></div>
+  <div class="row"><div><span class="how">turn</span> <kbd>SELECT</kbd></div><div>On a page: the previous / next page of its group. On HOME: the tempo.</div></div>
+  <div class="row"><div><kbd>KNOB 1–4</kbd></div><div>The four values at the top of the screen.</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>GLO</kbd> <span class="how">≈1.2 s</span></div><div>The menu (settings, palettes, GTR DOUBLE, ABOUT); hold <kbd>HOME</kbd> to close it.</div></div>
+  <div class="row"><div><kbd>ENV</kbd> <kbd>LFO</kbd> <kbd>SEL</kbd> <kbd>ARP</kbd></div><div>As in SLOOP: envelope, LFO, scale and chord, arpeggiator pages (tap) and layers (hold).</div></div>
+</section>
+
+<section class="card">
+  <h2>Playing live</h2>
+  <p class="note" style="margin:0 0 6px">Tap <kbd>HOME</kbd>, then the knobs are the things you play with:</p>
+  <table>
+    <tr><th>Group</th><th>KNOB 1</th><th>KNOB 2</th><th>KNOB 3</th><th>KNOB 4</th></tr>
+    <tr><td><b>PLAY</b></td><td>CHORD</td><td>BEND</td><td>VIB</td><td>PALM</td></tr>
+    <tr><td><b>PLAY 2</b></td><td>LEGATO</td><td>WHAMMY</td><td>WAH</td><td>VOL</td></tr>
+    <tr><td><b>SOUND</b> (synths)</td><td>CUT</td><td>RES</td><td>ATK</td><td>REL</td></tr>
+  </table>
+  <div class="row"><div><kbd>BEND</kbd></div><div>Right a little: a semitone; right hard: a whole tone; any turn left: back to the note.</div></div>
+  <div class="row"><div><kbd>CHORD</kbd></div><div>One key, one chord: PW (power chord), PW+, OCT, TERZ, TRIAD, 7TH, 9TH, SUS4.</div></div>
+  <div class="row"><div><kbd>PALM</kbd> <kbd>WAH</kbd> <kbd>WHAMMY</kbd></div><div>Palm mutes on/off · wah pedal (OFF at the left) · whammy bar, down and up from the middle.</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>OCT−</kbd> / <kbd>OCT+</kbd></div><div>Octave down / up; both together: back to 0.</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>OCT−</kbd> / <kbd>OCT+</kbd> <span class="how">+ drum key</span></div><div>Drum track: ghost / hard hits.</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>FX</kbd> <span class="how">+ key</span></div><div>A punch-in effect while you hold it (as in SLOOP; FREEZE and the THROWs work even with reverb / delay OFF).</div></div>
+</section>
+
+<section class="card">
+  <h2>Recording &amp; riffs</h2>
+  <div class="row"><div><span class="how">tap</span> <kbd>PLAY</kbd></div><div>Start / stop all four tracks.</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>REC</kbd></div><div>Playing: record now / stop. Stopped: arm, the take starts with PLAY.</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>REC</kbd> <span class="how">≈2 s</span></div><div>Clear the selected track (let go before the ring is full: nothing happens).</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>SEQ</kbd></div><div>The NOTES page (tracks 1–3) or the drum grid; on the drums: grid ↔ kit.</div></div>
+  <div class="row"><div><span class="how">NOTES page</span> <kbd>KNOB 4</kbd></div><div>FORCE: GHOST … ACC, then PALM: the note is palm-muted.</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>OCT+</kbd> <span class="how">on a note</span></div><div>Its sheet; ART: NORM, PALM, SLIDE, HAMMR (hammer-on / pull-off).</div></div>
+  <div class="row"><div><span class="how">hold</span> <kbd>EDIT</kbd> + <kbd>OCT−</kbd> / <kbd>OCT+</kbd></div><div>Undo / redo.</div></div>
+  <div class="row"><div><span class="how">tap / hold</span> <kbd>SAVE</kbd></div><div>Song screen and save pages / the song layer (sections A–D, chain, song mode) – as in SLOOP.</div></div>
+</section>
+
+<section class="card">
+  <h2>The amp</h2>
+  <p class="note" style="margin:0 0 6px">On a guitar or bass track: tap <kbd>EDIT</kbd>. <kbd>SELECT</kbd> switches the two pages.</p>
+  <table>
+    <tr><th>Page</th><th>KNOB 1</th><th>KNOB 2</th><th>KNOB 3</th><th>KNOB 4</th></tr>
+    <tr><td><b>AMP</b></td><td>AMP</td><td>CAB</td><td>PRES</td><td>COMP</td></tr>
+    <tr><td><b>AMP 2</b></td><td>GAIN</td><td>BASS</td><td>MID</td><td>TREB</td></tr>
+  </table>
+  <div class="row"><div><kbd>AMP</kbd></div><div>OFF, CLEAN, CRNCH, HIGH, LEAD, BASS.</div></div>
+  <div class="row"><div><kbd>CAB</kbd></div><div>AUTO (the amp's own), CLEAN, CRNCH, HIGH, LEAD, BASS, OFF – real impulse responses.</div></div>
+  <div class="row"><div><span class="how">menu</span> <kbd>GTR DOUBLE</kbd></div><div>CLEAN, CRNCH and HIGH are double-tracked left / right; OFF plays them once, in the middle.</div></div>
+</section>
+
+<section class="card">
+  <h2>Effects</h2>
+  <p class="note" style="margin:0 0 6px">Tap <kbd>FX</kbd>. <kbd>SELECT</kbd> walks through the five pages.</p>
+  <table>
+    <tr><th>Page</th><th>KNOB 1</th><th>KNOB 2</th><th>KNOB 3</th><th>KNOB 4</th></tr>
+    <tr><td><b>1 MIX</b></td><td>DST</td><td>MOD</td><td>DLY</td><td>REV</td></tr>
+    <tr><td><b>2 PEDAL</b></td><td>PEDAL</td><td>DRIVE</td><td>TONE</td><td>LEVEL</td></tr>
+    <tr><td><b>3 MOD</b></td><td>MOD</td><td>RATE</td><td>DEPTH</td><td>MIX</td></tr>
+    <tr><td><b>4 DELAY</b></td><td>TIME</td><td>FDBK</td><td>TONE</td><td>MIX</td></tr>
+    <tr><td><b>5 REVERB</b></td><td>TYPE</td><td>SIZE</td><td>TONE</td><td>MIX</td></tr>
+  </table>
+  <div class="row"><div><kbd>PEDAL</kbd></div><div>OFF, BOOST, OD, DIST, FUZZ, OCT (octaver: OCT+, OCT−, LEVEL).</div></div>
+  <div class="row"><div><kbd>MOD</kbd></div><div>OFF, PHASR, FLANG, CHOR, TREM.</div></div>
+  <div class="row"><div><kbd>TIME</kbd> / <kbd>TYPE</kbd></div><div>Start at OFF: turn them to switch delay / reverb on. Both are shared; MIX is per track.</div></div>
+</section>
+
+<section class="card">
+  <h2>Drums</h2>
+  <div class="row"><div><span class="how">turn</span> <kbd>PRESETS</kbd></div><div>The kit: HEAVY KIT (real samples) and DEEP, TIGHT, BRIGHT, DUST; 808, 909, 606, 80S, VINTAGE, TRAP, INDUSTR; your own.</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>EDIT</kbd></div><div>The drum sound editor: <kbd>SELECT</kbd> picks a sound, the knobs set LEVEL, PUNCH, PITCH, DECAY.</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>HOME</kbd></div><div>The kit, live: LEVEL, PUNCH, LO CUT, HI CUT for the whole kit.</div></div>
+  <div class="row"><div><span class="how">tap</span> <kbd>SEQ</kbd></div><div>The drum grid ↔ the kit.</div></div>
+</section>
+
+<section class="card">
+  <h2>Saving &amp; the sound pack</h2>
+  <div class="row"><div><span class="how">automatic</span></div><div>The project is saved by itself a few seconds after you stop (nothing playing, no touch for 2.5 s).</div></div>
+  <div class="row"><div><kbd>USR1–USR4</kbd></div><div>The guitar, palm mute and bass recordings live in the four user sample slots. The installer writes them; without them guitars and bass are silent.</div></div>
+  <div class="row"><div><span class="how">editor</span></div><div>samples → <b>Install sound pack</b> brings them back after you load your own samples.</div></div>
+</section>
+
+<section class="card">
+  <h2>Recovery &amp; good to know</h2>
+  <div class="row"><div><span class="how">hold</span> <kbd>OCT−</kbd> <span class="how">while switching on</span></div><div>USB rescue: install again from the browser.</div></div>
+  <div class="row"><div><span class="how">menu</span></div><div>Palettes EMBER, AMBER, RED, MONO, LIGHT · CHORD NAME shows the chord you play.</div></div>
+  <div class="row"><div><span class="how">riffs</span></div><div>Rhythm guitars sound an octave down, the lead at pitch, the bass below: play the same keys on all three.</div></div>
+  <div class="row"><div><span class="how">leaving</span></div><div>Any other firmware or the stock one (M-UPGRADE V15 / V16) installs over M-PYRE.</div></div>
+</section>
+
+</div>
+
+<footer>M-PYRE is free, open-source firmware (GPL-3.0), unofficial and without warranty: you install it at your own risk.
+  When in doubt, <a href="https://github.com/HistoryOfSky/m-pyre/blob/main/MANUAL.md">the manual</a> is right.</footer>
+</div>
+
+<script>
+  // the 27 keys F3..G5: 16 white (the 16 drum sounds), 11 black (the sound of the white key to the left)
+  const DRUM = [["KICK", "kick"], ["SNARE", "snare"], ["GHOST", "snare"], ["HAT", "hat"], ["OPEN HAT", "hat"], ["PEDAL", "hat"],
+    ["RIDE", "ride"], ["BELL", "ride"], ["HI TOM", "tom"], ["MID TOM", "tom"], ["FLOOR", "tom"], ["CRASH", "cym"],
+    ["CRASH 2", "cym"], ["CHINA", "cym"], ["REV CRASH", "cym"], ["DROP", "fx"]];
+  const NAMES = "F3 G3 A3 B3 C4 D4 E4 F4 G4 A4 B4 C5 D5 E5 F5 G5".split(" ");
+  const kb = document.getElementById("kb");
+  DRUM.forEach(([n, c], i) => {
+    const w = document.createElement("div");
+    w.className = "w"; w.style.left = `calc(100% / 16 * ${i})`;
+    w.innerHTML = `<em>${i + 1}</em><span>${n}</span><i style="background: var(--c-${c})"></i>`;
+    w.title = `${NAMES[i]}: ${n}`;
+    kb.append(w);
+    if (/^[FGACD]/.test(NAMES[i]) && i < 15) {          // a black key after F, G, A, C, D
+      const b = document.createElement("div");
+      b.className = "b"; b.style.left = `calc(100% / 16 * ${i + 1} - 100% / 16 * .31 - 1.5px)`;
+      b.title = `${NAMES[i][0]}#${NAMES[i][1]}: ${n}`;
+      kb.append(b);
+    }
+  });
+</script>
+</body>
+</html>

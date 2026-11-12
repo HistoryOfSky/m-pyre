@@ -202,6 +202,12 @@ def main(pkg, version, out):
         shutil.copy(dsp, ed / dsp.name)
     elif (ed / dsp.name).exists():
         (ed / dsp.name).unlink()  # never serve an old audio build as the current one
+    cs = out / "cheatsheet"                                         # M-PYRE at a glance (fmhub.json "cheat")
+    cs.mkdir(parents=True, exist_ok=True)
+    shutil.copy(HERE / "cheatsheet.html", cs / "index.html")
+    shutil.copy(HERE.parent / "assets/mpyre/splash.png", cs / "splash.png")
+    for f in ("BarlowCondensed-Bold.ttf", "BarlowCondensed-SemiBold.ttf", "BarlowCondensed-OFL.txt"):
+        shutil.copy(HERE.parent / "assets/fonts" / f, cs / f)
     emu = HERE.parent / "build" / "emu" / "m-pyre-emulator.html"     # tools/build_emu.py: the firmware in the browser
     if emu.exists():
         (out / "emu").mkdir(parents=True, exist_ok=True)
