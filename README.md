@@ -154,3 +154,5 @@ The [manual](MANUAL.md) explains the amp view, the pedals, the LIVE view and the
 Code: GPL-3.0-only (see [LICENSE](LICENSE)). History Of Sky's guitar and bass samples, cabinet IRs and artwork: CC BY 4.0; the
 drum samples: CC0 (see [LICENSING.md](LICENSING.md)). No
 warranty. M-VAVE and FM-1 are trademarks of their owners; M-PYRE is not affiliated with M-VAVE.
+
+You can also try M-PYRE in the browser, no flashing needed, in the free community [FM-1 Emulator](https://fm1-emulator.atst.tools/).
